@@ -4,8 +4,34 @@
 <meta charset="utf-8">
 <title>裝修估價 App 互動預覽</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.3（進版｜階段 B：跨裝置）
-  作者：claude / 2026-09-08 / 對應 _d v0.09
+  裝修估價 App — 手機互動預覽　版次：v0.1.3.1（補釘）
+  作者：claude / 2026-09-08 / 對應 _d v0.11
+  上一版：v0.1.3（同資料夾，保留不覆蓋）
+
+  ── 本補釘（v0.1.3 → v0.1.3.1）：修一條【會刪掉本機資料】的 bug ──
+   R-1 🔴 匿名身分過期後，cloudPull 會把本機同步過的資料整批刪掉
+       來源：研究員冷讀調查 R-1（`../../裝修估價App_研究員調查_claude_20260908.md`），claude 覆核確認
+
+       發生路徑：
+         token 過期 → sbFetch 收 401 → signInAnon(true) 重新拿身分 → 【全新的 uid】
+                    → 重試原請求（例：GET photos）
+                    🔴 新 uid 不在 members 裡 → RLS 回 200 []（不是報錯）
+                    → cloudPull 看到「雲端 0 筆」
+                    → 刪除傳播迴路把本機所有 synced 的資料【整批刪掉】
+
+       ⚠️ 諷刺的是：`200 []` 這個「安全的失敗方向」（E-4 驗過）正是本 bug 成立的原因——
+          它讓「我沒權限」與「雲端真的空了」長得一樣。**這是 obs O-14 那條坑的第三次變形。**
+
+       修法兩層：
+         ① sbFetch 的 401 重試路徑：拿到新身分後【重新 joinProject()】
+            （帶 _rejoining 旗標防遞迴——join 本身也走 sbFetch）
+         ② cloudPull 開頭先【驗證 membership】（讀 members 表，SQL 已給 self-select 政策）
+            不是 member → 中止同步並明確報錯，【一筆都不刪】
+
+       🔑 ②才是真正的修法：它把有歧義的 `200 []` 換成一個明確的問題——
+          「我到底是不是這個專案的成員？」有答案，就不必從 0 筆去猜。
+       ⚠️ 刻意【不用】「雲端 0 筆但本機有 N 筆就別刪」這種數量啟發式：
+          membership 確認過之後，0 筆就是真的 0 筆，用數量擋會把 E-3（刪除同步）擋掉。
   上一版：v0.1.2.2（../../v0.1.2_探索/修正需求/，保留不覆蓋）
   需求表：../修正需求/裝修估價App_修正需求表_v0.01_20260908.md
   SQL   ：../階段B_方案B_SQL_20260908.sql（Ali 要先在 Supabase 跑過）
@@ -1083,7 +1109,8 @@ async function deleteMarker(id){
 const CLOUD = {
   url : 'https://dcagkkbzfzirxpearzoq.supabase.co',
   key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjYWdra2J6ZnppcnhwZWFyem9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDg4MDYsImV4cCI6MjEwNDI4NDgwNn0.tPycXGs0Iv6P6dpT3gAqQLBgEunMkSuhuNzBW2EhRN8',
-  code:null, tok:null, uid:null, on:false, blocked:false, msg:'', busy:false
+  code:null, tok:null, uid:null, on:false, blocked:false, msg:'', busy:false,
+  reauth:0            // v0.1.3.1：這次連線期間重新取得身分幾次（R-1 的可見度）
 };
 const LS={ get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
            set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},
@@ -1110,10 +1137,18 @@ async function sbFetch(path, opt){
   CLOUD.blocked = false;
   if(r.status===401 && !opt._retry && path.indexOf('/auth/')<0){
     await signInAnon(true);                     // 身分過期 → 重新拿一個
+    /* 🔴 v0.1.3.1 R-1：新身分是【全新的 uid】，不在 members 裡。
+       少了這一步，接下來每個讀取都會回 200 []（有權限問題，但長得像「雲端空了」）。 */
+    if(CLOUD.code && !_rejoining){
+      _rejoining = true;
+      try{ await joinProject(CLOUD.code); }
+      finally{ _rejoining = false; }            // ⚠️ 防遞迴：joinProject 本身也走 sbFetch
+    }
     return sbFetch(path, Object.assign({}, opt, {_retry:true}));
   }
   return r;
 }
+let _rejoining = false;
 async function signInAnon(force){
   if(CLOUD.tok && !force) return;
   if(!force){
@@ -1126,8 +1161,20 @@ async function signInAnon(force){
   let j={}; try{ j=JSON.parse(t); }catch(e){}
   if(!r.ok || !j.access_token)
     throw new Error('拿匿名身分失敗（Anonymous sign-ins 開了嗎？）：'+(j.msg||j.error_description||j.error||t.slice(0,160)));
+  const prev=CLOUD.uid;
   CLOUD.tok=j.access_token; CLOUD.uid=(j.user&&j.user.id)||null;
+  if(force && prev && prev!==CLOUD.uid) CLOUD.reauth++;   // v0.1.3.1：身分真的換掉了
   LS.set('deco_sess', JSON.stringify({t:CLOUD.tok,u:CLOUD.uid}));
+}
+/* 🔴 v0.1.3.1 R-1 的核心修法：把「雲端 0 筆」這個有歧義的訊號，
+   換成一個有明確答案的問題——「這台的身分在 members 裡嗎？」
+   （SQL 的 members_self_select 政策讓每個身分讀得到【自己的】那幾筆。） */
+async function cloudVerifyMember(){
+  const r=await sbFetch('/rest/v1/members?select=project_code&project_code=eq.'
+                        +encodeURIComponent(CLOUD.code));
+  if(!r.ok) throw new Error('確認專案身分失敗：'+(await r.text()).slice(0,160));
+  const rows=await r.json();
+  return Array.isArray(rows) && rows.length>0;
 }
 async function joinProject(code){
   await signInAnon();
@@ -1187,6 +1234,12 @@ async function cloudDelMarker(m){
 /* ── 拉：雲端 → 本機（含「別台刪掉的，本機也要消失」）── */
 async function cloudPull(){
   if(!CLOUD.on) return;
+  /* 🔴 v0.1.3.1 R-1：先確認身分，再談同步。
+     ⚠️ 這一步失敗就【中止】——下面有刪除傳播迴路，
+        身分不對時它會把「讀不到」誤讀成「別台刪了」，然後刪掉本機。 */
+  if(!await cloudVerifyMember())
+    throw new Error(`這台的身分不在專案 ${CLOUD.code} 裡（身分可能已變更）。`
+      +`為避免誤刪本機資料，同步已中止，一筆都沒有刪。請按「重新連線」。`);
   const q='&project_code=eq.'+encodeURIComponent(CLOUD.code);
 
   // ① 照片
@@ -1301,6 +1354,8 @@ async function cloudStat(){
     html = `<span class="on">✅ 已連線</span>　專案代碼 <b>${CLOUD.code}</b>`+
       `　這台的身分 <b>…${(CLOUD.uid||'').slice(-6)}</b><br>`+
       (CLOUD.busy? `⏳ 同步中…` : (pend? `⏳ 有 <b>${pend}</b> 筆還沒上傳` : `雲端與這台一致`))+
+      /* v0.1.3.1：身分換過就講出來。R-1 的症狀之一是使用者完全不知道身分變了。 */
+      (CLOUD.reauth? `<br><span class="er">⚠️ 這次連線期間身分重新取得過 ${CLOUD.reauth} 次</span>`:'')+
       `<br>⚠️ 安全等級＝<b>知道代碼的人就看得到</b>。只放測試照片。`;
   }else{
     html = `<span class="off">未連線</span>　照片只存這台（行為與 v0.1.2.2 完全相同）<br>`+
@@ -1428,7 +1483,7 @@ const nowStr=()=>{const d=new Date();const z=x=>String(x).padStart(2,'0');
 /* ── 收一張照片：這裡是探針的核心，每一步都要能回報成功或失敗 ── */
 /* v0.1.2.2 B-4④：每筆紀錄帶上「是哪一版存的」。
    ⚠️ 之前分辨新舊只能靠「rawW 在不在」這種推論——推論會過期，欄位不會。 */
-const APP_VER='v0.1.3';
+const APP_VER='v0.1.3.1';
 async function intake(file, source){
   const rec={ id:uid(), name:file.name||'(無檔名)', source, appVer:APP_VER,
     mime:file.type||'(未知)', origSize:file.size,
