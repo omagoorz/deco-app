@@ -1,11 +1,33 @@
 <!-- 🔴 charset 必須在最前面：python -m http.server 不送 charset，
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
-<title>裝修估價 App 互動預覽 v0.1.4</title>
+<title>裝修估價 App 互動預覽 v0.1.4.1</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.4（進版）
-  作者：claude / 2026-09-11 / 對應 _d v0.15
-  上一版：v0.1.3.1（../../v0.1.3_探索/修正需求/，保留不覆蓋）
+  裝修估價 App — 手機互動預覽　版次：v0.1.4.1（補釘）
+  作者：claude / 2026-09-11 / 對應 _d v0.16
+  上一版：v0.1.4（同資料夾，保留不覆蓋）／v0.1.3.1（../../v0.1.3_探索/修正需求/，保留不覆蓋）
+
+  ── 本補釘（v0.1.4 → v0.1.4.1）：Ali 2026-09-11 實機測試回報八條 ──
+  規格：../修正需求/裝修估價App_修正需求表_v0.06_i_claude_20260911.md
+  ⚠️ 八條【沒有一條是冷讀刀抓到的】——全是「兩台真實裝置、一個真人」才撞得到的。
+     這件事本身是 v0.06_i §9 的結論。
+
+   需求 16 專案頁回不去 → 加「‹ 返回」（回 S.prevTab）＋ 齒輪做成開關
+   需求 17 照片全螢幕的關閉鈕移到【圖片正下方】，🔴 右上角那顆移除（不留兩顆）
+   需求 18 🔴 同步分步狀態 ＋ 完成回饋（本輪價值最高）
+           Ali 原話：「我是看著平面圖上面的出現照片的符號確定他同步的」
+           ⇒ 她是【繞過對話框】自己推論出同步完成的
+   需求 19 專案代碼打錯的防呆（雲端全空要講、記住用過的代碼、代碼用等寬加寬字距）
+           來歷：ALI_WUNDAWU vs ALI_WUNDAUW ⇒ 兩台在兩個不同專案，一整輪測試作廢
+   需求 20 🔴 平面圖「給人讀的文字」改用【畫面座標】，不隨 zoom／pan 跑出畫面
+   需求 21 手機平面圖下方的大片空白 → 高度依實際可用空間算（🔴 100dvh 不用 100vh）
+   需求 22 長寬高進清單卡片的展開列（🔴 選中面板的長寬高保留不動，兩邊改同一個值）
+   需求 23 〔離開〕→〔離開專案〕，且【位置也移開】（Ali：「我以為離開和關閉是一樣的意思」）
+
+  ⚠️ 本補釘【不碰任何版面設計決策】：家具挑選器、上視圖 icon、兩個選取開關、
+     手機整體版位（_d §13-22）、一個位置多張照片（§13-32）一律不動。
+  ⚠️ 「同步是聯集」【不改】——v0.06_i §3 裁決：聯集就是跨裝置同步的定義；
+     Ali 的不安來自「沒告訴她多了什麼」，解法是需求 18 的「新增 N 筆」。
 
   規格（三份都是驗收條件，衝突時以版次較新者為準）：
     ../修正需求/裝修估價App_修正需求表_v0.02_i_claude_20260908.md（需求 1~11 全文）
@@ -69,8 +91,16 @@
 body{margin:0;background:var(--bg);color:var(--ink);
   font:14px/1.5 -apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;
   overscroll-behavior:none;}
-.app{display:flex;flex-direction:column;height:100dvh;max-width:520px;margin:0 auto;
-  background:var(--bg);}
+/* 🔴 需求 21：手機上平面圖下方一大片空白。
+   ① 用 100dvh 不用 100vh（手機瀏覽器網址列會吃掉高度，100vh 會算成比可見區更高）
+      ⚠️ 100dvh 不支援時要有退路 ⇒ 先寫 100vh 再用 100dvh 覆蓋（支援的瀏覽器取後者）
+   ② max-height ＋ overflow:hidden ⇒ 整個 app 不可能高過可見區 ⇒ 頁面不會捲動
+      （Ali 的症狀是「平面圖下方到底部分頁之間約一個螢幕高的空白」＝ 容器比可見區高） */
+.app{display:flex;flex-direction:column;
+  height:100vh;height:100dvh;
+  max-height:100vh;max-height:100dvh;
+  overflow:hidden;
+  max-width:520px;margin:0 auto;background:var(--bg);}
 
 /* ── 需求 13：頂列（44px）＝ 標題 ＋ 可點的連線徽章 ＋ 齒輪 ── */
 .apptop{flex:none;height:44px;display:flex;align-items:center;gap:7px;padding:0 10px;
@@ -178,12 +208,24 @@ body{margin:0;background:var(--bg);color:var(--ink);
 /* 「缺價錢」＝ 空值時的 placeholder，用 warnA（與 .miss 同色） */
 .icard .price::placeholder{color:var(--warnA);opacity:1}
 .icard .price.bad{border-color:var(--warnB);border-width:1.5px}
-.roomrow{display:flex;gap:6px;align-items:center;margin-top:6px}
-.roomrow select{flex:0 0 38%;min-width:0;background:var(--bg);border:1px solid var(--line);
+/* 🔴 需求 22：展開列變成 [房間下拉][寬][深][高][備註]。
+   Ali 原話：「目前是在清單點選新增桌子，卻要在平面圖設定桌子的長寬高，這格跳躍的感覺好奇怪喔」
+   ⇒ 手機上允許該列【橫向捲動】；不要換行把卡片撐高（沿用 N-99 的結論）。 */
+.roomrow{display:flex;gap:6px;align-items:center;margin-top:6px;
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+  padding-bottom:2px}
+.roomrow select{flex:0 0 96px;min-width:0;background:var(--bg);border:1px solid var(--line);
   border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:12px;min-height:34px}
+/* 寬／深／高：三個小欄，沿用需求 7 的輸入規則（紅框、失焦還原、清空＝null） */
+.roomrow .szbox{flex:0 0 62px;display:flex;flex-direction:column;gap:1px}
+.roomrow .szbox label{font-size:9.5px;color:var(--sub);padding-left:2px}
+.roomrow input.sz{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:5px 4px;color:var(--ink);font:inherit;font-size:13px;
+  min-height:30px;text-align:center;font-variant-numeric:tabular-nums}
+.roomrow input.sz.bad{border-color:var(--warnB);border-width:1.5px}
 /* 🔴 v0.05_i §4：note 併進【同一個展開列】。單行 input ⇒ 長備註橫向捲，
    卡片高度不會被它撐開（input 本身不會換行、不會長高）。 */
-.roomrow input.note{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+.roomrow input.note{flex:0 0 120px;min-width:0;background:var(--bg);border:1px solid var(--line);
   border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:12px;min-height:34px;
   text-overflow:ellipsis}
 .empty{text-align:center;color:var(--sub);padding:48px 12px;font-size:13px;line-height:2}
@@ -308,9 +350,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .viewer .vbar{flex:none;color:#eee;font-size:11.5px;line-height:1.7;padding:9px 12px;
   background:rgba(0,0,0,.55);font-variant-numeric:tabular-nums;word-break:break-all}
 .viewer .vbar b{color:#fff}
-.viewer .vclose{position:absolute;top:8px;right:10px;z-index:2;
-  background:rgba(0,0,0,.6);color:#fff;border:1px solid #666;border-radius:9px;
-  font-size:15px;font-weight:700;padding:8px 13px;cursor:pointer;font-family:inherit}
+/* 🔴 需求 17：關閉鈕在【圖片正下方】，整寬、高度 ≥ 44px（已驗收的觸控尺寸）。
+   position 不再是 absolute ⇒ 它參與 flex 排版，圖片區高度自動縮小、圖片仍 contain 不裁切。 */
+.viewer .vclose{flex:none;margin:0 12px 8px;min-height:46px;
+  background:rgba(255,255,255,.14);color:#fff;border:1px solid #888;border-radius:10px;
+  font-size:15px;font-weight:700;padding:10px 13px;cursor:pointer;font-family:inherit}
+.viewer .vclose:active{background:rgba(255,255,255,.28)}
 
 .pinning{position:fixed;left:0;right:0;bottom:56px;z-index:25;max-width:520px;margin:0 auto;
   background:var(--accent);color:#fff;padding:11px;text-align:center;font-size:13px;font-weight:600}
@@ -342,6 +387,47 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .cstat .er{color:var(--warnB);font-weight:600}
 .rw{display:flex;gap:6px;margin-top:11px}
 .rw .btn{flex:1}
+/* 🔴 需求 19 ③：專案代碼一律等寬 ＋ 加寬字距（顛倒的字母才看得出來）
+   ⚠️ 第二條選擇器不是贅寫：`.inputline input` 有 `font:inherit`，
+      那是【簡寫】⇒ 會把 font-family 一起重設，而它的優先權（0,1,1）高於 .codetxt（0,1,0）
+      ⇒ 只寫 .codetxt 的話輸入框裡【不會】變等寬（實測抓到）。 */
+.codetxt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  letter-spacing:.16em}
+.inputline input.codetxt{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  letter-spacing:.16em}
+/* 🔴 需求 19 ②：用過的代碼清單 */
+.codelist{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.codelist:empty{display:none}
+.codechip{display:inline-flex;align-items:center;gap:0;border:1px solid var(--line);
+  border-radius:20px;background:var(--bg);overflow:hidden}
+.codechip .pick{border:0;background:transparent;color:var(--ink);font-family:ui-monospace,
+  SFMono-Regular,Menlo,Consolas,"Courier New",monospace;letter-spacing:.14em;
+  font-size:11px;padding:5px 4px 5px 10px;cursor:pointer;min-height:28px}
+.codechip .del{border:0;background:transparent;color:var(--sub);font-family:inherit;
+  font-size:12px;padding:5px 8px 5px 4px;cursor:pointer;min-height:28px}
+.codechip .del:active{color:var(--warnB)}
+/* 🔴 需求 18：分步狀態／完成回饋 */
+.syncprog:empty{display:none}
+.syncprog{font-variant-numeric:tabular-nums}
+.syncprog .done{color:var(--ok);font-weight:600}
+.syncprog .run{color:var(--accent)}
+.syncprog .fail{color:var(--warnB);font-weight:600}
+/* 🔴 需求 19 ①：新專案提醒（狀態，不是功能說明；不阻擋） */
+.newproj{margin-top:9px;padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.7;
+  background:color-mix(in srgb,var(--warnA) 14%,transparent);color:var(--warnA)}
+.newproj[hidden]{display:none!important}
+.newproj b{color:var(--warnA)}
+/* 🔴 需求 23：〔離開專案〕獨立一區、上方分隔線、樣式降級 */
+.leaverow{margin-top:13px;padding-top:11px;border-top:1px solid var(--line);
+  display:flex;justify-content:center}
+.leaverow[hidden]{display:none!important}
+.btn.danger{background:transparent;border-color:transparent;color:var(--warnB);
+  font-size:11.5px;padding:7px 12px;min-height:32px;flex:none}
+.btn.danger:active{background:color-mix(in srgb,var(--warnB) 12%,transparent)}
+/* 🔴 需求 16：專案頁的出口 */
+.backrow{display:flex;margin-bottom:4px}
+.backrow .btn{flex:none;padding:7px 14px}
 .soonrow{display:flex;align-items:center;gap:9px;background:var(--panel);
   border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:7px}
 .soonrow .k{font-size:13px;font-weight:600;flex:1;min-width:0}
@@ -421,8 +507,14 @@ body{margin:0;background:var(--bg);color:var(--ink);
       <div id="plist"></div>
     </div>
 
-    <!-- 需求 13：專案頁（齒輪） -->
+    <!-- 需求 13：專案頁（齒輪）。🔴 需求 16：加出口。 -->
     <div class="page" id="projPage" hidden>
+      <!-- 🔴 需求 16：專案頁不在底部 5 格裡 ⇒ 進去之後畫面上沒有任何出口。
+           ⚠️ 依 _d §10-0b：「‹ 返回」是【控制項】不是功能說明，可以有；
+              不要加「這裡可以設定專案」這種句子。 -->
+      <div class="backrow">
+        <button class="btn" id="btnProjBack">‹ 返回</button>
+      </div>
       <div class="projsec">同步</div>
       <div class="soonrow"><div class="k">🔗 專案代碼</div>
         <button class="btn" id="btnOpenSync">開啟</button></div>
@@ -447,10 +539,14 @@ body{margin:0;background:var(--bg);color:var(--ink);
 
   <div class="pinning" id="pinning" hidden>👆 點平面圖上要標記的位置（再按一次此列取消）</div>
 
-  <!-- 全螢幕檢視層。不開新分頁（O-11：沙箱 iframe 會擋） -->
+  <!-- 全螢幕檢視層。不開新分頁（O-11：沙箱 iframe 會擋）
+       🔴 需求 17：關閉鈕從【右上角】移到【圖片正下方】。
+          Ali 原話：「照片的關閉放在圖片正下方，不然我一直誤觸上一頁」
+          ⇒ 右上角與手機瀏覽器的返回／分頁區在同一個拇指軌跡上。
+          ⚠️ 右上角那顆【移除】，不留兩顆——兩顆會讓誤觸繼續存在。 -->
   <div class="viewer" id="viewer" hidden>
-    <button class="vclose" id="vClose">✕ 關閉</button>
     <div class="vimg"><img id="vImg" alt=""></div>
+    <button class="vclose" id="vClose">✕ 關閉</button>
     <div class="vbar" id="vBar">—</div>
   </div>
 
@@ -459,15 +555,34 @@ body{margin:0;background:var(--bg);color:var(--ink);
     <div class="dlg" id="syncDlg">
       <h4>同步</h4>
       <div class="inputline">
-        <input id="pcode" placeholder="專案代碼（留空＝只存這台）"
+        <!-- 🔴 需求 19 ③：代碼用等寬字體 ＋ 加寬字距 ⇒ 顛倒的字母看得出來
+             （ALI_WUNDAWU vs ALI_WUNDAUW 這次就是這樣打錯的） -->
+        <input id="pcode" class="codetxt" placeholder="專案代碼（留空＝只存這台）"
                autocapitalize="characters" autocomplete="off" spellcheck="false">
         <button class="btn pri" id="btnJoin">連線</button>
       </div>
+      <!-- 🔴 需求 19 ②：記住用過的代碼（最多 5 組），點一下填入、可刪單筆 -->
+      <div class="codelist" id="codeList"></div>
       <div class="cstat" id="cstat">讀取中…</div>
+      <!-- 🔴 需求 18：分步狀態 ＋ 完成回饋。與 cstat 分開兩個容器，
+           這樣 cloudStat() 產的狀態與錯誤歸屬句【一字不改】。 -->
+      <div class="cstat syncprog" id="syncprog"></div>
+      <!-- 🔴 需求 19 ①：雲端這個代碼下四表＋photos 全 0 筆 → 明確說它是新專案。
+           ⚠️ 不阻擋，只提醒（她可能真的要開新專案）。 -->
+      <div class="newproj" id="newProjNote" hidden></div>
       <div class="rw">
-        <button class="btn" id="btnLeave" hidden>離開</button>
         <button class="btn" id="btnSync" hidden>🔄 同步</button>
         <button class="btn pri" id="btnCloseSync">關閉</button>
+      </div>
+      <!-- 🔴 需求 23：〔離開專案〕移出上面那一排、放最下方、加分隔線、樣式降級。
+           Ali 原話：「我以為離開和關閉是一樣的意思」
+           ⇒ 問題不是字不夠精確，是【兩個不同層級的動作長得像同義詞】
+             〔離開專案〕後果重（停止同步）／〔關閉〕沒有後果（只收起畫面）
+           ⇒ 讓「會改變狀態的」與「只是收起畫面的」在【空間上】就分開。
+           ⚠️ 這一條是依 Ali 的猜測做的（她自己標了「只是猜」）；
+              若實測反而更難找，回退成同一排只改字即可——回退成本只有 CSS。 -->
+      <div class="leaverow" id="leaveRow" hidden>
+        <button class="btn danger" id="btnLeave">離開專案</button>
       </div>
       <div class="cstat" style="opacity:.5">登入（之後）</div>
     </div>
@@ -555,7 +670,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.4';
+const APP_VER = 'v0.1.4.1';
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
@@ -582,6 +697,7 @@ const S = { gesture:'A2', mode:'obj', snap:true, gridAll:false,
             selId:null, zoom:1, panX:0, panY:0, tab:'plan',
             dragging:null, snapCand:null,
             pinPhoto:null,
+            prevTab:'plan',        // 🔴 需求 16：進專案頁之前停在哪一個分頁
             sizeOpen:false,        // 需求 12：尺寸欄展開中？
             warnOpen:false,        // 需求 12：警示展開全部？
             /* 需求 8 §3-2 ＋ v0.05_i §4（修四）：卡片內的展開列在哪一筆。
@@ -729,6 +845,56 @@ const s2w = (x,y)=>({x:(x-S.panX)/S.zoom, y:(y-S.panY)/S.zoom});
 const snapCm  = ()=> SNAP_PX/S.zoom;
 const nudgeCm = ()=> Math.max(NUDGE_MIN, Math.round(NUDGE_PX/S.zoom));
 
+/* ══════════════════════════════════════════════════════════════
+   🔴 需求 20｜「給人讀的文字」一律畫在【畫面座標】，不隨 zoom／pan 跑出畫面
+   來歷（Ali 手機截圖，zoom 192%）：房間只有 400×300 公分 ⇒ fit() 把它撐到滿寬
+     ⇒ 用世界座標畫的文字被推出畫面左邊：
+        「（可刪）」只剩右半／「單〕重來，或直接改它」左邊被切／「道寬 60 公分」的「走」被切
+   做法：另開一個【不受 transform 影響】的圖層（直接掛在 <svg> 上，不進 g），
+         字級用固定 px（不隨 zoom 變大變小），位置一律夾在可見範圍內。
+   ⚠️ 家具名稱【仍然跟世界座標】（必須貼在物件上才有意義），但算出來的位置要夾回邊界。
+   ══════════════════════════════════════════════════════════════ */
+let _uiLayer=null;                     // 畫面座標圖層（每次 render 重建）
+const SVG_PAD = 6;                     // 夾限留白
+function svgSize(){
+  const r=svg.getBoundingClientRect();
+  /* ⚠️ O-1：版面未定案時 rect 是 0。回一個保底值，不要讓夾限算出 NaN／負數。 */
+  return { w: r.width  || 360, h: r.height || 480 };
+}
+/* 在畫面座標圖層寫一行字，並把它夾回可見範圍內。
+   🔴 夾限用【實際量出來的 getBBox()】，不用估寬。
+      ⚠️ 這一條是 N-113 實測抓到的：第一版用 `字數 × px × 0.62` 估寬，
+         但【中日韓字寬約 1em】，估出來只有實際的六成
+         ⇒ 平移到角落時「範例房間（可刪）」與「走道寬 60 公分」照樣跑出畫面。
+         ⇒ 估的東西會錯，量的東西不會。 */
+function uiText(sx, sy, txt, opt){
+  const o=opt||{};
+  const px=o.size||13;
+  const anchor=o.anchor||'start';
+  const t=el('text',{x:sx, y:sy, 'text-anchor':anchor,
+    fill:o.fill||'var(--sub)', 'font-size':px,
+    'pointer-events':'none'});
+  if(o.weight) t.setAttribute('font-weight',o.weight);
+  if(o.opacity!=null) t.setAttribute('opacity',o.opacity);
+  t.textContent=txt;
+  _uiLayer.appendChild(t);
+  try{
+    const {w,h}=svgSize();
+    const b=t.getBBox();
+    let dx=0, dy=0;
+    if(b.width <= w-2*SVG_PAD){
+      if(b.x < SVG_PAD) dx = SVG_PAD - b.x;
+      else if(b.x+b.width > w-SVG_PAD) dx = (w-SVG_PAD) - (b.x+b.width);
+    }else{
+      dx = SVG_PAD - b.x;          // 比畫面還寬 → 至少讓【開頭】看得到，不要左邊被切
+    }
+    if(b.y < SVG_PAD) dy = SVG_PAD - b.y;
+    else if(b.y+b.height > h-SVG_PAD) dy = (h-SVG_PAD) - (b.y+b.height);
+    if(dx||dy){ t.setAttribute('x', sx+dx); t.setAttribute('y', sy+dy); }
+  }catch(e){ /* getBBox 在版面未定案時會丟 → 這一幀不夾，下一幀 render 會再來一次 */ }
+  return t;
+}
+
 /* 需求 8／需求 11：房間色。
    🔴 v0.05_i §3（修三）：依【createdAt（建立順序）】排序取色，不是陣列順序。
       ⚠️ 原因：WALLS/ROOMS 來自 IndexedDB.getAll()，順序是 UUID 順序（隨機），
@@ -815,10 +981,12 @@ function corridorHint(g){
     stroke:'var(--sub)','stroke-width':1.6}));
   grp.appendChild(el('line',{x1:lx-5,y1:by+CLEAR_CM/2,x2:lx+5,y2:by+CLEAR_CM/2,
     stroke:'var(--sub)','stroke-width':1.6}));
-  const t1=el('text',{x:lx+10,y:by+6,fill:'var(--sub)','font-size':17});
-  t1.textContent=`👤 走道寬 ${CLEAR_CM} 公分`;      // ← 指【厚度】（狀態，必留）
-  grp.appendChild(t1);
   g.appendChild(grp);
+  /* 🔴 需求 20：標籤改畫在【畫面座標】圖層。
+     位置仍然貼著示意帶（用 w2s 換算過去），但會被夾在可見範圍內
+     ⇒ zoom 拉大時不會被推出畫面（Ali 截圖裡「走」字被切掉的就是這一句）。 */
+  const p=w2s(lx+10, by);
+  uiText(p.x, p.y+5, `👤 走道寬 ${CLEAR_CM} 公分`, {size:13, fill:'var(--sub)'});
 }
 /* ② 長度比例尺：一條水平線 ＋ 兩端刻度，長度由 zoom 實算。 */
 function lengthScale(g){
@@ -831,10 +999,12 @@ function lengthScale(g){
     stroke:'var(--ink)','stroke-width':2.4}));
   grp.appendChild(el('line',{x1:bx+cm,y1:by-9,x2:bx+cm,y2:by+9,
     stroke:'var(--ink)','stroke-width':2.4}));
-  const t=el('text',{x:bx+cm+14,y:by+6,fill:'var(--ink)','font-size':17});
-  t.textContent=`${cm} cm`;                          // ← 自己的標籤，不與示意帶共用
-  grp.appendChild(t);
   g.appendChild(grp);
+  /* 🔴 需求 20：同上，標籤走畫面座標。
+     ⚠️ 比例尺的【線】一定要留在世界座標（長度隨 zoom 變才有意義，需求 14），
+        只有標籤搬出來——這兩件事不可以一起搬。 */
+  const p=w2s(bx+cm+14, by);
+  uiText(p.x, p.y+5, `${cm} cm`, {size:13, fill:'var(--ink)', weight:600});
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -852,6 +1022,10 @@ function render(){
 
   const g=el('g',{transform:`translate(${S.panX},${S.panY}) scale(${S.zoom})`});
   svg.appendChild(g);
+  /* 🔴 需求 20：畫面座標圖層。掛在 g 之【後】⇒ 永遠蓋在世界內容上面，
+     而且不受 translate/scale 影響 ⇒ 文字不會被 zoom/pan 推出畫面。 */
+  _uiLayer=el('g',{'data-layer':'ui'});
+  svg.appendChild(_uiLayer);
   const sel = FURN.find(f=>f.id===S.selId);
 
   // 房間底
@@ -864,9 +1038,12 @@ function render(){
       g.appendChild(el('polygon',{points:ring.map(p=>`${p.x},${p.y}`).join(' '),
         fill:'var(--panel)',stroke:'none',opacity:.85}));
     }
-    const t=el('text',{x:c.x,y:c.y-140,'text-anchor':'middle',
-      fill:'var(--sub)','font-size':22,opacity:.55}); t.textContent=r.name||'未命名';
-    g.appendChild(t);
+    /* 🔴 需求 20：房間名是「給人讀的文字」。
+       Ali 截圖裡被切成只剩右半的「（可刪）」就是這一句。
+       位置仍由世界座標決定（要貼著那個房間），但夾回可見範圍內。 */
+    const ps=w2s(c.x, c.y-140);
+    uiText(ps.x, ps.y, r.name||'未命名', {size:15, anchor:'middle',
+      fill:'var(--sub)', opacity:.75});
   });
   // 牆（選中家具所依附的那道要高亮）
   const litWall = sel ? place(sel).wall : null;
@@ -927,9 +1104,10 @@ function render(){
       g.appendChild(el('polygon',{points:pts.map(q=>`${q.x},${q.y}`).join(' '),
         fill:'none',stroke:'var(--furnSel)','stroke-width':6,opacity:.45}));
     }
-    const t=el('text',{x:p.x,y:p.y+6,'text-anchor':'middle',
-      fill:'var(--ink)','font-size':17,'pointer-events':'none'});
-    t.textContent=f.name||'未命名'; g.appendChild(t);
+    /* 🔴 需求 20：家具名稱【仍然跟世界座標】（必須貼在物件上才有意義），
+       但算出來的位置若超出可見範圍 → 夾回邊界內（uiText 會做）。 */
+    const ps=w2s(p.x, p.y);
+    uiText(ps.x, ps.y+4, f.name||'未命名', {size:12, anchor:'middle', fill:'var(--ink)'});
   });
   // 照片標記（_d §8-1 Marker）
   MARKERS.forEach(m=>{
@@ -944,19 +1122,16 @@ function render(){
   /* 需求 5：種子提示。依 _d §10-0b 這句是【功能說明】
      ⇒ 只留到使用者建了第一件東西為止，之後不再顯示。 */
   if(isSeedPristine()){
-    const c=roomCenter(ROOMS[0].id);
-    if(c){
-      const t=el('text',{x:c.x,y:c.y,'text-anchor':'middle',
-        fill:'var(--sub)','font-size':16,opacity:.8});
-      t.textContent='這是範例。到 ⚙️ 按〔清清單〕重來，或直接改它';
-      g.appendChild(t);
-    }
+    /* 🔴 需求 20：提示句固定在平面圖【左上】（畫面座標），完全不隨 zoom／pan 跑。
+       Ali 截圖裡被切成「單〕重來，或直接改它」的就是這一句。 */
+    uiText(SVG_PAD+2, SVG_PAD+16, '這是範例。到 ⚙️ 按〔清清單〕重來，或直接改它',
+      {size:12, fill:'var(--sub)', opacity:.9});
   }
-  /* 需求 15：pull 失敗必須看得到（不可被「本機全空」蓋成一個空專案） */
+  /* 需求 15：pull 失敗必須看得到（不可被「本機全空」蓋成一個空專案）
+     🔴 需求 20：這也是給人讀的文字 ⇒ 畫面座標，固定在左上第二行。 */
   if(S.dataErr){
-    const t=el('text',{x:dataLeft(),y:barY()-110,fill:'var(--warnB)','font-size':18});
-    t.textContent='⚠️ '+S.dataErr;
-    g.appendChild(t);
+    uiText(SVG_PAD+2, SVG_PAD+(isSeedPristine()?34:16), '⚠️ '+S.dataErr,
+      {size:12, fill:'var(--warnB)', weight:600});
   }
 }
 
@@ -1726,6 +1901,26 @@ function cloudErr(e){
   cloudStat();
   return null;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   🔴 需求 18｜同步的分步狀態 ＋ 完成回饋
+   Ali 原話：「他停住好久喔，這樣不知道她有沒有成功呢」
+             「我是看著平面圖上面的出現照片的符號確定他同步的」
+   ⇒ 她是【繞過對話框】自己推論出來的 ＝ 對話框沒有做到 _d §10-0b 的「狀態必留」。
+   ⚠️ 為什麼要有時間戳：「回到原本那行字」與「從來沒按過」長得一樣，
+      而「✅ 同步完成」若沒有時間，也分不出是【這一次】還是上一次殘留的字。
+   ⚠️ 寫在【獨立的 #syncprog】裡，所以 cloudStat() 產的狀態與錯誤歸屬句一字不改。
+   ══════════════════════════════════════════════════════════════ */
+const SYNC = { added:0, pushed:0, photoTotal:0, photoDone:0,
+               cloudPhotoRows:0, cloudObjRows:0 };
+function syncReset(){
+  SYNC.added=0; SYNC.pushed=0; SYNC.photoTotal=0; SYNC.photoDone=0;
+  SYNC.cloudPhotoRows=0; SYNC.cloudObjRows=0;
+}
+function syncProg(html){ const b=$('syncprog'); if(b) b.innerHTML=html||''; }
+function syncStep(txt){ syncProg(`<span class="run">⏳ ${esc(txt)}</span>`); }
+const hhmm = ()=>{ const d=new Date(), z=x=>String(x).padStart(2,'0');
+  return `${z(d.getHours())}:${z(d.getMinutes())}`; };
 /* ⚠️ O-14：fetch 被 CSP 擋掉時丟的是 TypeError，訊息看起來像網路問題。
    要把它與「真的連不上」分開講，否則測試的人會以為程式壞了。 */
 async function sbFetch(path, opt){
@@ -1862,6 +2057,7 @@ async function cloudPushObj(store,id){
     body:JSON.stringify(row)});
   if(!ins.ok) throw new Error(`寫入雲端 ${store} 失敗：`+(await ins.text()).slice(0,200));
   o.pending=false; o.synced=true; await lPutObj(store,o);
+  SYNC.pushed++;                                 // 🔴 需求 18 ②：上傳 N 筆
   cloudStat();
 }
 
@@ -1889,6 +2085,7 @@ async function cloudPushPhoto(id){
     body:JSON.stringify(row)});
   if(!ins.ok) throw new Error('寫入雲端清單失敗：'+(await ins.text()).slice(0,200));
   r.pending=false; r.synced=true; await lPut('photos',r);
+  SYNC.pushed++;                                 // 🔴 需求 18 ②
   cloudStat();
 }
 async function cloudPushMarker(id){
@@ -1901,6 +2098,7 @@ async function cloudPushMarker(id){
     body:JSON.stringify(row)});
   if(!ins.ok) throw new Error('寫入雲端標記失敗：'+(await ins.text()).slice(0,200));
   m.pending=false; m.synced=true; await lPut('markers',m);
+  SYNC.pushed++;                                 // 🔴 需求 18 ②
   cloudStat();
 }
 async function cloudDelPhoto(r){
@@ -1921,10 +2119,12 @@ async function cloudDelMarker(m){
    ══════════════════════════════════════════════════════════════ */
 async function cloudPullObjects(){
   const q = '&project_code=eq.' + encodeURIComponent(CLOUD.code);
+  syncStep('房間／牆／樑／家具…');               // 🔴 需求 18 ①（第 4 階段）
   for(const store of ['rooms','walls','beams','items']){
     const r = await sbFetch(`/rest/v1/${store}?select=*${q}`);
     if(!r.ok) throw new Error(`讀雲端${store}失敗：` + (await r.text()).slice(0,200));
     const rows  = await r.json();
+    SYNC.cloudObjRows += rows.length;           // 🔴 需求 19 ①
     const local = await lAllObj(store);
     const lmap  = new Map(local.map(x => [x.id, x]));
 
@@ -1935,6 +2135,7 @@ async function cloudPullObjects(){
       if(!cur){
         if(inc.deletedAt) continue;           // ① 墓碑：本機沒有 → 不要把它生出來
         await lPutObj(store, Object.assign({}, inc, {synced:true, pending:false}));
+        SYNC.added++;                         // 🔴 需求 18 ②：聯集發生時要說出多了幾筆
         continue;
       }
       if(cur.pending) continue;               // ② 本機有還沒推成功的修改 → 不覆蓋，等 push
@@ -1951,6 +2152,12 @@ async function cloudPullObjects(){
   /* ⑥ 補推：本機還沒推成功的（pending）。
      ⚠️ 這一段是建造者依【規則②「等 push」】＋ 既有 ③ 補推（照片/標記）的對稱性補的，
         _i 需求 15 的函式本體沒有寫。若規格者認為不該有，砍掉這一個 for 即可。 */
+  {
+    let n=0;
+    for(const store of ['rooms','walls','beams','items'])
+      n += (await lAllObj(store)).filter(x=>x.projectCode===CLOUD.code && x.pending).length;
+    if(n) syncStep(`上傳 ${n} 筆…`);            // 🔴 需求 18 ①（第 6 階段）
+  }
   for(const store of ['rooms','walls','beams','items']){
     for(const x of await lAllObj(store))
       if(x.projectCode===CLOUD.code && x.pending)
@@ -1961,6 +2168,7 @@ async function cloudPullObjects(){
 /* ── 拉：雲端 → 本機 ── */
 async function cloudPull(){
   if(!CLOUD.on) return;
+  syncStep('確認身分…');                       // 🔴 需求 18 ①（第 1 階段）
   /* 🔴 R-1：先確認身分，再談同步。
      ⚠️ 這一步失敗就【中止】——下面有刪除傳播迴路（照片線），
         身分不對時它會把「讀不到」誤讀成「別台刪了」，然後刪掉本機。 */
@@ -1973,9 +2181,14 @@ async function cloudPull(){
   const pr=await sbFetch('/rest/v1/photos?select=*'+q);
   if(!pr.ok) throw new Error('讀雲端清單失敗：'+(await pr.text()).slice(0,200));
   const rows=await pr.json();
+  SYNC.photoTotal=rows.length;
+  SYNC.cloudPhotoRows=rows.length;             // 🔴 需求 19 ①：雲端到底有沒有東西
   const local=await lAll('photos');
   const lmap=new Map(local.map(x=>[x.id,x]));
   for(const row of rows){
+    /* 🔴 需求 18 ①（第 2 階段）：逐張下載時要動，不然她只看到「停住好久」 */
+    SYNC.photoDone++;
+    syncStep(`照片 ${SYNC.photoDone}/${SYNC.photoTotal}…`);
     const cur=lmap.get(row.id);
     if(cur && (cur.small||cur.orig)){
       if(!cur.synced){ cur.synced=true; cur.pending=false; cur.projectCode=CLOUD.code;
@@ -1991,8 +2204,9 @@ async function cloudPull(){
       dateTaken:row.date_taken||null,
       addedAt:row.added_at || nowISO(),
       decoded:true, orientation:null, rotated:false, oriBy:null, err:null,
-      appVer:'v0.1.4（雲端）', small:blob, storagePath:row.storage_path,
+      appVer:APP_VER+'（雲端）', small:blob, storagePath:row.storage_path,
       projectCode:CLOUD.code, synced:true, pending:false });
+    SYNC.added++;                              // 🔴 需求 18 ②：要說出「新增 N 筆」
   }
   /* 🔴 照片段落的「雲端沒這個 id → lDel」【一行不動】（需求 15 留什麼）。
      理由：照片沒有 deletedAt 欄位，它只能用「消失」表達刪除。
@@ -2002,6 +2216,7 @@ async function cloudPull(){
     if(x.synced && x.projectCode===CLOUD.code && !rid.has(x.id)) await lDel('photos',x.id);
 
   // ② 標記
+  syncStep('標記…');                            // 🔴 需求 18 ①（第 3 階段）
   const mr=await sbFetch('/rest/v1/markers?select=*'+q);
   if(mr.ok){
     const mrows=await mr.json();
@@ -2012,6 +2227,7 @@ async function cloudPull(){
       if(cur && cur.x===row.x && cur.y===row.y && cur.synced) continue;
       await lPut('markers',{ id:row.id, photoId:row.photo_id, x:row.x, y:row.y,
         projectCode:CLOUD.code, synced:true, pending:false });
+      SYNC.added++;
     }
     const mid=new Set(mrows.map(r=>r.id));
     for(const x of lm)
@@ -2019,6 +2235,11 @@ async function cloudPull(){
   }
 
   // ③ 補推：本機有、雲端還沒有的（離線時拍的）
+  {
+    const pend=(await lAll('photos')).filter(x=>x.projectCode===CLOUD.code && x.pending)
+      .concat((await lAll('markers')).filter(x=>x.projectCode===CLOUD.code && x.pending));
+    if(pend.length) syncStep(`上傳 ${pend.length} 筆…`);   // 🔴 需求 18 ①（第 5 階段）
+  }
   for(const x of await lAll('photos'))
     if(x.projectCode===CLOUD.code && x.pending) await cloudPushPhoto(x.id).catch(e=>cloudErr(e));
   for(const x of await lAll('markers'))
@@ -2030,15 +2251,81 @@ async function cloudPull(){
 
 async function cloudSync(){
   if(!CLOUD.on || CLOUD.busy) return;
-  CLOUD.busy=true; CLOUD.msg=''; cloudStat();
-  try{ await cloudPull(); S.dataErr=''; }
+  CLOUD.busy=true; CLOUD.msg='';
+  syncReset();
+  $('newProjNote').hidden=true;
+  if($('btnSync')) $('btnSync').disabled=true;    // 🔴 需求 18 ④：同步中不能連按
+  cloudStat();
+  let ok=false;
+  try{ await cloudPull(); S.dataErr=''; ok=true; }
   catch(e){ cloudErr(e); S.dataErr=(e&&e.message)||String(e); }
   CLOUD.busy=false;
+  if($('btnSync')) $('btnSync').disabled=false;
+  /* 🔴 需求 18 ②③：完成／失敗都要有一行【帶時間】的結果。
+     ⚠️ 失敗時的錯誤與歸屬句由 cloudStat() 照原樣輸出，這裡只給狀態行。 */
+  if(ok){
+    syncProg(`<span class="done">✅ 同步完成</span>　`
+      +`新增 <b>${SYNC.added}</b> 筆、上傳 <b>${SYNC.pushed}</b> 筆　${hhmm()}`);
+  }else{
+    syncProg(`<span class="fail">🔴 同步失敗</span>　${hhmm()}`);
+  }
   /* ⚠️ 需求 15 邊界：pull 結束後呼叫【一次】render() ＋ buildList()，
      不要每寫一筆就重畫。 */
   await loadMarkers();
   await reloadObjects();
   render(); buildList(); syncSel(); refreshTop(); renderPhotos();
+  /* 🔴 需求 19 ①：雲端這個代碼下【四張表 ＋ photos 全部 0 筆】＝ 這是一個新專案。
+     ⚠️ 不阻擋，只提醒（她可能真的要開新專案）。
+        邊界：雲端有照片但沒有物件 → 不算新專案（所以兩個計數要一起看）。
+     🔴 這是 obs_環境與既有狀態的落差那條坑的【第四次變形】：
+        用「什麼都沒有」表達「你不在你以為的地方」。 */
+  if(ok && CLOUD.on && SYNC.cloudPhotoRows===0 && SYNC.cloudObjRows===0){
+    const n=$('newProjNote');
+    n.innerHTML = `⚠️ <b>這是一個新的專案</b>，雲端目前沒有任何東西。<br>`
+      +`如果你是要連到既有專案，請檢查代碼有沒有打錯：`
+      +`<b class="codetxt">${esc(CLOUD.code||'')}</b>`;
+    n.hidden=false;
+  }
+  cloudStat();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   🔴 需求 19 ②｜記住用過的專案代碼（最多 5 組）
+   理由：Ali 這次就是【手打錯】的（ALI_WUNDAWU vs ALI_WUNDAUW），
+        一整輪跨裝置測試因此作廢。點一下填入 ⇒ 不必再手打。
+   ⚠️ 邊界（v0.06_i §4）：清單裡要能【刪除單筆】——
+      否則打錯的那個代碼會一直留在清單裡誘惑人點。
+   ══════════════════════════════════════════════════════════════ */
+const CODES_KEY='deco_codes';
+function codesGet(){
+  try{ const a=JSON.parse(LS.get(CODES_KEY)||'[]'); return Array.isArray(a)?a:[]; }
+  catch(e){ return []; }
+}
+function codesSave(a){ LS.set(CODES_KEY, JSON.stringify(a.slice(0,5))); }
+function codesAdd(code){
+  if(!code) return;
+  const a=codesGet().filter(x=>x!==code);
+  a.unshift(code);                      // 最近用過的排最前
+  codesSave(a); renderCodes();
+}
+function codesDel(code){
+  codesSave(codesGet().filter(x=>x!==code)); renderCodes();
+}
+function renderCodes(){
+  const box=$('codeList'); if(!box) return;
+  box.innerHTML='';
+  for(const c of codesGet()){
+    const chip=document.createElement('span'); chip.className='codechip';
+    const pick=document.createElement('button'); pick.className='pick codetxt';
+    pick.textContent=c;
+    pick.title='填入這個代碼';
+    pick.onclick=()=>{ $('pcode').value=c; };
+    const del=document.createElement('button'); del.className='del';
+    del.textContent='✕'; del.title='從清單移除';
+    del.onclick=()=>codesDel(c);
+    chip.appendChild(pick); chip.appendChild(del);
+    box.appendChild(chip);
+  }
 }
 
 /* ── 連線 / 離開 / 狀態 ── */
@@ -2050,6 +2337,7 @@ async function cloudJoin(){
     const code=await joinProject(raw);
     CLOUD.code=code; CLOUD.on=true;
     LS.set('deco_code',code);
+    codesAdd(code);                       // 🔴 需求 19 ②：記住它，下次不必手打
     $('pcode').value=code;
     /* 這台既有的本機照片：歸到這個 project 底下並推上去
        ⚠️ 只認 projectCode 為空的（沒有被別的代碼認領過的），不搶別人的 */
@@ -2089,6 +2377,7 @@ async function cloudJoin(){
 function cloudLeave(){
   CLOUD.on=false; CLOUD.code=null; CLOUD.msg='';
   LS.del('deco_code');
+  syncProg(''); $('newProjNote').hidden=true;
   cloudStat(); refreshTop(); renderPhotos();
   /* ⚠️ 刻意【不刪】本機資料——離開只是停止同步，不是清空這台 */
 }
@@ -2106,7 +2395,8 @@ async function cloudStat(){
          for(const x of await lAll(st)) if(x.pending) pend++; }catch(e){}
   $('syncDlg').classList.toggle('blocked', !!CLOUD.blocked);
   $('btnJoin').textContent = CLOUD.on?'重新連線':'連線';
-  $('btnLeave').hidden = !CLOUD.on;
+  /* 🔴 需求 23：〔離開專案〕整區（含分隔線）一起顯示／隱藏 */
+  $('leaveRow').hidden = !CLOUD.on;
   $('btnSync').hidden  = !CLOUD.on;
   let html;
   if(CLOUD.blocked){
@@ -2117,7 +2407,9 @@ async function cloudStat(){
       `→ 正解：把本檔放到 GitHub Pages 當網頁開。`+
       `步驟見 <code>階段B_放上網_20260908.md</code>`;
   }else if(CLOUD.on){
-    html = `<span class="on">✅ 已連線</span>　專案代碼 <b>${esc(CLOUD.code)}</b>`+
+    /* ⚠️ 文字一字不改（需求 13「留什麼」）；只給代碼那個 <b> 加等寬＋加寬字距的 class
+       ——需求 19 ③，讓顛倒的字母看得出來。 */
+    html = `<span class="on">✅ 已連線</span>　專案代碼 <b class="codetxt">${esc(CLOUD.code)}</b>`+
       `　這台的身分 <b>…${esc((CLOUD.uid||'').slice(-6))}</b><br>`+
       (CLOUD.busy? `⏳ 同步中…` : (pend? `⏳ 有 <b>${pend}</b> 筆還沒上傳` : `雲端與這台一致`))+
       (CLOUD.reauth? `<br><span class="er">⚠️ 這次連線期間身分重新取得過 ${CLOUD.reauth} 次</span>`:'')+
@@ -2153,12 +2445,23 @@ $('pcode').addEventListener('keydown',e=>{ if(e.key==='Enter') cloudJoin(); });
 $('btnCode').onclick  = openSyncDialog;
 $('btnCloseSync').onclick = ()=>{ $('ovSync').hidden=true; };
 $('ovSync').addEventListener('click',e=>{ if(e.target.id==='ovSync') $('ovSync').hidden=true; });
-function openSyncDialog(){ $('ovSync').hidden=false; cloudStat(); }
-function openProjectPage(){ setTab('proj'); }
+function openSyncDialog(){ $('ovSync').hidden=false; cloudStat(); syncProg(''); }
+/* 🔴 需求 16：專案頁要有出口。
+   ① 進來之前記住上一個分頁；「‹ 返回」回到那裡（不是一律回平面圖）
+   ② 齒輪做成【開關】：已經在專案頁時再點一次 ＝ 返回（Ali 的直覺反應就是這個）
+   邊界：重新載入後第一次進來 → S.prevTab 沒有值 → 回平面圖，不卡住。 */
+function openProjectPage(){
+  if(S.tab==='proj'){ closeProjectPage(); return; }      // ② 齒輪開關
+  S.prevTab = S.tab;
+  setTab('proj');
+}
+function closeProjectPage(){ setTab(S.prevTab || 'plan'); }
 $('btnGear').onclick = openProjectPage;
+$('btnProjBack').onclick = closeProjectPage;
 $('btnOpenSync').onclick = openSyncDialog;
 
 async function cloudInit(){
+  renderCodes();                        // 🔴 需求 19 ②：用過的代碼清單
   const code=LS.get('deco_code');
   if(!code){ cloudStat(); return; }
   $('pcode').value=code;
@@ -2546,6 +2849,19 @@ function commitCardEdits(){
       if(f.price!==v){ f.price=v; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
       continue;
     }
+    if(fld==='w'||fld==='d'||fld==='h'){
+      /* 🔴 需求 22：清單展開列的寬／深／高，沿用需求 7 的輸入規則。
+         🔴 與選中面板改的是【同一個值】（同一個 FURN 物件、同一個 saveItem）。 */
+      const v = raw==='' ? null : parseFloat(raw);
+      if(raw!=='' && (!isFinite(v)||v<=0)){
+        inp.value = f[fld]==null ? '' : String(Math.round(f[fld]*10)/10);
+        inp.classList.remove('bad');
+        continue;
+      }
+      inp.classList.remove('bad');
+      if(f[fld]!==v){ f[fld]=v; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
+      continue;
+    }
     // name / note：文字，空字串就是空字串
     if(f[fld]!==raw){ f[fld]=raw; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
   }
@@ -2566,11 +2882,27 @@ function cardInput(f, fld, opts){
   inp.onclick=e=>e.stopPropagation();
   inp.addEventListener('input',()=>{
     _cardDirty.add(cardKey(f.id,fld));
+    const raw=inp.value.trim();
+    /* 打字中：不阻止、不還原、不寫入 —— 但無效就加紅框，
+       讓「這個值沒被採用」看得出來（_d §10-0b 允許狀態提示）。 */
     if(fld==='price'){
-      const raw=inp.value.trim();
-      /* 打字中：不阻止、不還原、不寫入 —— 但無效就加紅框，
-         讓「這個值沒被採用」看得出來（_d §10-0b 允許狀態提示）。 */
       inp.classList.toggle('bad', raw!=='' && !/^\d+$/.test(raw));
+    }else if(fld==='w'||fld==='d'||fld==='h'){
+      const v=parseFloat(raw);
+      inp.classList.toggle('bad', raw!=='' && (!isFinite(v)||v<=0));
+      /* 🔴 需求 22 邊界：在清單填完尺寸 → 卡片上的「還沒填尺寸」要立刻消失。
+         ⇒ 有效值當下就寫記憶體並重畫（與需求 7「即時算、失焦才存」一致：
+            這裡只改記憶體與畫面，不存檔）。 */
+      if(raw==='' || (isFinite(v)&&v>0)){
+        f[fld] = raw==='' ? null : v;
+        const dm=inp.closest('.icard').querySelector('.dim');
+        if(dm){
+          if(f.w==null||f.d==null){ dm.className='dim miss'; dm.textContent='還沒填尺寸'; }
+          else { dm.className='dim'; dm.textContent=`${Math.round(f.w)} × ${Math.round(f.d)}`
+            +(f.h!=null?` × ${Math.round(f.h)}`:'')+' cm'; }
+        }
+        render();
+      }
     }
   });
   inp.addEventListener('blur',()=>commitCardEdits());
@@ -2655,8 +2987,21 @@ function itemCard(f){
       if(S.expandCause==='chip'){ S.expandId=null; S.expandCause=null; }
       await reloadObjects(); render(); buildList(); refreshTop();
     };
+    rr.appendChild(sl);
+    /* 🔴 需求 22：長寬高進清單卡片的展開列。
+       [房間下拉] [寬] [深] [高] [備註]
+       🔴 選中面板的長寬高【保留不動】——那是現場調整用的（情境 B、BP-F2 同屏看後果）。
+          兩邊改的是同一個 FURN 物件的同一個欄位，不衝突。 */
+    [['w','寬'],['d','深'],['h','高']].forEach(([k,lab])=>{
+      const box=document.createElement('div'); box.className='szbox';
+      const lb=document.createElement('label'); lb.textContent=lab+' cm';
+      const ip=cardInput(f,k,{cls:'sz', inputmode:'decimal',
+        value: f[k]==null ? '' : String(Math.round(f[k]*10)/10)});
+      box.appendChild(lb); box.appendChild(ip);
+      rr.appendChild(box);
+    });
     const nt=cardInput(f,'note',{cls:'note', placeholder:'備註'});
-    rr.appendChild(sl); rr.appendChild(nt);
+    rr.appendChild(nt);
     col.appendChild(rr);
   }
   inb.appendChild(col);
@@ -2882,7 +3227,14 @@ function fit(){
      語法檢查對這種完全瞎眼（實際踩到）。等下一幀再試。 */
   if(!r.width || !r.height){ requestAnimationFrame(fit); return; }
   const b=planBounds();
-  const W=Math.max(1,(b.x1-b.x0)+90), H=Math.max(1,(b.y1-b.y0)+90);
+  /* 🔴 需求 21：Ali 的兩句話是同一件事——
+     「平面圖下方一大片空白」＋「現在的手機畫面超級小，其實我不太好操作」
+     實測（真實 375×812）：容器本身沒問題（見 _debug：壞例不壞），
+     空白來自 fit() 的留白太大 ⇒ 房間被縮小、剩下的高度變成空白。
+     留白 90 → 36 世界單位：房間畫得更大，空白同時變小。
+     ⚠️ 沒有動任何元件的尺寸與位置（需求 21 明訂只修空白）。 */
+  const FIT_PAD = 36;
+  const W=Math.max(1,(b.x1-b.x0)+FIT_PAD), H=Math.max(1,(b.y1-b.y0)+FIT_PAD);
   const z=Math.min(r.width/W, r.height/H);
   S.zoom = (z>0 && isFinite(z)) ? z : 1;      // ← isFinite 那一層不能省（O-1）
   S.panX = (r.width  - (b.x1-b.x0)*S.zoom)/2 - b.x0*S.zoom;
