@@ -2,7 +2,7 @@
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>裝修估價 App 互動預覽 v0.1.4.3</title>
+<title>裝修估價 App 互動預覽 v0.1.4.4</title>
 <!--
   裝修估價 App — 手機互動預覽　版次：v0.1.4.3（補釘微調）
   作者：claude / 2026-09-11 / 對應 _d v0.16
@@ -103,6 +103,12 @@
      service_role／secret key 永不進本檔。
 -->
 <style>
+/* 🔴 v0.09_i 需求 32｜基準字級的【單一來源】。
+   Ali 在真實寬度（417×847）下的判斷：「字體就 app 來說太小…再大 20% 會比較好看」
+   ⇒ --fs 是一個【乘數】：所有 font-size 都寫成 calc(原本px * var(--fs))
+     ⇒ 之後要再調只改這一個數字，不必逐處調（v0.09_i 明訂「只改一個基準來源」）
+   ⚠️ 只動【字】——不動任何按鈕高度、間距、容器尺寸。 */
+:root{ --fs:1.2; }
 :root{
   --bg:#f6f5f2; --panel:#fff; --ink:#232323; --sub:#6b6b6b; --line:#dcd8d0;
   --accent:#3a6ea5; --wall:#4a4a4a; --furn:#8fa8bd; --furnSel:#3a6ea5;
@@ -122,6 +128,9 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:14px/1.5 -apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;
+  /* ⚠️ 上一行的 font 是【簡寫】，會把 font-size 設成 14px ⇒ 要在它【之後】覆蓋，
+     否則整個 app 的繼承基準不會跟著 --fs 走（font:inherit 的輸入框全靠它）。 */
+  font-size:calc(14px * var(--fs));
   overscroll-behavior:none;}
 /* 🔴 需求 21：手機上平面圖下方一大片空白。
    ① 用 100dvh 不用 100vh（手機瀏覽器網址列會吃掉高度，100vh 會算成比可見區更高）
@@ -137,10 +146,10 @@ body{margin:0;background:var(--bg);color:var(--ink);
 /* ── 需求 13：頂列（44px）＝ 標題 ＋ 可點的連線徽章 ＋ 齒輪 ── */
 .apptop{flex:none;height:44px;display:flex;align-items:center;gap:7px;padding:0 10px;
   background:var(--panel);border-bottom:1px solid var(--line)}
-.apptop .ttl{font-size:15px;font-weight:600;flex:1;min-width:0;overflow:hidden;
+.apptop .ttl{font-size:calc(15px * var(--fs));font-weight:600;flex:1;min-width:0;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 /* 🔴 標題很長時不可壓縮右邊兩顆（需求 13 邊界） */
-.apptop .pill{font-size:11px;color:var(--accent);border:1px solid
+.apptop .pill{font-size:calc(11px * var(--fs));color:var(--accent);border:1px solid
   color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:20px;padding:5px 9px;
   background:var(--bg);white-space:nowrap;flex:none;font-family:inherit;cursor:pointer;
   min-height:30px}
@@ -148,15 +157,15 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .apptop .pill.er{color:var(--warnB);border-color:color-mix(in srgb,var(--warnB) 45%,var(--line))}
 .apptop .gear{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
   background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;
-  font-size:17px;flex:none;cursor:pointer;padding:0;font-family:inherit}
+  font-size:calc(17px * var(--fs));flex:none;cursor:pointer;padding:0;font-family:inherit}
 
 /* ── 頂部：原型控制列（正式版沒有這排，只是給你切方案用）──
    ⚠️ _i 三份都沒有把它列進「刪什麼」，故保留（CLAUDE.md 3-2：不刪規格沒說要刪的）。 */
 .protobar{flex:none;background:var(--panel);border-bottom:1px solid var(--line);
-  padding:5px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
-.protobar .tag{color:var(--sub);font-size:11px;margin-right:2px}
+  padding:5px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:calc(12px * var(--fs))}
+.protobar .tag{color:var(--sub);font-size:calc(11px * var(--fs));margin-right:2px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.seg button{border:0;background:transparent;color:var(--sub);padding:4px 8px;font-size:12px;
+.seg button{border:0;background:transparent;color:var(--sub);padding:4px 8px;font-size:calc(12px * var(--fs));
   font-family:inherit;cursor:pointer;min-height:28px}
 .seg button.on{background:var(--accent);color:#fff}
 .chk{display:inline-flex;align-items:center;gap:4px;color:var(--sub)}
@@ -165,7 +174,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .modebar{flex:none;display:none;padding:5px 8px;background:var(--panel);
   border-bottom:1px solid var(--line);align-items:center;gap:8px}
 .modebar.show{display:flex}
-.modebar .hint{font-size:11px;color:var(--sub)}
+.modebar .hint{font-size:calc(11px * var(--fs));color:var(--sub)}
 
 /* ── 舞台（§22：flex 子項要捲動/收縮必須 min-height:0）── */
 .stage{flex:1;min-height:0;position:relative;overflow:hidden}
@@ -179,10 +188,10 @@ body{margin:0;background:var(--bg);color:var(--ink);
   display:flex;flex-direction:column;gap:5px;align-items:center}
 .zoombtns button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
   background:color-mix(in srgb,var(--panel) 88%,transparent);color:var(--ink);
-  font-size:17px;line-height:1;cursor:pointer;padding:0;font-family:inherit;
+  font-size:calc(17px * var(--fs));line-height:1;cursor:pointer;padding:0;font-family:inherit;
   backdrop-filter:blur(3px)}
 .zoombtns button:active{background:var(--accent);color:#fff}
-.zlabel{font-size:10px;color:var(--sub);background:color-mix(in srgb,var(--panel) 88%,transparent);
+.zlabel{font-size:calc(10px * var(--fs));color:var(--sub);background:color-mix(in srgb,var(--panel) 88%,transparent);
   padding:2px 5px;border-radius:5px;font-variant-numeric:tabular-nums}
 .zoombtns[hidden]{display:none!important}
 
@@ -193,13 +202,13 @@ body{margin:0;background:var(--bg);color:var(--ink);
 #listPage{padding-bottom:84px}
 
 /* ── 需求 8：清單頁版面（版位依預覽 v0.04）── */
-.grp{font-size:11.5px;color:var(--sub);letter-spacing:.05em;margin:12px 2px 5px;
+.grp{font-size:calc(11.5px * var(--fs));color:var(--sub);letter-spacing:.05em;margin:12px 2px 5px;
   display:flex;align-items:center;gap:6px}
 .grp:first-child{margin-top:2px}
 .grp .bar{width:14px;height:3px;border-radius:2px;flex:none}
 .grp .gname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .grp .gbtn{border:1px solid var(--line);background:var(--bg);color:var(--sub);
-  border-radius:6px;font:inherit;font-size:11px;padding:3px 7px;cursor:pointer;flex:none;
+  border-radius:6px;font:inherit;font-size:calc(11px * var(--fs));padding:3px 7px;cursor:pointer;flex:none;
   min-height:26px}
 .icard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   margin-bottom:7px;display:flex;overflow:hidden}
@@ -211,28 +220,28 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .icard .icon{width:46px;height:46px;flex:none}
 .icard .col{flex:1;min-width:0}
 .icard .r1{display:flex;align-items:baseline;gap:7px}
-.icard .nm{font-weight:600;font-size:13.5px;flex:1;min-width:0;background:transparent;
+.icard .nm{font-weight:600;font-size:calc(13.5px * var(--fs));flex:1;min-width:0;background:transparent;
   border:1px solid transparent;border-radius:6px;color:var(--ink);font-family:inherit;
   padding:2px 4px;min-width:0;min-height:26px}
 .icard .nm:focus{background:var(--bg);border-color:var(--line);outline:none}
 .icard .nm.ph{color:var(--sub)}
-.icard .dim{font-size:11.5px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.icard .dim{font-size:calc(11.5px * var(--fs));color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .icard .r2{display:flex;align-items:center;gap:6px;margin-top:5px}
-.icard .go{color:var(--accent);font-size:17px;flex:none;background:transparent;border:0;
+.icard .go{color:var(--accent);font-size:calc(17px * var(--fs));flex:none;background:transparent;border:0;
   font-family:inherit;cursor:pointer;padding:0 2px;min-height:30px}
-.chip{font-size:11px;border:1px solid var(--line);border-radius:20px;padding:3px 9px;
+.chip{font-size:calc(11px * var(--fs));border:1px solid var(--line);border-radius:20px;padding:3px 9px;
   color:var(--sub);background:var(--bg);white-space:nowrap;font-family:inherit;cursor:pointer;
   min-height:26px}
 .chip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:transparent;
   color:var(--accent);font-weight:600}
-.money{font-size:11.5px;color:var(--sub);font-variant-numeric:tabular-nums;margin-left:auto}
-.miss{font-size:11px;color:var(--warnA);margin-left:auto}
+.money{font-size:calc(11.5px * var(--fs));color:var(--sub);font-variant-numeric:tabular-nums;margin-left:auto}
+.miss{font-size:calc(11px * var(--fs));color:var(--warnA);margin-left:auto}
 /* 🔴 v0.05_i §4（修四）：price 就地編輯。放清單卡片，【不放】選中面板
    （面板實測 187/199px 已貼著 _d §10-0d 的上限）。 */
 .icard .pricewrap{margin-left:auto;display:flex;align-items:center;gap:1px;flex:none}
-.icard .cur{font-size:11.5px;color:var(--sub)}
+.icard .cur{font-size:calc(11.5px * var(--fs));color:var(--sub)}
 .icard .cur[hidden]{display:none!important}
-.icard .price{width:84px;min-width:0;font-size:11.5px;text-align:right;
+.icard .price{width:84px;min-width:0;font-size:calc(11.5px * var(--fs));text-align:right;
   background:transparent;border:1px solid transparent;border-radius:6px;
   color:var(--sub);font-family:inherit;font-variant-numeric:tabular-nums;
   padding:3px 4px;min-height:26px}
@@ -247,26 +256,26 @@ body{margin:0;background:var(--bg);color:var(--ink);
   overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
   padding-bottom:2px}
 .roomrow select{flex:0 0 96px;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:12px;min-height:34px}
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));min-height:34px}
 /* 寬／深／高：三個小欄，沿用需求 7 的輸入規則（紅框、失焦還原、清空＝null） */
 .roomrow .szbox{flex:0 0 62px;display:flex;flex-direction:column;gap:1px}
-.roomrow .szbox label{font-size:9.5px;color:var(--sub);padding-left:2px}
+.roomrow .szbox label{font-size:calc(9.5px * var(--fs));color:var(--sub);padding-left:2px}
 .roomrow input.sz{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:5px 4px;color:var(--ink);font:inherit;font-size:13px;
+  border-radius:7px;padding:5px 4px;color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));
   min-height:30px;text-align:center;font-variant-numeric:tabular-nums}
 .roomrow input.sz.bad{border-color:var(--warnB);border-width:1.5px}
 /* 🔴 v0.05_i §4：note 併進【同一個展開列】。單行 input ⇒ 長備註橫向捲，
    卡片高度不會被它撐開（input 本身不會換行、不會長高）。 */
 .roomrow input.note{flex:0 0 120px;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:12px;min-height:34px;
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));min-height:34px;
   text-overflow:ellipsis}
-.empty{text-align:center;color:var(--sub);padding:48px 12px;font-size:13px;line-height:2}
-.empty .ic{font-size:34px;display:block;opacity:.5}
+.empty{text-align:center;color:var(--sub);padding:48px 12px;font-size:calc(13px * var(--fs));line-height:2}
+.empty .ic{font-size:calc(34px * var(--fs));display:block;opacity:.5}
 
 /* 🔴 需求 8 §3-1：清單頁右下浮動 (+)。空狀態與非空狀態是【同一顆】。 */
 .fab{position:fixed;right:16px;bottom:calc(56px + 12px + env(safe-area-inset-bottom,0px));
   z-index:24;width:56px;height:56px;border-radius:50%;border:0;
-  background:var(--accent);color:#fff;font-size:26px;line-height:1;cursor:pointer;
+  background:var(--accent);color:#fff;font-size:calc(26px * var(--fs));line-height:1;cursor:pointer;
   box-shadow:0 3px 12px rgba(0,0,0,.24);font-family:inherit}
 .fab[hidden]{display:none!important}
 
@@ -278,13 +287,13 @@ body{margin:0;background:var(--bg);color:var(--ink);
   max-height:42vh;overflow-y:auto}
 .sel[hidden]{display:none!important}
 .selhead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-.selname{font-weight:600;font-size:13px;flex:none;max-width:52%;overflow:hidden;
+.selname{font-weight:600;font-size:calc(13px * var(--fs));flex:none;max-width:52%;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
-.selpos{font-size:11px;color:var(--sub);flex:1;min-width:0;
+.selpos{font-size:calc(11px * var(--fs));color:var(--sub);flex:1;min-width:0;
   font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ib{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);
   background:var(--bg);color:var(--ink);display:inline-flex;align-items:center;
-  justify-content:center;font-size:13px;flex:none;cursor:pointer;padding:0;font-family:inherit}
+  justify-content:center;font-size:calc(13px * var(--fs));flex:none;cursor:pointer;padding:0;font-family:inherit}
 .ib.dgr{color:var(--warnB);border-color:color-mix(in srgb,var(--warnB) 40%,var(--line))}
 /* 🔴 N-48：🗑 不與其他按鈕相鄰（防誤觸）→ 中間塞固定空隙 */
 .ibgap{width:16px;flex:none}
@@ -295,20 +304,20 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .pad{position:absolute;inset:0;transition:transform .18s ease}
 .pad button{position:absolute;width:29px;height:29px;border-radius:8px;
   border:1px solid var(--line);background:var(--bg);color:var(--ink);
-  font-size:13px;line-height:1;cursor:pointer;padding:0;font-family:inherit}
+  font-size:calc(13px * var(--fs));line-height:1;cursor:pointer;padding:0;font-family:inherit}
 .pad button:active{background:var(--accent);color:#fff}
 .pad button:disabled{opacity:.4}
 .pad .up{left:29px;top:0}.pad .dn{left:29px;bottom:0}
 .pad .lf{left:0;top:29px}.pad .rt{right:0;top:29px}
 .padc{position:absolute;left:29px;top:29px;width:29px;height:29px;border-radius:50%;
   border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;
-  font-size:9px;color:var(--sub);text-align:center;line-height:1.1}
+  font-size:calc(9px * var(--fs));color:var(--sub);text-align:center;line-height:1.1}
 
 .grid2{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .g3,.g2{display:flex;gap:6px}
 .g3 .btn,.g2 .btn{flex:1;min-width:0}
 .btn{border:1px solid var(--line);background:var(--bg);color:var(--ink);
-  border-radius:8px;padding:9px 6px;font:inherit;font-size:12px;cursor:pointer;
+  border-radius:8px;padding:9px 6px;font:inherit;font-size:calc(12px * var(--fs));cursor:pointer;
   min-height:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn.pri{background:var(--accent);color:#fff;border-color:transparent}
 .btn.ok{background:var(--ok);color:#fff;border-color:transparent;font-weight:600}
@@ -320,17 +329,24 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .fields{display:flex;gap:5px;align-items:flex-end;margin-bottom:7px}
 .fields[hidden]{display:none!important}
 .frow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.frow label{font-size:10px;color:var(--sub);display:flex;justify-content:space-between;gap:4px}
+.frow label{font-size:calc(10px * var(--fs));color:var(--sub);display:flex;justify-content:space-between;gap:4px}
 .frow input{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:15px;
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(15px * var(--fs));
   text-align:center;font-variant-numeric:tabular-nums;min-height:38px}
 /* 🔴 需求 7（v0.04_i §7）：打字中值無效 → 該欄位加紅框，讓「這個值沒被採用」看得出來 */
 .frow input.bad{border-color:var(--warnB);border-width:1.5px}
 /* 展開尺寸時，微調鍵整組【隱藏】——改尺寸與移動位置是兩件事 */
 .sel.szopen .padwrap,.sel.szopen .g2{display:none}
 
+/* 🔴 v0.09_i 需求 30：兩處守衛訊息（面板內／清單頁）。中性色＝狀態，不是錯誤。 */
+.selnote{margin-top:6px;padding:6px 8px;border-radius:7px;font-size:calc(11.5px * var(--fs));line-height:1.5;
+  background:color-mix(in srgb,var(--sub) 12%,transparent);color:var(--sub)}
+.selnote[hidden]{display:none!important}
+.listnote{margin:10px 2px 0;padding:8px 10px;border-radius:8px;font-size:calc(11.5px * var(--fs));line-height:1.6;
+  background:color-mix(in srgb,var(--sub) 12%,transparent);color:var(--sub)}
+.listnote[hidden]{display:none!important}
 .warnline{display:flex;gap:8px;align-items:center;margin-top:7px}
-.warnline .w{flex:1;min-width:0;font-size:11.5px;padding:6px 8px;border-radius:7px;
+.warnline .w{flex:1;min-width:0;font-size:calc(11.5px * var(--fs));padding:6px 8px;border-radius:7px;
   background:color-mix(in srgb,var(--warnA) 16%,transparent);color:var(--warnA);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
   font-family:inherit;text-align:left;border:0}
@@ -347,17 +363,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
   border:1px dashed var(--line);border-radius:8px}
 .orig.show{display:flex}
 .orig svg{flex:none}
-.orig .t{font-size:10.5px;color:var(--sub);line-height:1.35}
+.orig .t{font-size:calc(10.5px * var(--fs));color:var(--sub);line-height:1.35}
 
 /* ── 📷 照片分頁 ── */
 .pbtns{display:flex;gap:8px;margin-bottom:10px}
 .pbtns label{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
   min-height:52px;border:1px solid var(--line);border-radius:10px;background:var(--panel);
-  cursor:pointer;font-size:13px;font-weight:600}
+  cursor:pointer;font-size:calc(13px * var(--fs));font-weight:600}
 .pbtns label:active{background:var(--accent);color:#fff}
 .pbtns input{display:none}
 .pstat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  padding:9px 11px;margin-bottom:10px;font-size:11.5px;color:var(--sub);line-height:1.7;
+  padding:9px 11px;margin-bottom:10px;font-size:calc(11.5px * var(--fs));color:var(--sub);line-height:1.7;
   font-variant-numeric:tabular-nums}
 .pstat b{color:var(--ink)}
 .pcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
@@ -366,10 +382,10 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .pcard img,.pcard canvas{width:76px;height:76px;object-fit:contain;border-radius:7px;
   background:#2a2a2a;border:1px solid var(--line);display:block;cursor:pointer}
 .pcard img:active{outline:2px solid var(--accent)}
-.pcard .tlab{font-size:9px;color:var(--sub)}
-.pcard .meta{flex:1;min-width:0;font-size:11px;color:var(--sub);line-height:1.65;
+.pcard .tlab{font-size:calc(9px * var(--fs));color:var(--sub)}
+.pcard .meta{flex:1;min-width:0;font-size:calc(11px * var(--fs));color:var(--sub);line-height:1.65;
   font-variant-numeric:tabular-nums;word-break:break-all}
-.pcard .meta b{color:var(--ink);font-size:12px}
+.pcard .meta b{color:var(--ink);font-size:calc(12px * var(--fs))}
 .pcard .bad{color:var(--warnB);font-weight:600}
 .pcard .good{color:var(--ok)}
 .pcard .acts{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
@@ -379,18 +395,18 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .viewer[hidden]{display:none!important}
 .viewer .vimg{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}
 .viewer .vimg img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-.viewer .vbar{flex:none;color:#eee;font-size:11.5px;line-height:1.7;padding:9px 12px;
+.viewer .vbar{flex:none;color:#eee;font-size:calc(11.5px * var(--fs));line-height:1.7;padding:9px 12px;
   background:rgba(0,0,0,.55);font-variant-numeric:tabular-nums;word-break:break-all}
 .viewer .vbar b{color:#fff}
 /* 🔴 需求 17：關閉鈕在【圖片正下方】，整寬、高度 ≥ 44px（已驗收的觸控尺寸）。
    position 不再是 absolute ⇒ 它參與 flex 排版，圖片區高度自動縮小、圖片仍 contain 不裁切。 */
 .viewer .vclose{flex:none;margin:0 12px 8px;min-height:46px;
   background:rgba(255,255,255,.14);color:#fff;border:1px solid #888;border-radius:10px;
-  font-size:15px;font-weight:700;padding:10px 13px;cursor:pointer;font-family:inherit}
+  font-size:calc(15px * var(--fs));font-weight:700;padding:10px 13px;cursor:pointer;font-family:inherit}
 .viewer .vclose:active{background:rgba(255,255,255,.28)}
 
 .pinning{position:fixed;left:0;right:0;bottom:56px;z-index:25;max-width:520px;margin:0 auto;
-  background:var(--accent);color:#fff;padding:11px;text-align:center;font-size:13px;font-weight:600}
+  background:var(--accent);color:#fff;padding:11px;text-align:center;font-size:calc(13px * var(--fs));font-weight:600}
 .pinning[hidden]{display:none!important}
 
 /* ── 需求 13：頁內覆蓋層對話框 ──
@@ -402,16 +418,16 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .dlg{background:var(--panel);border:1px solid var(--line);border-radius:14px;
   padding:14px;width:100%;max-width:360px;max-height:80vh;overflow-y:auto;
   box-shadow:0 6px 26px rgba(0,0,0,.3)}
-.dlg h4{margin:0 0 9px;font-size:14px}
+.dlg h4{margin:0 0 9px;font-size:calc(14px * var(--fs))}
 .dlg.blocked{border-color:var(--warnB)}
 .inputline{display:flex;gap:6px;align-items:stretch}
 .inputline input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:8px;padding:8px;color:var(--ink);font:inherit;font-size:14px;min-height:40px;
+  border-radius:8px;padding:8px;color:var(--ink);font:inherit;font-size:calc(14px * var(--fs));min-height:40px;
   text-transform:uppercase}
-.dlgbody{font-size:12px;color:var(--sub);line-height:1.7;margin:9px 0}
+.dlgbody{font-size:calc(12px * var(--fs));color:var(--sub);line-height:1.7;margin:9px 0}
 .dlgbody b{color:var(--ink)}
 .dlgbody ul{margin:5px 0 0;padding-left:18px}
-.cstat{font-size:11px;color:var(--sub);line-height:1.65;margin-top:9px;
+.cstat{font-size:calc(11px * var(--fs));color:var(--sub);line-height:1.65;margin-top:9px;
   font-variant-numeric:tabular-nums}
 .cstat b{color:var(--ink)}
 .cstat .on{color:var(--ok);font-weight:600}
@@ -435,9 +451,9 @@ body{margin:0;background:var(--bg);color:var(--ink);
   border-radius:20px;background:var(--bg);overflow:hidden}
 .codechip .pick{border:0;background:transparent;color:var(--ink);font-family:ui-monospace,
   SFMono-Regular,Menlo,Consolas,"Courier New",monospace;letter-spacing:.14em;
-  font-size:11px;padding:5px 4px 5px 10px;cursor:pointer;min-height:28px}
+  font-size:calc(11px * var(--fs));padding:5px 4px 5px 10px;cursor:pointer;min-height:28px}
 .codechip .del{border:0;background:transparent;color:var(--sub);font-family:inherit;
-  font-size:12px;padding:5px 8px 5px 4px;cursor:pointer;min-height:28px}
+  font-size:calc(12px * var(--fs));padding:5px 8px 5px 4px;cursor:pointer;min-height:28px}
 .codechip .del:active{color:var(--warnB)}
 /* 🔴 需求 18：分步狀態／完成回饋 */
 .syncprog:empty{display:none}
@@ -446,7 +462,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .syncprog .run{color:var(--accent)}
 .syncprog .fail{color:var(--warnB);font-weight:600}
 /* 🔴 需求 19 ①：新專案提醒（狀態，不是功能說明；不阻擋） */
-.newproj{margin-top:9px;padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.7;
+.newproj{margin-top:9px;padding:8px 10px;border-radius:8px;font-size:calc(11.5px * var(--fs));line-height:1.7;
   background:color-mix(in srgb,var(--warnA) 14%,transparent);color:var(--warnA)}
 .newproj[hidden]{display:none!important}
 .newproj b{color:var(--warnA)}
@@ -455,24 +471,24 @@ body{margin:0;background:var(--bg);color:var(--ink);
   display:flex;justify-content:center}
 .leaverow[hidden]{display:none!important}
 .btn.danger{background:transparent;border-color:transparent;color:var(--warnB);
-  font-size:11.5px;padding:7px 12px;min-height:32px;flex:none}
+  font-size:calc(11.5px * var(--fs));padding:7px 12px;min-height:32px;flex:none}
 .btn.danger:active{background:color-mix(in srgb,var(--warnB) 12%,transparent)}
 /* 🔴 需求 16：專案頁的出口 */
 .backrow{display:flex;margin-bottom:4px}
 .backrow .btn{flex:none;padding:7px 14px}
 .soonrow{display:flex;align-items:center;gap:9px;background:var(--panel);
   border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:7px}
-.soonrow .k{font-size:13px;font-weight:600;flex:1;min-width:0}
+.soonrow .k{font-size:calc(13px * var(--fs));font-weight:600;flex:1;min-width:0}
 .soonrow.off{opacity:.45}
-.projsec{font-size:11.5px;color:var(--sub);letter-spacing:.05em;margin:14px 2px 6px}
+.projsec{font-size:calc(11.5px * var(--fs));color:var(--sub);letter-spacing:.05em;margin:14px 2px 6px}
 .projsec:first-child{margin-top:2px}
 .prow{display:flex;gap:6px;flex-wrap:wrap}
 .prow .btn{flex:1;min-width:96px}
-.tcount{font-size:12px;color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
+.tcount{font-size:calc(12px * var(--fs));color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
 /* 🔴 v0.07_i 需求 25：診斷列（專案頁最下方）。等寬＋可選取，方便截圖或複製。 */
 .diagrow{margin-top:16px;padding:9px 10px;border-top:1px solid var(--line);
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
-  font-size:11px;color:var(--sub);line-height:1.7;word-break:break-all;
+  font-size:calc(11px * var(--fs));color:var(--sub);line-height:1.7;word-break:break-all;
   font-variant-numeric:tabular-nums;user-select:text;-webkit-user-select:text}
 
 /* ── 底部分頁（_d §10-0c：最多 5 格，前 4 格永遠不動）── */
@@ -480,9 +496,9 @@ body{margin:0;background:var(--bg);color:var(--ink);
   display:flex;background:var(--panel);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabbar button{flex:1;min-width:0;border:0;background:transparent;color:var(--sub);
-  padding:7px 0 9px;font:inherit;font-size:11px;cursor:pointer;min-height:56px;
+  padding:7px 0 9px;font:inherit;font-size:calc(11px * var(--fs));cursor:pointer;min-height:56px;
   display:flex;flex-direction:column;align-items:center;gap:2px}
-.tabbar button .ic{font-size:19px;line-height:1}
+.tabbar button .ic{font-size:calc(19px * var(--fs));line-height:1}
 .tabbar button.on{color:var(--accent);font-weight:600}
 .tabbar button.soon{color:var(--dim)}
 .tabbar button.soon .ic{opacity:.45}
@@ -689,6 +705,11 @@ body{margin:0;background:var(--bg);color:var(--ink);
       <svg width="54" height="54" viewBox="-27 -27 54 54" id="origSvg"></svg>
       <span class="t" id="origTxt"></span>
     </div>
+    <!-- 🔴 v0.09_i 需求 30 ②③：說出「為什麼平面圖上看不到它」。
+         是【狀態】不是【功能說明】（_d §10-0b 允許狀態與錯誤）
+         ⇒ 只寫「現在是什麼情況」，不寫「你可以去按 XXX」。
+         跟著選中狀態走：換選別件或取消選取就消失，🔴 不用計時器自動消失。 -->
+    <div class="selnote" id="selNote" hidden></div>
     <div class="warnline">
       <button class="w n" id="warnLine">🟢 沒有碰撞，走道也夠</button>
       <button class="btn ok" id="btnDone">完成</button>
@@ -713,7 +734,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.4.3';
+const APP_VER = 'v0.1.4.4';
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
@@ -741,6 +762,8 @@ const S = { gesture:'A2', mode:'obj', snap:true, gridAll:false,
             dragging:null, snapCand:null,
             pinPhoto:null,
             prevTab:'plan',        // 🔴 需求 16：進專案頁之前停在哪一個分頁
+            /* 🔴 v0.09_i 需求 30：守衛訊息。selNote 跟著選中狀態走、listNote 跟著清單頁走。 */
+            selNote:'', listNote:'',
             sizeOpen:false,        // 需求 12：尺寸欄展開中？
             warnOpen:false,        // 需求 12：警示展開全部？
             /* 需求 8 §3-2 ＋ v0.05_i §4（修四）：卡片內的展開列在哪一筆。
@@ -910,9 +933,16 @@ function svgSize(){
          但【中日韓字寬約 1em】，估出來只有實際的六成
          ⇒ 平移到角落時「範例房間（可刪）」與「走道寬 60 公分」照樣跑出畫面。
          ⇒ 估的東西會錯，量的東西不會。 */
+/* 🔴 v0.09_i 需求 32：SVG 的字級也要跟著同一個知識來源走。
+   ⚠️ 刻意【讀 CSS 變數】而不是在 JS 裡另外寫一個 1.2——
+      兩個地方各寫一份就不是「單一來源」了，下次只改一邊就會不同步。 */
+function fsScale(){
+  const v=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs'));
+  return (isFinite(v)&&v>0)?v:1;
+}
 function uiText(sx, sy, txt, opt){
   const o=opt||{};
-  const px=o.size||13;
+  const px=(o.size||13)*fsScale();
   const anchor=o.anchor||'start';
   const t=el('text',{x:sx, y:sy, 'text-anchor':anchor,
     fill:o.fill||'var(--sub)', 'font-size':px,
@@ -971,6 +1001,15 @@ function roomName(roomId){
   const r=ROOMS.find(x=>x.id===roomId);
   return r ? (r.name||'未命名') : '未指定房間';
 }
+/* 🔴 v0.09_i 需求 33：這一筆的 room 還指得到一間【存活】的房間嗎？
+   ⚠️ 「指不到」有兩種來源：
+        · room 本來就是 null（使用者還沒指定）
+        · room 有值，但那間房間已經被軟刪 ⇒ 【孤兒】
+      以前碰不到孤兒，是因為 UI 刪房間走 deleteRoomCascade()，它會把 room 設成 null；
+      而需求 31 之後【雲端可以直接送來房間墓碑】，本機沒有經過那條路。
+   🔴 這個函式只給【顯示層】用——不可以拿它去把 f.room 改寫成 null。
+      理由：房間墓碑之後若被還原（或另一台推回活的版本），這筆家具要能自己回去。 */
+function roomAlive(roomId){ return !!roomId && ROOMS.some(r=>r.id===roomId); }
 
 /* ══════════════════════════════════════════════════════════════
    需求 14｜比例尺：拆成兩個元件
@@ -1157,7 +1196,8 @@ function render(){
     const gm=el('g',{transform:`translate(${m.x},${m.y})`,'data-mk':m.id,style:'cursor:pointer'});
     gm.appendChild(el('circle',{cx:0,cy:0,r:17,fill:'var(--warnA)','fill-opacity':.92,
       stroke:'#fff','stroke-width':3}));
-    const tt=el('text',{x:0,y:7,'text-anchor':'middle','font-size':19,'pointer-events':'none'});
+    const tt=el('text',{x:0,y:7,'text-anchor':'middle',
+      'font-size':19*fsScale(),'pointer-events':'none'});
     tt.textContent='📷'; gm.appendChild(tt);
     g.appendChild(gm);
   });
@@ -1343,6 +1383,7 @@ function commitMove(){
 function select(id){
   S.selId=id;
   S.sizeOpen=false; S.warnOpen=false;
+  S.selNote='';                      // 🔴 需求 30：訊息跟著選中狀態走
   $('sel').classList.remove('szopen');
 }
 
@@ -1422,6 +1463,17 @@ function syncSel(){
   } else ob.classList.remove('show');
 
   // 警示列（只提示不擋 — _d 方向 #9）。與「完成」同排，高度固定一列。
+  /* 🔴 v0.09_i 需求 30 ②③：為什麼平面圖上看不到它。
+     ③（沒指定房間）優先於 ②（沒擺）——沒有房間是更前面的問題。 */
+  const nb=$('selNote');
+  let note='';
+  /* 🔴 v0.09_i 需求 33：孤兒 room 走同一條訊息——
+     使用者看到的效果一樣：它沒有房間可去。 */
+  if(!roomAlive(f.room)) note='這一件還沒指定房間。';
+  else if(!f.isPlaced)   note='這一件還沒擺進平面圖。';
+  S.selNote=note;
+  nb.textContent=note; nb.hidden=!note;
+
   const n=collisions(f), w=warnSummary(n), wl=$('warnLine');
   wl.className='w '+w.cls+(S.warnOpen?' open':'');
   wl.textContent=w.txt;
@@ -1737,9 +1789,16 @@ async function loadAll(){
    需求 5｜種子範例、兩種清空、垃圾桶
    ══════════════════════════════════════════════════════════════ */
 const SEED_ROOM_NAME='範例房間（可刪）';
-/* 判準是「四個 store 全空（活的）」，不是「第一次開啟」——否則清空後不會重新出現。 */
+/* 🔴 v0.09_i 需求 28：判準是【有沒有存活的房間】，不是「四種物件全空」。
+   ⚠️ 舊判準造出一條【出不去的狀態】（Ali 兩台真機踩到、claude 本機重現）：
+        清清單 → 建一筆家具 → 重新載入 → rooms:0, furn:1 ⇒ 種子【不生】
+        而 v0.1.4 刻意沒有「新增房間」UI ⇒ 沒有房間、也沒有任何辦法生一個出來
+   ⇒ 種子的目的就是「給一個可以放東西的房間」；家具存不存在與這個目的無關，
+     卻會把它鎖死 ⇒ 判準只看房間。
+   ⚠️ ROOMS 已經是【存活】的（lAllLive 過濾掉 deletedAt）。
+   邊界：有房間但沒有牆 → 不生（房間在就不生，牆的有無不是種子的判準）。 */
 async function seedIfEmpty(){
-  if(ROOMS.length || WALLS.length || BEAMS.length || FURN.length) return;
+  if(ROOMS.length) return;
   const rid=uid();
   const room=newObj({ id:rid, name:SEED_ROOM_NAME, slabH:300, note:'',
     projectCode:CLOUD.code||null, synced:false, pending:false,
@@ -1784,6 +1843,13 @@ async function clearAll(){
   for(const b of BEAMS.slice()){ b.deletedAt=nowISO(); await saveBeam(b); }
   for(const f of FURN.slice()) { f.deletedAt=nowISO(); await saveItem(f); }
   await reloadObjects();
+  /* 🔴 v0.09_i 需求 29：立刻重生種子，不要等下一次重新載入。
+     若清完之後畫面上 0 個房間，而重生只發生在下一次載入
+     則使用者處在一個「什麼都做不了」的狀態，而且畫面不說為什麼。
+     ⚠️ v0.02_i 需求 5 本來就明訂「清空 → 種子會回來」
+        ⇒ 這只是把「回來」的時機從【下次載入】提前到【當下】，不是新行為。
+     ⚠️ 不要加「範例房間已重新產生」這種說明句（_d §10-0b）——她看得到它出現在畫面上。 */
+  await seedIfEmpty();
 }
 /* 垃圾桶｜真刪除的兩個條件【先到先算】：① 超過 20 筆刪最舊 ② deletedAt 超過 1 個月
    🔴 只刪【本機】那一列。雲端那一列【保留】當墓碑（v0.04_i §2）——
@@ -2181,9 +2247,19 @@ async function cloudPullObjects(){
         SYNC.added++;                         // 🔴 需求 18 ②：聯集發生時要說出多了幾筆
         continue;
       }
-      if(cur.pending) continue;               // ② 本機有還沒推成功的修改 → 不覆蓋，等 push
+      /* 🔴 v0.09_i 需求 31：pending 不再是【絕對否決】。
+         ⚠️ v0.04_i 需求 15 的規則② `if(cur.pending) continue` 是規格寫錯的：
+            pending 只代表「還沒推上去」，【不代表「本機這份比較新」】
+            ⇒ 一旦某一筆卡在 pending，它就【永遠】不接受雲端的任何更新
+            ⇒ 兩台各自守著自己的版本，不會自己好，畫面也不會說
+            實例：Ali 手機那間房間是【已軟刪除 ＋ pending】⇒ 雲端的活房間永遠拉不回來。
+         ⇒ 改成一律照比 updatedAt——晚的贏（與本輪一貫的衝突規則一致）。
+            本機 pending 且【較新】→ 不覆蓋（保護真正的離線編輯）
+            本機 pending 且【較舊】→ 覆蓋，並清掉 pending／設 synced=true
+                                     （那筆舊修改被判定為已被取代）
+         ⚠️ 時間戳相同 → 不動本機（用 > 不用 >=，沿用 v0.04_i）。 */
       if(!inc.updatedAt) continue;            // ③ 雲端沒時間戳 → 當最舊，不覆蓋
-      if(new Date(inc.updatedAt) > new Date(cur.updatedAt))
+      if(new Date(inc.updatedAt) > new Date(cur.updatedAt||0))
         await lPutObj(store, Object.assign({}, inc, {synced:true, pending:false,
           /* 🔴 v0.05_i §3（修三）：整筆覆蓋時 createdAt 要【保留】。
              雲端那一欄是 not null，正常一定有值；只有「雲端是舊列、沒有 created_at」
@@ -3113,7 +3189,17 @@ function itemCard(f){
   };
   inb.appendChild(tg);
   const go=document.createElement('button'); go.className='go'; go.textContent='›';
+  /* 🔴 v0.09_i 需求 30：三條守衛，【只加訊息、不擋操作】。
+     現況重現到的結果是：帶你到平面圖、面板出現、而畫面一片空白且不解釋
+     ⇒ 同一片空白同時可能代表「沒有房間」「這一件還沒擺」「程式壞了」
+     ⇒ 這是「用『什麼都沒有』表達某件事」的第七次變形。 */
   go.onclick=e=>{ e.stopPropagation(); commitCardEdits();
+    /* ① 沒有任何存活的房間 → 不切分頁，在清單頁說出來。
+       ⚠️ 需求 28／29 之後這種情況應該很少，但守衛仍要留（它是最後一道）。 */
+    if(!ROOMS.length){ S.listNote='目前沒有任何房間。'; buildList(); return; }
+    /* ②③ 照樣過去、照樣選中——她可能就是要去看那個房間長怎樣。
+       訊息由 syncSel() 依 room／isPlaced 產生。 */
+    S.listNote='';
     select(f.id); centerOn(f); setTab('plan'); };
   inb.appendChild(go);
   card.appendChild(inb);
@@ -3147,6 +3233,10 @@ async function toggleChipPlaced(id){
     await reloadObjects(); render(); buildList(); syncSel();
     return;
   }
+  /* 🔴 v0.09_i 需求 30 ①：連一間存活的房間都沒有時，展開房間下拉是沒有意義的
+     （下拉裡只會有「未指定」）⇒ 直接說出來，不要給她一個選不到東西的下拉。
+     ⚠️ 只加訊息、不擋操作：她仍然可以做別的事。 */
+  if(!ROOMS.length){ S.listNote='目前沒有任何房間。'; buildList(); return; }
   // 🔴 先要求選房間（不可擺到「沒有房間」）→ 展開同一個列，cause='chip'
   //    ⚠️ v0.07_i 需求 24 邊界：這一條路【一行不改】——仍然只展開房間下拉，
   //       不切分頁、不選中。選了房間之後才會走到下面。
@@ -3214,7 +3304,18 @@ function groupHead(label,color,count,rid){
 function buildList(){
   const box=$('listPage'); if(!box) return;
   box.innerHTML='';
-  const unplaced=FURN.filter(f=>!f.isPlaced || !f.room);
+  /* 🔴 v0.09_i 需求 30 ①：沒有房間時的狀態句（跟著清單頁走） */
+  if(S.listNote){
+    const n=document.createElement('div'); n.className='listnote';
+    n.textContent=S.listNote; box.appendChild(n);
+  }
+  /* 🔴 v0.09_i 需求 33：孤兒（room 指向已刪房間）要落進既有的「未擺放」分組，
+     不要新開一個分組，更不可以兩個分組都收不下而【安靜地消失】。
+     ⚠️ 舊條件 `!f.isPlaced || !f.room` 收不到孤兒（f.room 有值、truthy）
+        而上面的 ROOMS.forEach 也收不到它（那間房間不在 ROOMS 裡）
+        ⇒ 家具 3 筆、清單只渲染 2 張，且沒有任何訊息
+        ⇒ 這是「用『什麼都沒有』表達某件事」的第八次變形。 */
+  const unplaced=FURN.filter(f=>!f.isPlaced || !roomAlive(f.room));
   if(!FURN.length && !ROOMS.length){
     // 空狀態：一個圖示 ＋「還沒有項目」＋ (+) 仍在（同一顆）
     const e=document.createElement('div'); e.className='empty';
