@@ -1,144 +1,69 @@
-<!-- v0.1.2.2：補 charset。Artifact 發布時外框會帶 charset，所以之前沒事；
-     但直接用本機 server 或 file:// 開啟時會變亂碼（驗證時踩到）。
-     ⚠️ 外框的 charset 在前面，這一行只在沒有外框時生效，不會衝突。 -->
+<!-- 🔴 charset 必須在最前面：python -m http.server 不送 charset，
+     檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
-<title>裝修估價 App 互動預覽</title>
+<title>裝修估價 App 互動預覽 v0.1.4</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.3.1（補釘）
-  作者：claude / 2026-09-08 / 對應 _d v0.11
-  上一版：v0.1.3（同資料夾，保留不覆蓋）
+  裝修估價 App — 手機互動預覽　版次：v0.1.4（進版）
+  作者：claude / 2026-09-11 / 對應 _d v0.15
+  上一版：v0.1.3.1（../../v0.1.3_探索/修正需求/，保留不覆蓋）
 
-  ── 本補釘（v0.1.3 → v0.1.3.1）：修一條【會刪掉本機資料】的 bug ──
-   R-1 🔴 匿名身分過期後，cloudPull 會把本機同步過的資料整批刪掉
-       來源：研究員冷讀調查 R-1（`../../裝修估價App_研究員調查_claude_20260908.md`），claude 覆核確認
+  規格（三份都是驗收條件，衝突時以版次較新者為準）：
+    ../修正需求/裝修估價App_修正需求表_v0.02_i_claude_20260908.md（需求 1~11 全文）
+    ../修正需求/裝修估價App_修正需求表_v0.03_i_claude_20260909.md（範圍切分／需求 12~14）
+    ../修正需求/裝修估價App_修正需求表_v0.04_i_claude_20260911.md（回修／需求 15）
 
-       發生路徑：
-         token 過期 → sbFetch 收 401 → signInAnon(true) 重新拿身分 → 【全新的 uid】
-                    → 重試原請求（例：GET photos）
-                    🔴 新 uid 不在 members 裡 → RLS 回 200 []（不是報錯）
-                    → cloudPull 看到「雲端 0 筆」
-                    → 刪除傳播迴路把本機所有 synced 的資料【整批刪掉】
+  ── 本版做了什麼（進版：三種物件從假資料變成可存、補資料層、補 pull）──
+   需求 1  三種物件的資料形狀（＋Beam、color、wall.state、樓層板）
+   需求 2  本機持久化：DB_VER 2、四個 store、onblocked／onversionchange
+   需求 3  雲端四張表 SQL（見 v0.02_i 需求 3，本檔不含 SQL，由 Ali 貼進 Supabase）
+   需求 4  物件資料層八函式 ＋ 單位換算（DB 公釐整數／記憶體公分浮點）＋ 時區走 ISO
+   需求 5  種子範例、清擺設／清清單、垃圾桶（purgeTrash 只刪本機，雲端留墓碑）
+   需求 6  房間改名／刪除（含 anchor 就地轉絕對座標，🔴 先算 place() 再刪牆）
+   需求 7  家具 CRUD ＋ 存檔顆粒度（blur／Enter／visibilitychange）＋ 無效輸入紅框
+   需求 8  清單頁版面（房間色條、chip、缺什麼直接標、浮動 (+)、icon 欄留空 46px）
+   需求 9  幾何防呆（roomCenter 回 null、place() 缺牆不炸）
+   需求 10 畫面文字清理（只刪功能說明；狀態與錯誤一字不動）
+   需求 11 三個視覺通道：填色＝自訂色／外框顏色＝房間色／外框粗細＝選中
+   需求 12 選中面板重排（尺寸按需展開、展開時微調鍵整組隱藏）
+   需求 13 主選單版位（頂列徽章＋齒輪、底部 5 格、cloudbar 移出照片分頁）
+   需求 14 比例尺拆兩個元件：走道寬度示意帶 ＋ 長度比例尺（niceScaleCm 含遲滯）
+   需求 15 四張新表的 pull（五條分支；🔴 不准抄照片線的「雲端沒有就刪本機」）
 
-       ⚠️ 諷刺的是：`200 []` 這個「安全的失敗方向」（E-4 驗過）正是本 bug 成立的原因——
-          它讓「我沒權限」與「雲端真的空了」長得一樣。**這是 obs O-14 那條坑的第三次變形。**
+  ── 本版【刻意不做】（v0.03_i §1-2、v0.02_i 附錄 A）──
+   家具挑選器兩分頁／上視圖 icon／icon 共用比例尺（v0.1.5）
+   新增房間 UI／畫牆 UI／畫樑 UI／淨高判定／選色 UI／物品分類／決策 log UI
+   計價（v0.1.6）
+   🔴 清單頁的 (+) 只建一筆空白項目，【不開挑選器】
 
-       修法兩層：
-         ① sbFetch 的 401 重試路徑：拿到新身分後【重新 joinProject()】
-            （帶 _rejoining 旗標防遞迴——join 本身也走 sbFetch）
-         ② cloudPull 開頭先【驗證 membership】（讀 members 表，SQL 已給 self-select 政策）
-            不是 member → 中止同步並明確報錯，【一筆都不刪】
-
-       🔑 ②才是真正的修法：它把有歧義的 `200 []` 換成一個明確的問題——
-          「我到底是不是這個專案的成員？」有答案，就不必從 0 筆去猜。
-       ⚠️ 刻意【不用】「雲端 0 筆但本機有 N 筆就別刪」這種數量啟發式：
-          membership 確認過之後，0 筆就是真的 0 筆，用數量擋會把 E-3（刪除同步）擋掉。
-  上一版：v0.1.2.2（../../v0.1.2_探索/修正需求/，保留不覆蓋）
-  需求表：../修正需求/裝修估價App_修正需求表_v0.01_20260908.md
-  SQL   ：../階段B_方案B_SQL_20260908.sql（Ali 要先在 Supabase 跑過）
-
-  ── 本版（v0.1.2.2 → v0.1.3）：階段 B ──
-   1. 🔴 專案代碼 ＋ 匿名登入 ＋ 雲端同步（_d §12-1b 方案 B）
-        兩台裝置各自拿一個匿名 uid → 用同一組代碼加進同一個 project
-        ⇒ 兩個不同的身分，看到同一批照片與標記
-   2. 本機那一份【不移除】，改當快取（_d §0 情境 B：在外網路可能不穩）
-        雲端＝共享來源；本機＝快取＋離線。不是二選一。
-   3. 衝突處理只做「最後寫的贏」（比 updated_at）——探針階段的最簡規則，非 _d §3-4 的最終行為
-
-  🔑 本版同時是 _d §3-3 那條保險的【第一次實測】：
-     「換儲存只需改 savePhoto/loadPhoto/listPhotos/deletePhoto（＋標記三個）」
-     → 做法：那七個函式的【簽名與呼叫端一行都不改】，只換裡面的實作。
-     → 結果見 ../測試待辦.md 的 E-7 自我回報。
-
-  ⚠️⚠️ 交付通道的硬限制（本版最重要的一件事）：
-     Artifact 頁面跑在有 CSP 的沙箱裡，**對外的 fetch 只允許少數 CDN**，
-     連 supabase.co 極可能【被擋且沒有錯誤訊息】。
-     → 本檔偵測得到這件事，會在畫面上顯示紅框說明（不是靜默失敗）。
-     → 若被擋，正解是把本檔放到 Supabase 的 public bucket 當網頁開
-        （同一個網域 ⇒ 沒有跨網域問題），步驟見 ../階段B_放上網_20260908.md
+  技法沿用：HTML技法互動筆記 §2(位移門檻) §5(localStorage) §6(Blob) §21(fixed避裁切) §22(min-height:0)
+  必讀坑：_kb/obs_觸控與PointerEvents_20260906.md（O-1~O-10）
+          _kb/obs_環境與既有狀態的落差_20260908.md（O-11~O-15）
+     · O-1  getBoundingClientRect 回 0 → fit() 等下一幀 ＋ isFinite 雙重防護（本版保留）
+     · O-2  殭屍指標 → startPt 記 pointerId（本版保留，一行未改）
+     · O-9  「標示」與「比例尺」是兩種東西 → 需求 14 拆成兩個元件、各有標籤
+     · O-11 沙箱內 alert/window.open 不可靠 → 所有確認框改【頁內覆蓋層】，不用 confirm()
+     · O-13 舊紀錄會被新程式讀到 → 每筆寫 appVer；照片舊時間戳原樣輸出不印 Invalid Date
+     · O-14 CSP 擋 fetch 與網路斷了長得一樣 → cloudStat 的歸屬句一字不動
 
   🔒 檔內的 anon key 是【設計上公開】的（本來就會出現在網頁原始碼裡）。
      service_role／secret key 永不進本檔。
-
-  ── 本補釘（v0.1.2.1 → v0.1.2.2）：只動顯示層 ──
-   B-4 🔴 v0.1.2 存的【舊紀錄】會偽裝成「（不需轉）」
-       Ali 截圖實證（同一個檔名兩筆）：
-         1000005942.jpg 新：壓縮後 1600×900  ／EXIF 1／（不需轉）← 對
-         1000005942.jpg 舊：壓縮後 4032×2268／EXIF 1／（不需轉）← 那句話沒有意義
-         1000005941.jpg 舊：壓縮後 2268×4032／EXIF 6／（不需轉）← 🔴 錯的
-       根因：舊紀錄沒有 rotated／rawW 欄位 → 讀到空值 → 印成「（不需轉）」
-             ⇒ 舊紀錄與「真的不需要轉」在畫面上長得一樣。
-       ⚠️ 這與 B-1 是同一個形狀：**顯示層讓一個未處理的狀態看起來像處理完了。**
-       修法：① 用 rawW 是否存在判定新舊（新紀錄一定有，舊紀錄一定沒有）
-             ② 舊紀錄改印「⚠️ 舊版存的，方向未處理」
-             ③ 舊紀錄【不印】壓縮後尺寸——那個值其實是原始尺寸，印了就是假資料
-             ④ 每筆新紀錄寫入 appVer，之後分辨新舊不必再靠推論
-         v0.1.0（../../v0.1_探索/修正需求/，保留不覆蓋，含已撤回的 A1 開關）
-
-  ── 本補釘（v0.1.2 → v0.1.2.1）：Ali 2026-09-07 手機實測抓到三條 ──
-   B-1 🔴 存下來的照片【方向是錯的】
-       證據：卡片顯示 3024×4032、EXIF 方向＝6。方向 6 要轉 90°，
-             若已套用則寬高會互換成 4032×3024。沒互換 ⇒ createImageBitmap()
-             在該瀏覽器沒有套用 EXIF 方向。
-       修法（第一版錯的，留著當紀錄）：
-             createImageBitmap(file,{imageOrientation:'none'}) 取原始像素，自己轉。
-             🔴 實測推翻：桌機 Chrome【忽略 'none'】，自己先轉了一次
-                → 本程式再轉一次 ⇒ 方向反而錯（2400×1200 進、1600×800 出）
-             ⇒ 「宣告我要哪一種」這條路不通：Ali 的手機不轉、桌機會轉，
-                同一份程式在兩台裝置上結果相反。
-       修法（實際採用）：**先測出這個瀏覽器會不會自己轉**。
-             啟動時造一張 2×1、EXIF 方向 6 的極小 JPEG 丟給 createImageBitmap；
-             回來變 1×2 ⇒ 這個瀏覽器自己會轉 ⇒ 本程式不再轉；
-             回來還是 2×1 ⇒ 不會轉 ⇒ 由 applyOrient() 自己轉。
-             卡片上會標「已轉正（瀏覽器）」或「已轉正（本程式）」——
-             ⭐ 分得出是誰轉的，下次同類問題才查得到。
-   B-2 縮圖被裁成正方形（object-fit:cover）、且點了沒有反應
-       → 改 contain（方向看得出來）＋ 點縮圖開全螢幕檢視
-   B-3 🔴 點平面圖上的 📷 標記沒反應
-       根因：showMarker() 用 window.open('','_blank')＋document.write。
-             Artifact 跑在沙箱 iframe 內，開新分頁被擋；擋掉時回 null，
-             fallback 的 alert 在手機上也沒出現。
-       修法：不開新分頁，改頁內全螢幕檢視層。
-             ⭐ B-2 與 B-3 共用【同一個】檢視層——開圖的入口從三條收成一條。
-   ⚠️ B-2 是 B-1 的驗收前提：縮圖裁成正方形時，方向對不對看不出來。
-
-  ⚠️ 新坑（_kb 查無對應 obs，待回寫）：
-     「沙箱 iframe 擋掉 window.open，且 null-fallback 的 alert 也不出現」
-     → 在 Artifact 環境裡，任何『另開視窗』的做法都不可用。
-
-  ⚠️ 線框原型：假格局、不驗幾何精度。
-  本版新增【階段 A：照片可行性探針】——這一段是【真的資料層】，不是假資料。
-
-  技法沿用：HTML技法互動筆記 v0.05 §2(位移門檻) §5(localStorage) §6(Blob) §21(fixed避裁切) §22(min-height:0)
-  必讀坑：_kb/obs_觸控與PointerEvents_20260906.md（O-1~O-10，上一輪自己踩出來的）
-  ⚠️ 相機／EXIF／IndexedDB → debug-pitfall-guard 七類路由【無對應】，_kb 亦查無 obs。
-     本版若踩到，要回寫成新的 obs 條目。
-
-  ⚠️ 內文註解裡的 v0.01 / v0.01.1 / v0.01.2 是 v0.1.0 交付前三次修正批次的當下標記，
-     保留不改（改了就成了假紀錄）。
-
-  本版改動（v0.1.0 → v0.1.2）：
-   1. 🔴 照片探針（階段 A）：拍照／相簿 → IndexedDB → 重開還在 → 標到平面圖
-      資料層刻意做成 _d §3-3 的四個 async 函式，階段 B 只換底層實作
-   2. Q-9 微調鍵長按連發
-   3. 移除「↺ 改回原尺寸」鈕（_d §13-17：「原狀」概念已作廢）
-   4. 碰撞「僅供參考」提示改成只在【非矩形家具】出現（_d §13-19；矩形的判定是精確的）
 -->
 <style>
 :root{
   --bg:#f6f5f2; --panel:#fff; --ink:#232323; --sub:#6b6b6b; --line:#dcd8d0;
   --accent:#3a6ea5; --wall:#4a4a4a; --furn:#8fa8bd; --furnSel:#3a6ea5;
-  --warnA:#e08b2a; --warnB:#cf4444; --ok:#4a8f5e; --ghost:#9bb8d4;
+  --warnA:#e08b2a; --warnB:#cf4444; --ok:#4a8f5e; --ghost:#9bb8d4; --dim:#b9b4ab;
 }
 :root:not([data-theme="light"]){}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#1c1d1f; --panel:#26282b; --ink:#ececec; --sub:#a0a0a0; --line:#3a3d41;
   --accent:#7fb0e0; --wall:#c8c8c8; --furn:#48606f; --furnSel:#7fb0e0;
-  --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e;
+  --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e; --dim:#5a5a5a;
 }}
 :root[data-theme="dark"]{
   --bg:#1c1d1f; --panel:#26282b; --ink:#ececec; --sub:#a0a0a0; --line:#3a3d41;
   --accent:#7fb0e0; --wall:#c8c8c8; --furn:#48606f; --furnSel:#7fb0e0;
-  --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e;
+  --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e; --dim:#5a5a5a;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -147,18 +72,35 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .app{display:flex;flex-direction:column;height:100dvh;max-width:520px;margin:0 auto;
   background:var(--bg);}
 
-/* ── 頂部：原型控制列（正式版沒有這排，只是給你切方案用）── */
+/* ── 需求 13：頂列（44px）＝ 標題 ＋ 可點的連線徽章 ＋ 齒輪 ── */
+.apptop{flex:none;height:44px;display:flex;align-items:center;gap:7px;padding:0 10px;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+.apptop .ttl{font-size:15px;font-weight:600;flex:1;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+/* 🔴 標題很長時不可壓縮右邊兩顆（需求 13 邊界） */
+.apptop .pill{font-size:11px;color:var(--accent);border:1px solid
+  color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:20px;padding:5px 9px;
+  background:var(--bg);white-space:nowrap;flex:none;font-family:inherit;cursor:pointer;
+  min-height:30px}
+.apptop .pill.off{color:var(--sub);border-color:var(--line)}
+.apptop .pill.er{color:var(--warnB);border-color:color-mix(in srgb,var(--warnB) 45%,var(--line))}
+.apptop .gear{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex:none;cursor:pointer;padding:0;font-family:inherit}
+
+/* ── 頂部：原型控制列（正式版沒有這排，只是給你切方案用）──
+   ⚠️ _i 三份都沒有把它列進「刪什麼」，故保留（CLAUDE.md 3-2：不刪規格沒說要刪的）。 */
 .protobar{flex:none;background:var(--panel);border-bottom:1px solid var(--line);
-  padding:6px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+  padding:5px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
 .protobar .tag{color:var(--sub);font-size:11px;margin-right:2px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.seg button{border:0;background:transparent;color:var(--sub);padding:5px 9px;font-size:12px;
-  font-family:inherit;cursor:pointer;min-height:30px}
+.seg button{border:0;background:transparent;color:var(--sub);padding:4px 8px;font-size:12px;
+  font-family:inherit;cursor:pointer;min-height:28px}
 .seg button.on{background:var(--accent);color:#fff}
 .chk{display:inline-flex;align-items:center;gap:4px;color:var(--sub)}
 
 /* ── 模式列（A1 才顯示）── */
-.modebar{flex:none;display:none;padding:6px 8px;background:var(--panel);
+.modebar{flex:none;display:none;padding:5px 8px;background:var(--panel);
   border-bottom:1px solid var(--line);align-items:center;gap:8px}
 .modebar.show{display:flex}
 .modebar .hint{font-size:11px;color:var(--sub)}
@@ -166,13 +108,11 @@ body{margin:0;background:var(--bg);color:var(--ink);
 /* ── 舞台（§22：flex 子項要捲動/收縮必須 min-height:0）── */
 .stage{flex:1;min-height:0;position:relative;overflow:hidden}
 #plan{width:100%;height:100%;display:block;touch-action:none;background:var(--bg)}
-/* A1 模式的整體色調提示（BP-A2：不能只有按鈕變色，視線在畫布上時看不到）*/
 .stage.m-obj::after,.stage.m-pan::after{content:"";position:absolute;inset:0;
   pointer-events:none;border:3px solid transparent;transition:border-color .15s}
 .stage.m-obj::after{border-color:var(--accent)}
 .stage.m-pan::after{border-color:var(--sub);opacity:.45}
 
-/* 縮放按鈕（浮在平面圖右上）*/
 .zoombtns{position:absolute;right:8px;top:8px;z-index:10;
   display:flex;flex-direction:column;gap:5px;align-items:center}
 .zoombtns button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
@@ -184,67 +124,149 @@ body{margin:0;background:var(--bg);color:var(--ink);
   padding:2px 5px;border-radius:5px;font-variant-numeric:tabular-nums}
 .zoombtns[hidden]{display:none!important}
 
-/* 清單頁 */
-.list{position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding:10px 10px 4px}
-.list[hidden]{display:none!important}
-.grp{font-size:12px;color:var(--sub);margin:12px 2px 5px;letter-spacing:.06em}
-.grp:first-child{margin-top:2px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  padding:11px 12px;margin-bottom:7px;cursor:pointer;display:flex;
-  justify-content:space-between;align-items:center;gap:10px;min-height:52px}
-.card:active{background:var(--bg)}
-.card .nm{font-weight:600}
-.card .dim{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
-.card .go{color:var(--accent);font-size:18px;flex:none}
-.listnote{font-size:11px;color:var(--sub);padding:8px 4px 2px;line-height:1.6}
+/* ── 頁面容器（清單／照片／專案／之後）── */
+.page{position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding:10px 10px 4px}
+.page[hidden]{display:none!important}
+/* 🔴 需求 8：清單很長滑到底時，(+) 不可被最後一張卡片遮住 */
+#listPage{padding-bottom:84px}
 
-/* ── 選中面板（§21：用 fixed 避免被容器裁切；BP-C1 方向鍵不會被切掉）── */
-/* ⚠️ 實測發現：面板一高就把平面圖蓋掉 → 改完尺寸看不到後果（＝BP-F2）。
-   故整體壓扁：尺寸三欄橫排、pad 縮小、上限 42vh 且可自己捲。 */
+/* ── 需求 8：清單頁版面（版位依預覽 v0.04）── */
+.grp{font-size:11.5px;color:var(--sub);letter-spacing:.05em;margin:12px 2px 5px;
+  display:flex;align-items:center;gap:6px}
+.grp:first-child{margin-top:2px}
+.grp .bar{width:14px;height:3px;border-radius:2px;flex:none}
+.grp .gname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grp .gbtn{border:1px solid var(--line);background:var(--bg);color:var(--sub);
+  border-radius:6px;font:inherit;font-size:11px;padding:3px 7px;cursor:pointer;flex:none;
+  min-height:26px}
+.icard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  margin-bottom:7px;display:flex;overflow:hidden}
+.icard .stripe{width:4px;flex:none}
+.icard .in{flex:1;min-width:0;display:flex;gap:10px;padding:9px 11px 9px 9px;align-items:center}
+/* 🔴 需求 8 §3-3（Ali 2026-09-11 定案）：icon 欄【留空】。
+   留空 ≠ 留一個看得見的空框 —— 不畫邊框、不畫底色、不放佔位圖示，就是內距。
+   位置要在（46px），v0.1.5 塞 icon 進去時不必重排整張卡片。 */
+.icard .icon{width:46px;height:46px;flex:none}
+.icard .col{flex:1;min-width:0}
+.icard .r1{display:flex;align-items:baseline;gap:7px}
+.icard .nm{font-weight:600;font-size:13.5px;flex:1;min-width:0;background:transparent;
+  border:1px solid transparent;border-radius:6px;color:var(--ink);font-family:inherit;
+  padding:2px 4px;min-width:0;min-height:26px}
+.icard .nm:focus{background:var(--bg);border-color:var(--line);outline:none}
+.icard .nm.ph{color:var(--sub)}
+.icard .dim{font-size:11.5px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.icard .r2{display:flex;align-items:center;gap:6px;margin-top:5px}
+.icard .go{color:var(--accent);font-size:17px;flex:none;background:transparent;border:0;
+  font-family:inherit;cursor:pointer;padding:0 2px;min-height:30px}
+.chip{font-size:11px;border:1px solid var(--line);border-radius:20px;padding:3px 9px;
+  color:var(--sub);background:var(--bg);white-space:nowrap;font-family:inherit;cursor:pointer;
+  min-height:26px}
+.chip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:transparent;
+  color:var(--accent);font-weight:600}
+.money{font-size:11.5px;color:var(--sub);font-variant-numeric:tabular-nums;margin-left:auto}
+.miss{font-size:11px;color:var(--warnA);margin-left:auto}
+/* 🔴 v0.05_i §4（修四）：price 就地編輯。放清單卡片，【不放】選中面板
+   （面板實測 187/199px 已貼著 _d §10-0d 的上限）。 */
+.icard .pricewrap{margin-left:auto;display:flex;align-items:center;gap:1px;flex:none}
+.icard .cur{font-size:11.5px;color:var(--sub)}
+.icard .cur[hidden]{display:none!important}
+.icard .price{width:84px;min-width:0;font-size:11.5px;text-align:right;
+  background:transparent;border:1px solid transparent;border-radius:6px;
+  color:var(--sub);font-family:inherit;font-variant-numeric:tabular-nums;
+  padding:3px 4px;min-height:26px}
+.icard .price:focus{background:var(--bg);border-color:var(--line);color:var(--ink);outline:none}
+/* 「缺價錢」＝ 空值時的 placeholder，用 warnA（與 .miss 同色） */
+.icard .price::placeholder{color:var(--warnA);opacity:1}
+.icard .price.bad{border-color:var(--warnB);border-width:1.5px}
+.roomrow{display:flex;gap:6px;align-items:center;margin-top:6px}
+.roomrow select{flex:0 0 38%;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:12px;min-height:34px}
+/* 🔴 v0.05_i §4：note 併進【同一個展開列】。單行 input ⇒ 長備註橫向捲，
+   卡片高度不會被它撐開（input 本身不會換行、不會長高）。 */
+.roomrow input.note{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:12px;min-height:34px;
+  text-overflow:ellipsis}
+.empty{text-align:center;color:var(--sub);padding:48px 12px;font-size:13px;line-height:2}
+.empty .ic{font-size:34px;display:block;opacity:.5}
+
+/* 🔴 需求 8 §3-1：清單頁右下浮動 (+)。空狀態與非空狀態是【同一顆】。 */
+.fab{position:fixed;right:16px;bottom:calc(56px + 12px + env(safe-area-inset-bottom,0px));
+  z-index:24;width:56px;height:56px;border-radius:50%;border:0;
+  background:var(--accent);color:#fff;font-size:26px;line-height:1;cursor:pointer;
+  box-shadow:0 3px 12px rgba(0,0,0,.24);font-family:inherit}
+.fab[hidden]{display:none!important}
+
+/* ── 需求 12：選中面板（§21：fixed 避免被容器裁切）── */
 .sel{position:fixed;left:0;right:0;bottom:56px;z-index:20;max-width:520px;margin:0 auto;
   background:var(--panel);border-top:1px solid var(--line);
-  padding:7px 9px calc(7px + env(safe-area-inset-bottom,0px));
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
   box-shadow:0 -3px 14px rgba(0,0,0,.10);
   max-height:42vh;overflow-y:auto}
 .sel[hidden]{display:none!important}
-.selhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
-.selname{font-weight:600;font-size:13px}
-.selpos{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums}
-.selrow{display:flex;gap:9px;align-items:center}
+.selhead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.selname{font-weight:600;font-size:13px;flex:none;max-width:52%;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.selpos{font-size:11px;color:var(--sub);flex:1;min-width:0;
+  font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);display:inline-flex;align-items:center;
+  justify-content:center;font-size:13px;flex:none;cursor:pointer;padding:0;font-family:inherit}
+.ib.dgr{color:var(--warnB);border-color:color-mix(in srgb,var(--warnB) 40%,var(--line))}
+/* 🔴 N-48：🗑 不與其他按鈕相鄰（防誤觸）→ 中間塞固定空隙 */
+.ibgap{width:16px;flex:none}
+.selrow{display:flex;gap:10px;align-items:center}
 
-/* 微調鍵：整組跟著軸旋轉（_d §10-2b）*/
+/* 微調鍵：整組跟著軸旋轉（_d §10-2b）。🔴 88×88 與 29×29 是已驗收的觸控尺寸，不動。 */
 .padwrap{flex:none;width:88px;height:88px;position:relative}
 .pad{position:absolute;inset:0;transition:transform .18s ease}
 .pad button{position:absolute;width:29px;height:29px;border-radius:8px;
   border:1px solid var(--line);background:var(--bg);color:var(--ink);
   font-size:13px;line-height:1;cursor:pointer;padding:0;font-family:inherit}
 .pad button:active{background:var(--accent);color:#fff}
+.pad button:disabled{opacity:.4}
 .pad .up{left:29px;top:0}.pad .dn{left:29px;bottom:0}
 .pad .lf{left:0;top:29px}.pad .rt{right:0;top:29px}
 .padc{position:absolute;left:29px;top:29px;width:29px;height:29px;border-radius:50%;
   border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;
   font-size:9px;color:var(--sub);text-align:center;line-height:1.1}
 
-.fields{flex:1;min-width:0;display:flex;gap:5px;align-items:flex-end}
-.frow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.frow label{font-size:10px;color:var(--sub)}
-.frow input{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:6px 6px;color:var(--ink);font:inherit;font-size:15px;
-  text-align:center;font-variant-numeric:tabular-nums;min-height:38px}
-.unit{font-size:11px;color:var(--sub);padding-bottom:11px;flex:none}
+.grid2{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.g3,.g2{display:flex;gap:6px}
+.g3 .btn,.g2 .btn{flex:1;min-width:0}
 .btn{border:1px solid var(--line);background:var(--bg);color:var(--ink);
-  border-radius:8px;padding:7px 10px;font:inherit;font-size:12px;cursor:pointer;min-height:34px}
+  border-radius:8px;padding:9px 6px;font:inherit;font-size:12px;cursor:pointer;
+  min-height:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn.pri{background:var(--accent);color:#fff;border-color:transparent}
-.btnrow{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center}
-.svg-orig svg{flex:none}
+.btn.ok{background:var(--ok);color:#fff;border-color:transparent;font-weight:600}
+.btn:disabled{opacity:.42;cursor:default}
+/* 保留格：虛線框 ＋ 灰字，不可按。⚠️ 依 _d §10-0b 不寫用途說明 */
+.btn.hold{color:var(--dim);border-style:dashed;background:transparent}
+
+/* 🔴 需求 12：尺寸按需展開。cm 在【標籤列】、右對齊於「高」⇒ 三格等寬 */
+.fields{display:flex;gap:5px;align-items:flex-end;margin-bottom:7px}
+.fields[hidden]{display:none!important}
+.frow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.frow label{font-size:10px;color:var(--sub);display:flex;justify-content:space-between;gap:4px}
+.frow input{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:15px;
+  text-align:center;font-variant-numeric:tabular-nums;min-height:38px}
+/* 🔴 需求 7（v0.04_i §7）：打字中值無效 → 該欄位加紅框，讓「這個值沒被採用」看得出來 */
+.frow input.bad{border-color:var(--warnB);border-width:1.5px}
+/* 展開尺寸時，微調鍵整組【隱藏】——改尺寸與移動位置是兩件事 */
+.sel.szopen .padwrap,.sel.szopen .g2{display:none}
+
+.warnline{display:flex;gap:8px;align-items:center;margin-top:7px}
+.warnline .w{flex:1;min-width:0;font-size:11.5px;padding:6px 8px;border-radius:7px;
+  background:color-mix(in srgb,var(--warnA) 16%,transparent);color:var(--warnA);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
+  font-family:inherit;text-align:left;border:0}
+.warnline .w.c{background:color-mix(in srgb,var(--warnB) 16%,transparent);color:var(--warnB)}
+.warnline .w.n{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+.warnline .w.open{white-space:normal;overflow:visible;text-overflow:clip}
+.warnline .btn{flex:none;padding:9px 16px}
+
 /* 面板可收合：只想看平面圖時把它壓成一條 */
 .sel.mini > *:not(.selhead){display:none}
-.selhead .fold{border:1px solid var(--line);background:var(--bg);color:var(--sub);
-  border-radius:6px;font:inherit;font-size:11px;padding:2px 8px;cursor:pointer;flex:none}
-.warn{font-size:11.5px;margin-top:5px;padding:5px 7px;border-radius:7px;line-height:1.4}
-.warn.c{background:color-mix(in srgb,var(--warnB) 16%,transparent);color:var(--warnB)}
-.warn.w{background:color-mix(in srgb,var(--warnA) 16%,transparent);color:var(--warnA)}
-.warn.n{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
 
 /* 未旋轉原貌對照（_d §10-2b，Ali 指定）*/
 .orig{display:none;gap:7px;align-items:center;margin-top:5px;padding:5px 7px;
@@ -253,23 +275,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .orig svg{flex:none}
 .orig .t{font-size:10.5px;color:var(--sub);line-height:1.35}
 
-/* ── 📷 照片探針分頁（v0.1.2 新增）── */
-.photo{position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding:10px 10px 4px}
-.photo[hidden]{display:none!important}
-/* ── v0.1.3：雲端連線列 ── */
-.cloudbar{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  padding:9px;margin-bottom:10px}
-.cloudbar .crow{display:flex;gap:6px;align-items:stretch}
-.cloudbar input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:8px;padding:8px;color:var(--ink);font:inherit;font-size:14px;min-height:40px;
-  text-transform:uppercase}
-.cloudbar .cstat{font-size:11px;color:var(--sub);line-height:1.65;margin-top:7px;
-  font-variant-numeric:tabular-nums}
-.cloudbar .cstat b{color:var(--ink)}
-.cloudbar .cstat .on{color:var(--ok);font-weight:600}
-.cloudbar .cstat .off{color:var(--sub)}
-.cloudbar .cstat .er{color:var(--warnB);font-weight:600}
-.cloudbar.blocked{border-color:var(--warnB)}
+/* ── 📷 照片分頁 ── */
 .pbtns{display:flex;gap:8px;margin-bottom:10px}
 .pbtns label{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
   min-height:52px;border:1px solid var(--line);border-radius:10px;background:var(--panel);
@@ -283,14 +289,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .pcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   padding:9px;margin-bottom:8px;display:flex;gap:10px}
 .pcard .thumbs{flex:none;display:flex;flex-direction:column;gap:4px;align-items:center}
-/* 🔴 v0.1.2.1 B-2：cover 會把長邊裁掉 → 方向對不對看不出來。改 contain。
-   背景給深色，才分得出「圖片的邊界」與「留白」。 */
 .pcard img,.pcard canvas{width:76px;height:76px;object-fit:contain;border-radius:7px;
   background:#2a2a2a;border:1px solid var(--line);display:block;cursor:pointer}
 .pcard img:active{outline:2px solid var(--accent)}
+.pcard .tlab{font-size:9px;color:var(--sub)}
+.pcard .meta{flex:1;min-width:0;font-size:11px;color:var(--sub);line-height:1.65;
+  font-variant-numeric:tabular-nums;word-break:break-all}
+.pcard .meta b{color:var(--ink);font-size:12px}
+.pcard .bad{color:var(--warnB);font-weight:600}
+.pcard .good{color:var(--ok)}
+.pcard .acts{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 
-/* 🔴 v0.1.2.1 B-3：頁內全螢幕檢視層（取代 window.open——沙箱 iframe 擋新分頁）。
-   B-2「點開看全圖」與 B-3「點標記看照片」共用這一層。 */
 .viewer{position:fixed;inset:0;z-index:60;background:rgba(16,16,16,.96);
   display:flex;flex-direction:column}
 .viewer[hidden]{display:none!important}
@@ -301,39 +310,77 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .viewer .vbar b{color:#fff}
 .viewer .vclose{position:absolute;top:8px;right:10px;z-index:2;
   background:rgba(0,0,0,.6);color:#fff;border:1px solid #666;border-radius:9px;
-  font-size:15px;font-weight:700;padding:8px 13px;cursor:pointer}
-.pcard .tlab{font-size:9px;color:var(--sub)}
-.pcard .meta{flex:1;min-width:0;font-size:11px;color:var(--sub);line-height:1.65;
-  font-variant-numeric:tabular-nums;word-break:break-all}
-.pcard .meta b{color:var(--ink);font-size:12px}
-.pcard .bad{color:var(--warnB);font-weight:600}
-.pcard .good{color:var(--ok)}
-.pcard .acts{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
-.pnote{font-size:11px;color:var(--sub);line-height:1.7;padding:8px 4px 2px}
+  font-size:15px;font-weight:700;padding:8px 13px;cursor:pointer;font-family:inherit}
+
 .pinning{position:fixed;left:0;right:0;bottom:56px;z-index:25;max-width:520px;margin:0 auto;
   background:var(--accent);color:#fff;padding:11px;text-align:center;font-size:13px;font-weight:600}
 .pinning[hidden]{display:none!important}
 
-/* ── 底部分頁（_d §10-0）── */
+/* ── 需求 13：頁內覆蓋層對話框 ──
+   🔴 O-11：沙箱環境裡 window.open／alert／confirm 都不可靠（點了完全沒反應）
+      ⇒ 同步設定與所有確認一律走頁內覆蓋層。 */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.42);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.ov[hidden]{display:none!important}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px;width:100%;max-width:360px;max-height:80vh;overflow-y:auto;
+  box-shadow:0 6px 26px rgba(0,0,0,.3)}
+.dlg h4{margin:0 0 9px;font-size:14px}
+.dlg.blocked{border-color:var(--warnB)}
+.inputline{display:flex;gap:6px;align-items:stretch}
+.inputline input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:8px;padding:8px;color:var(--ink);font:inherit;font-size:14px;min-height:40px;
+  text-transform:uppercase}
+.dlgbody{font-size:12px;color:var(--sub);line-height:1.7;margin:9px 0}
+.dlgbody b{color:var(--ink)}
+.dlgbody ul{margin:5px 0 0;padding-left:18px}
+.cstat{font-size:11px;color:var(--sub);line-height:1.65;margin-top:9px;
+  font-variant-numeric:tabular-nums}
+.cstat b{color:var(--ink)}
+.cstat .on{color:var(--ok);font-weight:600}
+.cstat .off{color:var(--sub)}
+.cstat .er{color:var(--warnB);font-weight:600}
+.rw{display:flex;gap:6px;margin-top:11px}
+.rw .btn{flex:1}
+.soonrow{display:flex;align-items:center;gap:9px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:7px}
+.soonrow .k{font-size:13px;font-weight:600;flex:1;min-width:0}
+.soonrow.off{opacity:.45}
+.projsec{font-size:11.5px;color:var(--sub);letter-spacing:.05em;margin:14px 2px 6px}
+.projsec:first-child{margin-top:2px}
+.prow{display:flex;gap:6px;flex-wrap:wrap}
+.prow .btn{flex:1;min-width:96px}
+.tcount{font-size:12px;color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
+
+/* ── 底部分頁（_d §10-0c：最多 5 格，前 4 格永遠不動）── */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:520px;margin:0 auto;
   display:flex;background:var(--panel);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabbar button{flex:1;border:0;background:transparent;color:var(--sub);
+.tabbar button{flex:1;min-width:0;border:0;background:transparent;color:var(--sub);
   padding:7px 0 9px;font:inherit;font-size:11px;cursor:pointer;min-height:56px;
   display:flex;flex-direction:column;align-items:center;gap:2px}
 .tabbar button .ic{font-size:19px;line-height:1}
 .tabbar button.on{color:var(--accent);font-weight:600}
+.tabbar button.soon{color:var(--dim)}
+.tabbar button.soon .ic{opacity:.45}
 .spacer{flex:none;height:56px}
 </style>
 
 <div class="app">
 
-  <!-- 原型控制列：正式版沒有這排 -->
+  <!-- 需求 13：頂列 -->
+  <div class="apptop">
+    <div class="ttl" id="appTitle">平面圖</div>
+    <button class="pill off" id="btnCode">讀取中…</button>
+    <button class="gear" id="btnGear" title="專案">⚙️</button>
+  </div>
+
+  <!-- 原型控制列：正式版沒有這排（_i 未列入刪除清單，故保留） -->
   <div class="protobar">
     <span class="tag">手勢</span>
     <span class="seg" id="segGesture">
-      <button data-g="A1" class="on">A1 模式切換</button>
-      <button data-g="A2">A2 點選再拖</button>
+      <button data-g="A1">A1 模式切換</button>
+      <button data-g="A2" class="on">A2 點選再拖</button>
     </span>
     <label class="chk"><input type="checkbox" id="snapOn" checked> 吸附</label>
     <label class="chk"><input type="checkbox" id="gridAll"> 網格全顯</label>
@@ -350,30 +397,18 @@ body{margin:0;background:var(--bg);color:var(--ink);
 
   <div class="stage" id="stage">
     <svg id="plan"></svg>
-    <!-- 🔴 縮放入口：原本只有雙指，電腦上完全沒得放大（Ali 實測回報）。
-         補滾輪 ＋ 這組按鈕，三種入口都有。 -->
     <div class="zoombtns" id="zoombtns">
       <button id="zIn">＋</button>
       <button id="zOut">−</button>
       <button id="zFit" title="全部顯示">⤢</button>
       <span class="zlabel" id="zLabel">100%</span>
     </div>
-    <div class="list" id="listPage" hidden></div>
 
-    <!-- 📷 照片探針（v0.1.2 階段 A）-->
-    <div class="photo" id="photoPage" hidden>
-      <!-- v0.1.3：專案代碼＝把兩台裝置綁在一起的東西（不是帳號，沒有登入畫面）-->
-      <div class="cloudbar" id="cloudbar">
-        <div class="crow">
-          <input id="pcode" placeholder="專案代碼（留空＝只存這台）"
-                 autocapitalize="characters" autocomplete="off" spellcheck="false">
-          <button class="btn pri" id="btnJoin">連線</button>
-          <button class="btn" id="btnSync" hidden>🔄</button>
-          <button class="btn" id="btnLeave" hidden>離開</button>
-        </div>
-        <div class="cstat" id="cstat">讀取中…</div>
-      </div>
+    <!-- 需求 8：清單頁 -->
+    <div class="page" id="listPage" hidden></div>
 
+    <!-- 📷 照片分頁（cloudbar 已依需求 13 移出） -->
+    <div class="page" id="photoPage" hidden>
       <div class="pbtns">
         <label>📷 拍照
           <input type="file" id="fCam" accept="image/*" capture="environment">
@@ -384,28 +419,91 @@ body{margin:0;background:var(--bg);color:var(--ink);
       </div>
       <div class="pstat" id="pstat">讀取中…</div>
       <div id="plist"></div>
-      <div class="pnote">
-        ⚠️ <b>這是技術可行性探針，只放測試照片。</b><br>
-        照片存在<b>這支手機的瀏覽器裡</b>（IndexedDB），<b>沒有上傳到任何伺服器</b>。<br>
-        → 關掉重開還在；<b>換一台裝置就看不到</b>（那是階段 B 才做的事）。
+    </div>
+
+    <!-- 需求 13：專案頁（齒輪） -->
+    <div class="page" id="projPage" hidden>
+      <div class="projsec">同步</div>
+      <div class="soonrow"><div class="k">🔗 專案代碼</div>
+        <button class="btn" id="btnOpenSync">開啟</button></div>
+      <div class="projsec">整理</div>
+      <div class="prow">
+        <button class="btn" id="btnClearPlace">清擺設</button>
+        <button class="btn" id="btnClearAll">清清單</button>
       </div>
+      <div class="tcount" id="trashCount">垃圾桶 — 筆</div>
+      <div class="projsec">之後</div>
+      <div class="soonrow off"><div class="k">📦 結案封存</div></div>
+    </div>
+
+    <!-- 需求 13：估價／格局（灰化，點了只給狀態，不寫功能說明） -->
+    <div class="page" id="soonPage" hidden>
+      <div class="empty"><span class="ic" id="soonIc">💰</span><span id="soonTxt">之後</span></div>
     </div>
   </div>
+
+  <!-- 需求 8：浮動 (+)。空狀態與非空狀態是同一顆 -->
+  <button class="fab" id="fabAdd" hidden>＋</button>
+
   <div class="pinning" id="pinning" hidden>👆 點平面圖上要標記的位置（再按一次此列取消）</div>
 
-  <!-- 🔴 v0.1.2.1 B-2/B-3：全螢幕檢視層。不開新分頁（沙箱 iframe 會擋）。 -->
+  <!-- 全螢幕檢視層。不開新分頁（O-11：沙箱 iframe 會擋） -->
   <div class="viewer" id="viewer" hidden>
     <button class="vclose" id="vClose">✕ 關閉</button>
     <div class="vimg"><img id="vImg" alt=""></div>
     <div class="vbar" id="vBar">—</div>
   </div>
 
-  <!-- 選中面板 -->
+  <!-- 需求 13：同步對話框（原 .cloudbar 的三顆鈕與狀態列搬到這裡，狀態文字一字不改） -->
+  <div class="ov" id="ovSync" hidden>
+    <div class="dlg" id="syncDlg">
+      <h4>同步</h4>
+      <div class="inputline">
+        <input id="pcode" placeholder="專案代碼（留空＝只存這台）"
+               autocapitalize="characters" autocomplete="off" spellcheck="false">
+        <button class="btn pri" id="btnJoin">連線</button>
+      </div>
+      <div class="cstat" id="cstat">讀取中…</div>
+      <div class="rw">
+        <button class="btn" id="btnLeave" hidden>離開</button>
+        <button class="btn" id="btnSync" hidden>🔄 同步</button>
+        <button class="btn pri" id="btnCloseSync">關閉</button>
+      </div>
+      <div class="cstat" style="opacity:.5">登入（之後）</div>
+    </div>
+  </div>
+
+  <!-- 通用確認／輸入覆蓋層（取代 confirm()／prompt()——O-11） -->
+  <div class="ov" id="ovAsk" hidden>
+    <div class="dlg">
+      <h4 id="askTitle">確認</h4>
+      <div class="dlgbody" id="askBody"></div>
+      <div class="inputline" id="askInputLine" hidden>
+        <input id="askInput" style="text-transform:none">
+      </div>
+      <div class="rw">
+        <button class="btn" id="askNo">取消</button>
+        <button class="btn pri" id="askYes">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 需求 12：選中面板 -->
   <div class="sel" id="sel" hidden>
     <div class="selhead">
       <span class="selname" id="selName">—</span>
       <span class="selpos" id="selPos">—</span>
-      <button class="fold" id="btnFold">收合 ▾</button>
+      <button class="ib dgr" id="btnDel" title="刪除">🗑</button>
+      <span class="ibgap"></span>
+      <button class="ib" id="btnFold" title="收合">▾</button>
+    </div>
+    <div class="fields" id="selFields" hidden>
+      <div class="frow"><label><span>寬</span></label>
+        <input id="fw" type="text" inputmode="decimal"></div>
+      <div class="frow"><label><span>深</span></label>
+        <input id="fd" type="text" inputmode="decimal"></div>
+      <div class="frow"><label><span>高</span><span>cm</span></label>
+        <input id="fh" type="text" inputmode="decimal"></div>
     </div>
     <div class="selrow">
       <div class="padwrap">
@@ -417,30 +515,36 @@ body{margin:0;background:var(--bg);color:var(--ink);
         </div>
         <div class="padc" id="padc">1 cm</div>
       </div>
-      <div class="fields">
-        <div class="frow"><label>寬</label><input id="fw" type="number" inputmode="numeric"></div>
-        <div class="frow"><label>深</label><input id="fd" type="number" inputmode="numeric"></div>
-        <div class="frow"><label>高</label><input id="fh" type="number" inputmode="numeric"></div>
-        <div class="unit">cm</div>
+      <div class="grid2">
+        <div class="g3">
+          <button class="btn" id="btnRot">↻ 轉90</button>
+          <button class="btn" id="btnSize">📏 改尺寸</button>
+          <button class="btn" id="btnUnsnap">脫離牆面</button>
+        </div>
+        <div class="g2">
+          <span class="btn hold">（保留）</span>
+          <span class="btn hold">（保留）</span>
+        </div>
       </div>
     </div>
     <div class="orig" id="origBox">
       <svg width="54" height="54" viewBox="-27 -27 54 54" id="origSvg"></svg>
       <span class="t" id="origTxt"></span>
     </div>
-    <div id="warnBox"></div>
-    <div class="btnrow">
-      <button class="btn" id="btnRot">↻ 轉 90°</button>
-      <button class="btn" id="btnUnsnap">脫離牆面</button>
-      <button class="btn pri" id="btnDone">完成</button>
+    <div class="warnline">
+      <button class="w n" id="warnLine">🟢 沒有碰撞，走道也夠</button>
+      <button class="btn ok" id="btnDone">完成</button>
     </div>
   </div>
 
   <div class="spacer"></div>
+  <!-- _d §10-0c：底部最多 5 格；🔴 前 4 格（平面圖／清單／估價／照片）永遠在這個位置 -->
   <div class="tabbar">
-    <button id="tabPlan" class="on"><span class="ic">🏠</span>平面圖</button>
+    <button id="tabPlan"  class="on"><span class="ic">🏠</span>平面圖</button>
     <button id="tabList"><span class="ic">📋</span>清單</button>
+    <button id="tabCost"  class="soon"><span class="ic">💰</span>估價</button>
     <button id="tabPhoto"><span class="ic">📷</span>照片</button>
+    <button id="tabLayout" class="soon"><span class="ic">📐</span>格局</button>
   </div>
 </div>
 
@@ -451,90 +555,117 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-/* ── 假資料：一組寫死的格局。主臥必須含一面斜牆（_d 本輪範圍要求）── */
-const ROOMS = [
-  { id:'r1', name:'主臥' },
-  { id:'r2', name:'客廳' },
-];
-// 牆：一條直線段＝一道牆（_d §4-2）。斜的照樣是一道。
-const WALLS = [
-  {id:'w1', room:'r1', x1:  0,y1:  0, x2:420,y2:  0},
-  {id:'w2', room:'r1', x1:420,y1:  0, x2:420,y2:250},
-  {id:'w3', room:'r1', x1:420,y1:250, x2:150,y2:400},   // ◀ 斜牆
-  {id:'w4', room:'r1', x1:150,y1:400, x2:  0,y2:400},
-  {id:'w5', room:'r1', x1:  0,y1:400, x2:  0,y2:  0},
-  {id:'w6', room:'r2', x1:480,y1:  0, x2:900,y2:  0},
-  {id:'w7', room:'r2', x1:900,y1:  0, x2:900,y2:400},
-  {id:'w8', room:'r2', x1:900,y1:400, x2:480,y2:400},
-  {id:'w9', room:'r2', x1:480,y1:400, x2:480,y2:  0},
-];
-/* 家具：貼牆的存【相對座標】(wallId + along + offset)，不貼牆的存絕對 (_d §5-2) */
-const FURN = [
-  {id:'f1', room:'r1', name:'衣櫃',   w:120,d:45,h:180, ow:120,od:45,oh:180,
-   anchor:{type:'wall',wall:'w1',along:60, off:0}, rot:0},
-  {id:'f2', room:'r1', name:'床',     w:150,d:200,h:50, ow:150,od:200,oh:50,
-   anchor:{type:'wall',wall:'w5',along:150,off:0}, rot:0},
-  {id:'f3', room:'r1', name:'床頭櫃', w:45, d:40, h:55,  ow:45, od:40, oh:55,
-   anchor:{type:'wall',wall:'w3',along:120,off:0}, rot:25},   // ◀ 歪擺＋貼斜牆
-  {id:'f4', room:'r2', name:'電視櫃', w:180,d:40, h:50,  ow:180,od:40, oh:50,
-   anchor:{type:'wall',wall:'w6',along:120,off:0}, rot:0},
-  {id:'f5', room:'r2', name:'餐桌',   w:140,d:80, h:75,  ow:140,od:80, oh:75,
-   anchor:{type:'free',x:700,y:250}, rot:0},                  // ◀ 不貼牆
-];
+const APP_VER = 'v0.1.4';
+
+/* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
+   🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
+      換算只發生在資料層邊界（toDb/fromDb、toRow/fromRow）。 */
+let ROOMS = [];
+let WALLS = [];
+let BEAMS = [];        // 需求 1：樑。本輪【只有欄位與儲存，沒有 UI】
+let FURN  = [];
 
 /* ── 常數 ───────────────────────────────────────────────
-   _d 不可變方向 #11：人操作的精度用【螢幕距離】，房子的事實用【公分】 */
+   _d 不可變方向 #11：人操作的精度用【螢幕距離】，房子的事實用【公分】
+   ⚠️ 需求 4：這幾個全部不換算——它們是記憶體側的常數。 */
 const SNAP_PX   = 30;   // 吸附觸發：螢幕距離（不是公分！）
 const NUDGE_PX  = 3;    // 微調步進：螢幕距離
 const NUDGE_MIN = 1;    // 步進下限 1 公分（Ali：1 公分是極限）
 const DRAG_PX   = 4;    // 點/拖判定門檻（技法筆記 §2）
 const CLEAR_CM  = 60;   // 走道淨空預設值（_d §5-6，必須顯示在畫面上）
+const GRAB_PAD_PX = 14; // 選中家具的命中緩衝（螢幕距離）
+
+/* 需求 8：房間色盤（系統自動配，本輪不讓使用者選）。色盤用完循環使用。 */
+const ROOM_PALETTE = ['#3a6ea5','#4a8f5e','#c98a2e','#8e5ba6','#2f8f8f','#b0553f'];
 
 const S = { gesture:'A2', mode:'obj', snap:true, gridAll:false,
             selId:null, zoom:1, panX:0, panY:0, tab:'plan',
             dragging:null, snapCand:null,
-            pinPhoto:null };   // v0.1.2：正在等使用者點平面圖放標記的那張照片
-// ⚠️ 預設手勢改成 A2（_d §10-1 已定案；A1 開關保留為比較用，不再是預設）
+            pinPhoto:null,
+            sizeOpen:false,        // 需求 12：尺寸欄展開中？
+            warnOpen:false,        // 需求 12：警示展開全部？
+            /* 需求 8 §3-2 ＋ v0.05_i §4（修四）：卡片內的展開列在哪一筆。
+               🔴 房間下拉與備註共用【同一個】展開狀態，不做兩個獨立展開。
+               expandCause：'chip'（點〔已擺〕而 room=null 進來）／'manual'（點 ▾ 進來）
+               —— 兩者對「選未指定」的處理不同，見 itemCard()。 */
+            expandId:null, expandCause:null,
+            dataErr:'' };          // 需求 15：pull 失敗時的錯誤（不可用種子蓋掉）
 
 const svg = document.getElementById('plan');
 const NS  = 'http://www.w3.org/2000/svg';
 const el  = (t,a)=>{const n=document.createElementNS(NS,t);
   for(const k in a) n.setAttribute(k,a[k]); return n;};
 const $ = id=>document.getElementById(id);
+const esc = s=>String(s==null?'':s).replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-/* ── 幾何 helpers ────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   幾何 helpers
+   ⚠️ 需求 4 N-8：這一段的【本體】不准因為單位改變而改邏輯。
+      本版只加了 null 尺寸與缺牆的守衛（需求 7／需求 9），沒有動運算。
+   ══════════════════════════════════════════════════════════════ */
 const wallById = id => WALLS.find(w=>w.id===id);
 function wallAngle(w){ return Math.atan2(w.y2-w.y1, w.x2-w.x1); }
 function wallLen(w){ return Math.hypot(w.x2-w.x1, w.y2-w.y1); }
-// 牆的內側法線：指向房間中心那一側
-function wallNormal(w){
-  const a=wallAngle(w), nx=Math.sin(a), ny=-Math.cos(a);
-  const c=roomCenter(w.room), mx=(w.x1+w.x2)/2, my=(w.y1+w.y2)/2;
-  return ((c.x-mx)*nx+(c.y-my)*ny) >= 0 ? {x:nx,y:ny} : {x:-nx,y:-ny};
-}
+
+/* 需求 9：房間不一定有牆（開放式廚房／打通）→ 沒有牆就回 null，不回 NaN */
 function roomCenter(rid){
   const ws=WALLS.filter(w=>w.room===rid);
+  if(!ws.length) return null;
   let sx=0,sy=0; ws.forEach(w=>{sx+=w.x1;sy+=w.y1;});
   return {x:sx/ws.length, y:sy/ws.length};
 }
-/* 🔴 v0.01.1：貼牆家具「離牆多遠」不能寫死用 深/2 ——
-   自訂旋轉 90° 後，貼著牆的那一邊變成【寬】。
+/* 🔴 房間底的多邊形要靠【牆首尾相接】排出來，不可直接用陣列順序。
+   ⚠️ 這是本版換掉假資料後才出現的：v0.1.3.1 的 WALLS 是寫死的 const，順序就是幾何順序；
+      現在 WALLS 來自 IndexedDB.getAll()，順序是 UUID 順序（隨機）
+      ⇒ 直接連起點會畫出【自交】的多邊形（畫面上是幾塊白色三角）。
+   做法：從任一道牆出發，用端點配對往下接。接不完就畫接到的那一段（>=3 點才畫）。 */
+function roomRing(rid){
+  const ws=WALLS.filter(w=>w.room===rid);
+  if(ws.length<3) return null;
+  const k=(x,y)=>Math.round(x*10)+','+Math.round(y*10);
+  const used=new Set([ws[0].id]);
+  const pts=[{x:ws[0].x1,y:ws[0].y1},{x:ws[0].x2,y:ws[0].y2}];
+  for(let i=1;i<ws.length;i++){
+    const tail=pts[pts.length-1], tk=k(tail.x,tail.y);
+    const nx=ws.find(w=>!used.has(w.id) && (k(w.x1,w.y1)===tk || k(w.x2,w.y2)===tk));
+    if(!nx) break;
+    used.add(nx.id);
+    pts.push(k(nx.x1,nx.y1)===tk ? {x:nx.x2,y:nx.y2} : {x:nx.x1,y:nx.y1});
+  }
+  if(pts.length>3 && k(pts[0].x,pts[0].y)===k(pts[pts.length-1].x,pts[pts.length-1].y)) pts.pop();
+  return pts.length>=3 ? pts : null;
+}
+// 牆的內側法線：指向房間中心那一側
+function wallNormal(w){
+  const a=wallAngle(w), nx=Math.sin(a), ny=-Math.cos(a);
+  const c=roomCenter(w.room);
+  if(!c) return {x:nx,y:ny};                   // 需求 9：沒有中心可比 → 取任一側，不 NaN
+  const mx=(w.x1+w.x2)/2, my=(w.y1+w.y2)/2;
+  return ((c.x-mx)*nx+(c.y-my)*ny) >= 0 ? {x:nx,y:ny} : {x:-nx,y:-ny};
+}
+/* 🔴 貼牆家具「離牆多遠」不能寫死用 深/2 —— 自訂旋轉 90° 後，貼著牆的那一邊變成【寬】。
    正解＝旋轉後的實際垂直半徑：|寬/2·sin| + |深/2·cos|
-   （0° 得 深/2、90° 得 寬/2、任意角度也對）
-   ⚠️ 原本寫死 f.d/2 → 轉 90° 家具會嵌進牆裡。Ali 實測回報「不一定想長邊靠牆」時發現。 */
+   ⚠️ 需求 7：尺寸未填（null）時這裡會拿到 null → 回 0，不產生 NaN。 */
 function perpHalf(f){
-  const t=f.rot*Math.PI/180;
+  if(f.w==null || f.d==null) return 0;
+  const t=(f.rot||0)*Math.PI/180;
   return Math.abs(f.w/2*Math.sin(t)) + Math.abs(f.d/2*Math.cos(t));
 }
 /* 世界座標＋角度：貼牆的由「牆＋偏移」算出來（_d §5-2 真相唯一） */
 function place(f){
-  if(f.anchor.type==='free')
-    return {x:f.anchor.x, y:f.anchor.y, ang:f.rot*Math.PI/180, wall:null};
-  const w=wallById(f.anchor.wall), a=wallAngle(w), n=wallNormal(w);
+  const a0=f.anchor||{type:'free',x:0,y:0};
+  if(a0.type==='free')
+    return {x:a0.x??0, y:a0.y??0, ang:(f.rot||0)*Math.PI/180, wall:null};
+  const w=wallById(a0.wall);
+  /* 🔴 需求 9：牆不見了也不炸。⚠️ 這是防呆不是正解——
+     正解是需求 6 的 anchor 重設（刪房間時就地轉絕對座標）。兩層都要。 */
+  if(!w) return {x:a0.x??0, y:a0.y??0, ang:(f.rot||0)*Math.PI/180, wall:null};
+  const a=wallAngle(w), n=wallNormal(w);
   const ux=Math.cos(a), uy=Math.sin(a);
-  const bx=w.x1+ux*f.anchor.along, by=w.y1+uy*f.anchor.along;
-  const dep=perpHalf(f) + (f.anchor.off||0);
-  return {x:bx+n.x*dep, y:by+n.y*dep, ang:a+f.rot*Math.PI/180, wall:w};
+  const bx=w.x1+ux*(a0.along||0), by=w.y1+uy*(a0.along||0);
+  const dep=perpHalf(f) + (a0.off||0);
+  return {x:bx+n.x*dep, y:by+n.y*dep, ang:a+(f.rot||0)*Math.PI/180, wall:w};
 }
 /* 旋轉矩形的四角 */
 function corners(cx,cy,w,d,ang,grow){
@@ -557,13 +688,7 @@ function overlap(A,B){
   }
   return true;
 }
-/* 🔴 v0.01.2：拖曳中的「當下位置」。
-   Ali 實測：「手指頭拖曳移動的時候，能夠長方形的跟著移動軌跡，不然會覺得怎麼不動」
-   ⚠️ 原本 render() 一律讀 place(f)＝從 anchor 算出來的位置，
-      而 anchor 要到放開手（commitMove）才更新
-      → 拖曳全程家具【完全不動】，畫面上唯一會動的只有吸附幽靈。
-   → 改成：正在拖的那件用手指當下的位置畫，其餘照舊。
-   ⭐ 一併讓碰撞與走道網格【拖曳中即時重算】（對應測試項 E-3）。 */
+/* 拖曳中的「當下位置」——正在拖的那件用手指當下的位置畫，其餘照舊（O-7） */
 function liveP(f){
   if(S.dragging && S.dragging.f.id===f.id)
     return {x:S.dragging.gx, y:S.dragging.gy, ang:S.dragging.ang, wall:null};
@@ -571,15 +696,21 @@ function liveP(f){
 }
 function boxOf(f,grow){ const p=liveP(f);
   return corners(p.x,p.y,f.w,f.d,p.ang,grow); }
-/* 斜擺＝角度不是 90 度倍數（_d §5-4：碰撞偏保守，僅供參考） */
+/* 斜擺＝角度不是 90 度倍數 */
 function isSkew(f){ const p=place(f);
   const deg=((p.ang*180/Math.PI)%90+90)%90;
   return Math.min(deg,90-deg) > 1.5;
 }
+/* 需求 7：尺寸未填的物件【不參與碰撞】 */
+const hasSize = f => f && f.w!=null && f.d!=null;
+/* 需求 8：會出現在平面圖上的家具＝有房間 ＋ 已擺 ＋ 有尺寸 */
+const onPlan  = f => hasSize(f) && f.isPlaced && f.room;
 function collisions(f){
   const hit=[], near=[];
+  if(!hasSize(f)) return {hit,near};
   const A=boxOf(f,0), Ac=boxOf(f,CLEAR_CM/2);
   FURN.forEach(g=>{ if(g.id===f.id||g.room!==f.room) return;
+    if(!onPlan(g)) return;
     if(overlap(A,boxOf(g,0))) hit.push(g);
     else if(overlap(Ac,boxOf(g,CLEAR_CM/2))) near.push(g);
   });
@@ -598,13 +729,120 @@ const s2w = (x,y)=>({x:(x-S.panX)/S.zoom, y:(y-S.panY)/S.zoom});
 const snapCm  = ()=> SNAP_PX/S.zoom;
 const nudgeCm = ()=> Math.max(NUDGE_MIN, Math.round(NUDGE_PX/S.zoom));
 
+/* 需求 8／需求 11：房間色。
+   🔴 v0.05_i §3（修三）：依【createdAt（建立順序）】排序取色，不是陣列順序。
+      ⚠️ 原因：WALLS/ROOMS 來自 IndexedDB.getAll()，順序是 UUID 順序（隨機），
+         「陣列順序」跨裝置一致但【不是建立順序】⇒ 新增房間 UI 一落地就會顯形。
+   邊界：
+     · 舊資料沒有 createdAt → localeCompare 讓空字串排最前面（它們本來就是最早的）。
+       🔴 不補寫假的 createdAt（obs O-13）。
+     · createdAt 完全相同 → 用 id 當第二順位，保證兩台裝置排出同一個順序。
+     · 🔴 排序用的是 ROOMS_ALL（**含軟刪除的墓碑**），不是只有活的。
+       依據＝v0.05_i §3 自己的兩條驗收：
+         N-93「刪中間那一間 → 另外兩間的顏色【不變】（不是重新編號）」
+         邊界「房間被刪（軟刪）再還原 → 順序不變 ⇒ 顏色不會跳」
+       ⚠️ 兩條都只有在【墓碑仍然佔著它的名次】時才成立。
+       （v0.05_i §3 貼的 pseudocode 寫 `ROOMS.filter(r=>!r.deletedAt)`，
+         那會重新編號、與它自己的 N-93 相反 ⇒ 已回報，碼取 N-93 那一邊。）
+   ⚠️ room 為 null → 中性灰，與清單「未擺放」分組同一個灰。 */
+let ROOMS_ALL = [];        // 含墓碑，只給 roomOrder() 用
+function roomOrder(){
+  return ROOMS_ALL.slice().sort((a,b)=>{
+    const c=String(a.createdAt||'').localeCompare(String(b.createdAt||''));
+    return c!==0 ? c : String(a.id).localeCompare(String(b.id));
+  });
+}
+function roomColor(roomId){
+  if(!roomId) return 'var(--dim)';
+  const i=roomOrder().findIndex(r=>r.id===roomId);
+  if(i<0) return 'var(--dim)';
+  return ROOM_PALETTE[i % ROOM_PALETTE.length];
+}
+function roomName(roomId){
+  const r=ROOMS.find(x=>x.id===roomId);
+  return r ? (r.name||'未命名') : '未指定房間';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   需求 14｜比例尺：拆成兩個元件
+   ① 走道寬度示意帶（既有，保留）——標籤指的是【厚度】
+   ② 長度比例尺（🆕）——長度由當前 zoom 實算
+   🔴 O-9：「標示」與「比例尺」是兩種東西。不可共用標籤。
+   ══════════════════════════════════════════════════════════════ */
+let _scaleCm = null;                    // 需求 14：遲滯用，記住上一次回傳的候選
+function niceScaleCm(zoom){             // zoom = 每公分幾個螢幕 px
+  const CAND=[10,20,50,100,200,500];
+  const TARGET=90;                      // 目標螢幕長度（60~120 的中點）
+  /* 🔴 遲滯：上一次的候選若仍落在 50~140px（比 60~120 寬的容忍帶）就沿用，
+     一次縮放手勢裡最多換一次，不會在兩個候選之間來回跳。 */
+  if(_scaleCm!=null){
+    const px=_scaleCm*zoom;
+    if(px>=50 && px<=140) return _scaleCm;
+  }
+  let best=CAND[0], bestErr=Infinity;
+  for(const c of CAND){
+    const err=Math.abs(c*zoom-TARGET);
+    if(err<bestErr){ bestErr=err; best=c; }
+  }
+  _scaleCm=best;
+  return best;
+}
+function dataLeft(){ let x=null; WALLS.forEach(w=>{
+    x = x==null ? Math.min(w.x1,w.x2) : Math.min(x,w.x1,w.x2); }); return x==null?0:x; }
+function dataBottom(){ let y=null; WALLS.forEach(w=>{
+    y = y==null ? Math.max(w.y1,w.y2) : Math.max(y,w.y1,w.y2); }); return y==null?300:y; }
+const barY = ()=> dataBottom()+80;      // 示意帶（上）
+const scaleY = ()=> barY()+58;          // 長度比例尺（下）
+
+/* ① 走道寬度示意帶。標籤 ＋ 一條指向厚度方向的細引線。 */
+function corridorHint(g){
+  const bx=dataLeft(), by=barY();
+  const grp=el('g',{'pointer-events':'none'});
+  grp.appendChild(el('rect',{x:bx,y:by-CLEAR_CM/2,width:150,height:CLEAR_CM,
+    fill:'url(#clr)',color:'var(--sub)',stroke:'var(--line)','stroke-width':1.5}));
+  // 人形（肩軸橫跨通道）：肩寬 45、身厚 18、頭直徑 18（真實公分）
+  const person=el('g',{transform:`translate(${bx+75},${by})`,opacity:.95});
+  person.appendChild(el('ellipse',{cx:0,cy:0,rx:9,ry:22.5,
+    fill:'var(--accent)','fill-opacity':.30,stroke:'var(--accent)','stroke-width':2}));
+  person.appendChild(el('circle',{cx:0,cy:0,r:9,
+    fill:'var(--accent)','fill-opacity':.55,stroke:'var(--accent)','stroke-width':2}));
+  grp.appendChild(person);
+  /* 🔴 需求 14：引線必須指向【厚度】方向（垂直），不可讓人讀成長度 */
+  const lx=bx+150+14;
+  grp.appendChild(el('line',{x1:lx,y1:by-CLEAR_CM/2,x2:lx,y2:by+CLEAR_CM/2,
+    stroke:'var(--sub)','stroke-width':1.6}));
+  grp.appendChild(el('line',{x1:lx-5,y1:by-CLEAR_CM/2,x2:lx+5,y2:by-CLEAR_CM/2,
+    stroke:'var(--sub)','stroke-width':1.6}));
+  grp.appendChild(el('line',{x1:lx-5,y1:by+CLEAR_CM/2,x2:lx+5,y2:by+CLEAR_CM/2,
+    stroke:'var(--sub)','stroke-width':1.6}));
+  const t1=el('text',{x:lx+10,y:by+6,fill:'var(--sub)','font-size':17});
+  t1.textContent=`👤 走道寬 ${CLEAR_CM} 公分`;      // ← 指【厚度】（狀態，必留）
+  grp.appendChild(t1);
+  g.appendChild(grp);
+}
+/* ② 長度比例尺：一條水平線 ＋ 兩端刻度，長度由 zoom 實算。 */
+function lengthScale(g){
+  const cm=niceScaleCm(S.zoom);
+  const bx=dataLeft(), by=scaleY();
+  const grp=el('g',{'pointer-events':'none'});
+  grp.appendChild(el('line',{x1:bx,y1:by,x2:bx+cm,y2:by,
+    stroke:'var(--ink)','stroke-width':2.4}));
+  grp.appendChild(el('line',{x1:bx,y1:by-9,x2:bx,y2:by+9,
+    stroke:'var(--ink)','stroke-width':2.4}));
+  grp.appendChild(el('line',{x1:bx+cm,y1:by-9,x2:bx+cm,y2:by+9,
+    stroke:'var(--ink)','stroke-width':2.4}));
+  const t=el('text',{x:bx+cm+14,y:by+6,fill:'var(--ink)','font-size':17});
+  t.textContent=`${cm} cm`;                          // ← 自己的標籤，不與示意帶共用
+  grp.appendChild(t);
+  g.appendChild(grp);
+}
+
 /* ══════════════════════════════════════════════════════════════
    繪圖
    ══════════════════════════════════════════════════════════════ */
 function render(){
   while(svg.firstChild) svg.removeChild(svg.firstChild);
   const defs=el('defs');
-  // 走道網格的斜線 pattern（四層視覺之一，BP-E1）
   const pat=el('pattern',{id:'clr',width:7,height:7,patternUnits:'userSpaceOnUse',
     patternTransform:'rotate(45)'});
   pat.appendChild(el('rect',{width:7,height:7,fill:'transparent'}));
@@ -618,24 +856,28 @@ function render(){
 
   // 房間底
   ROOMS.forEach(r=>{
-    const ws=WALLS.filter(w=>w.room===r.id);
-    const pts=ws.map(w=>`${w.x1},${w.y1}`).join(' ');
-    g.appendChild(el('polygon',{points:pts,
-      fill:'var(--panel)',stroke:'none',opacity:.85}));
     const c=roomCenter(r.id);
+    /* 需求 9：roomCenter 回 null（沒有牆）→ polygon 與房間名都不畫，不是畫在 NaN */
+    if(!c) return;
+    const ring=roomRing(r.id);
+    if(ring){
+      g.appendChild(el('polygon',{points:ring.map(p=>`${p.x},${p.y}`).join(' '),
+        fill:'var(--panel)',stroke:'none',opacity:.85}));
+    }
     const t=el('text',{x:c.x,y:c.y-140,'text-anchor':'middle',
-      fill:'var(--sub)','font-size':22,opacity:.55}); t.textContent=r.name;
+      fill:'var(--sub)','font-size':22,opacity:.55}); t.textContent=r.name||'未命名';
     g.appendChild(t);
   });
-  // 牆（選中家具所依附的那道要高亮 → BP-D1 讓箭頭歪掉有解釋）
+  // 牆（選中家具所依附的那道要高亮）
   const litWall = sel ? place(sel).wall : null;
   WALLS.forEach(w=>{
     const on = litWall && litWall.id===w.id;
     g.appendChild(el('line',{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,
       stroke: on?'var(--accent)':'var(--wall)',
-      'stroke-width': on?11:7,'stroke-linecap':'square'}));
+      'stroke-width': on?11:7,'stroke-linecap':'square',
+      'stroke-dasharray': w.state==='proposed' ? '18 10' : 'none'}));
   });
-  // 吸附預示：目標牆 ＋ 虛線幽靈（BP-B1，本輪最關鍵的一個補強）
+  // 吸附預示：目標牆 ＋ 虛線幽靈
   if(S.snapCand){
     const c=S.snapCand;
     g.appendChild(el('line',{x1:c.wall.x1,y1:c.wall.y1,x2:c.wall.x2,y2:c.wall.y2,
@@ -645,8 +887,9 @@ function render(){
       fill:'none',stroke:'var(--ghost)','stroke-width':3,
       'stroke-dasharray':'10 7'}));
   }
-  // 走道網格（常駐視覺，_d §5-6 方向 #7）— v0.01.2：改用 liveP，拖曳中即時跟著手指
+  // 走道網格（常駐視覺，_d §5-6 方向 #7）
   FURN.forEach(f=>{
+    if(!onPlan(f)) return;
     const isDrag = S.dragging && S.dragging.f.id===f.id;
     if(!S.gridAll && !isDrag && (!sel || sel.id!==f.id)) return;
     const p=liveP(f), pts=corners(p.x,p.y,f.w,f.d,p.ang,CLEAR_CM/2);
@@ -656,52 +899,39 @@ function render(){
       stroke: n.near.length?'var(--warnA)':'var(--line)',
       'stroke-width':2,'stroke-dasharray':'8 6', opacity:.9}));
   });
-  /* 🔴 v0.01.2｜人形比例尺：改成【固定不動】的比例尺
-     v0.01.1 是掛在選中家具的走道圈外緣 → 每選一件就換位置。
-     Ali 實測：「人形直接在空間裡面不要再變動位置了」
-     → 改成像地圖的比例尺：固定放在平面圖下方，永遠在同一個地方、隨縮放一起放大縮小。
-     尺寸用真實比例：肩寬 45、身厚 18、頭直徑 18（單位公分）。 */
-  (function scaleBar(){
-    const bx=40, by=478;                         // 房間佔 y 0..400，比例尺放下方
-    const grp=el('g',{'pointer-events':'none'});
-    // 60 公分的通道帶（兩段 30，中間一條分界線 → 直接畫出「一半」這件事）
-    grp.appendChild(el('rect',{x:bx,y:by-CLEAR_CM/2,width:150,height:CLEAR_CM,
-      fill:'url(#clr)',color:'var(--sub)',stroke:'var(--line)','stroke-width':1.5}));
-    grp.appendChild(el('line',{x1:bx,y1:by,x2:bx+150,y2:by,
-      stroke:'var(--sub)','stroke-width':1.5,'stroke-dasharray':'7 5',opacity:.8}));
-    // 人形（肩軸橫跨通道）
-    const person=el('g',{transform:`translate(${bx+75},${by})`,opacity:.95});
-    person.appendChild(el('ellipse',{cx:0,cy:0,rx:9,ry:22.5,
-      fill:'var(--accent)','fill-opacity':.30,stroke:'var(--accent)','stroke-width':2}));
-    person.appendChild(el('circle',{cx:0,cy:0,r:9,
-      fill:'var(--accent)','fill-opacity':.55,stroke:'var(--accent)','stroke-width':2}));
-    grp.appendChild(person);
-    const t1=el('text',{x:bx+165,y:by-8,fill:'var(--sub)','font-size':17});
-    t1.textContent=`👤 走道 ${CLEAR_CM} 公分`; grp.appendChild(t1);
-    const t2=el('text',{x:bx+165,y:by+14,fill:'var(--sub)','font-size':14,opacity:.85});
-    t2.textContent=`＝斜線圈 ${CLEAR_CM/2} ＋ 對面讓 ${CLEAR_CM/2}`; grp.appendChild(t2);
-    g.appendChild(grp);
-  })();
-  // 家具（四層視覺的第 1、4 層）— v0.01.2：改用 liveP，拖曳中跟著手指走
+
+  // 需求 14：兩個元件——示意帶在上、比例尺在下
+  corridorHint(g);
+  lengthScale(g);
+
+  /* ── 家具 ──
+     🔴 需求 11（v0.04_i §4）三個視覺通道，取代原本的優先權表：
+        填色     ← 自訂色（color 為 null 用系統預設）。唯一例外：撞到 → 紅
+        外框顏色 ← 所屬房間的顏色。唯一例外：走道不足 → 橙
+        外框粗細 ← 選中：2px → 4px（🔴 只改粗細，不改顏色） */
   FURN.forEach(f=>{
+    if(!onPlan(f)) return;
     const p=liveP(f), pts=corners(p.x,p.y,f.w,f.d,p.ang,0);
     const n=collisions(f), on=sel&&sel.id===f.id;
     const isDrag = S.dragging && S.dragging.f.id===f.id;
+    const fillCol   = n.hit.length ? 'var(--warnB)' : (f.color || 'var(--furn)');
+    const strokeCol = n.near.length? 'var(--warnA)' : roomColor(f.room);
+    const strokeW   = on ? 4 : 2;
     g.appendChild(el('polygon',{points:pts.map(q=>`${q.x},${q.y}`).join(' '),
-      fill: n.hit.length?'var(--warnB)':(on?'var(--furnSel)':'var(--furn)'),
+      fill: fillCol,
       'fill-opacity': n.hit.length?.55:(isDrag?.75:(on?.92:.8)),
-      stroke: n.hit.length?'var(--warnB)':(on?'var(--furnSel)':'var(--wall)'),
-      'stroke-width': n.hit.length?5:(on?4:2),
+      stroke: strokeCol,
+      'stroke-width': strokeW,
       'data-f':f.id}));
     if(isDrag){   // 拖曳中額外給一個「浮起來」的外框，讓「它正在被拖」看得出來
       g.appendChild(el('polygon',{points:pts.map(q=>`${q.x},${q.y}`).join(' '),
         fill:'none',stroke:'var(--furnSel)','stroke-width':6,opacity:.45}));
     }
     const t=el('text',{x:p.x,y:p.y+6,'text-anchor':'middle',
-      fill: on?'#fff':'var(--ink)','font-size':17,'pointer-events':'none'});
-    t.textContent=f.name; g.appendChild(t);
+      fill:'var(--ink)','font-size':17,'pointer-events':'none'});
+    t.textContent=f.name||'未命名'; g.appendChild(t);
   });
-  // v0.1.2：照片標記（_d §8-1 Marker）
+  // 照片標記（_d §8-1 Marker）
   MARKERS.forEach(m=>{
     const gm=el('g',{transform:`translate(${m.x},${m.y})`,'data-mk':m.id,style:'cursor:pointer'});
     gm.appendChild(el('circle',{cx:0,cy:0,r:17,fill:'var(--warnA)','fill-opacity':.92,
@@ -710,6 +940,24 @@ function render(){
     tt.textContent='📷'; gm.appendChild(tt);
     g.appendChild(gm);
   });
+
+  /* 需求 5：種子提示。依 _d §10-0b 這句是【功能說明】
+     ⇒ 只留到使用者建了第一件東西為止，之後不再顯示。 */
+  if(isSeedPristine()){
+    const c=roomCenter(ROOMS[0].id);
+    if(c){
+      const t=el('text',{x:c.x,y:c.y,'text-anchor':'middle',
+        fill:'var(--sub)','font-size':16,opacity:.8});
+      t.textContent='這是範例。到 ⚙️ 按〔清清單〕重來，或直接改它';
+      g.appendChild(t);
+    }
+  }
+  /* 需求 15：pull 失敗必須看得到（不可被「本機全空」蓋成一個空專案） */
+  if(S.dataErr){
+    const t=el('text',{x:dataLeft(),y:barY()-110,fill:'var(--warnB)','font-size':18});
+    t.textContent='⚠️ '+S.dataErr;
+    g.appendChild(t);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -718,17 +966,13 @@ function render(){
 const pts=new Map();
 let startPt=null, moved=false, pinch0=null, hitId=null;
 
-/* 🔴 v0.01.1：選中的家具，命中範圍往外擴。
-   Ali 實測：「家具高亮的時候，拖它附近的空白處，我以為是動家具」
-   → 「選中」在使用者心中不只是變色，是【這件現在歸我控】，
-      所以手指落在它旁邊一點點，預期仍然是動它。
-   → 用螢幕距離定義緩衝（不可變方向 #11：手指的精度是螢幕的事）。 */
-const GRAB_PAD_PX = 14;
 function furnAt(sx,sy){
   const p=s2w(sx,sy);
   const pad = GRAB_PAD_PX/S.zoom;               // 螢幕 14px 換算成公分
   for(let i=FURN.length-1;i>=0;i--){
-    const f=FURN[i], q=place(f);
+    const f=FURN[i];
+    if(!onPlan(f)) continue;
+    const q=place(f);
     const m = (f.id===S.selId) ? pad : 0;       // 只有選中的才有緩衝
     const c=Math.cos(-q.ang), s=Math.sin(-q.ang);
     const dx=p.x-q.x, dy=p.y-q.y;
@@ -739,6 +983,7 @@ function furnAt(sx,sy){
 }
 function canDragFurn(f){
   if(!f) return false;
+  if(!hasSize(f)) return false;        // 🔴 需求 7：尺寸未填不可拖（點選仍可，供編輯）
   if(S.gesture==='A1') return S.mode==='obj';
   return S.selId===f.id;               // A2：要先選中才拖得動
 }
@@ -786,10 +1031,6 @@ svg.addEventListener('pointermove',e=>{
     S.dragging.gy=p.y+S.dragging.oy;
     previewMove(); render(); syncSel();
   }else if(S.gesture==='A1' && S.mode==='obj'){
-    /* 🔴 v0.01.1：A1「移動家具」模式下拖空白處，原本會【偷偷去平移畫面】。
-       那直接違背模式的語意——模式的意義就是「現在拖曳的對象是誰」。
-       Ali 實測：「我以為是動家具，卻是移動畫面」。
-       改成：什麼都不做，但給提示，免得以為當機。 */
     nudgeHint('這裡是空白處。要移動畫面請先切到「✋ 移動畫面」');
   }else{
     S.panX=startPt.panX+dx; S.panY=startPt.panY+dy; render();
@@ -806,18 +1047,17 @@ function nudgeHint(msg){
 function endPointer(e){
   pts.delete(e.pointerId);
   if(pts.size<2) pinch0=null;
-  /* ⚠️ 只處理「開始這一筆的那根手指」抬起。
-     否則漏收一次 pointerup（手機常見：瀏覽器搶手勢、手指滑出邊界、通知蓋掉）
-     會用上一次留下的 startPt/hitId 去做選取 → 「點一下選到上次那個東西」。 */
+  /* ⚠️ O-2：只處理「開始這一筆的那根手指」抬起。
+     否則漏收一次 pointerup 會用上一次留下的 startPt/hitId 去做選取。 */
   const mine = startPt && startPt.id===e.pointerId;
   if(S.dragging && moved){ commitMove(); }
   else if(!moved && mine){
     const r2=svg.getBoundingClientRect();
     const wp=s2w(e.clientX-r2.left, e.clientY-r2.top);
-    if(S.pinPhoto){ dropMarker(wp.x, wp.y); }        // v0.1.2：標記模式，點哪放哪
+    if(S.pinPhoto){ dropMarker(wp.x, wp.y); }
     else {
       const hitM=MARKERS.find(m=>Math.hypot(wp.x-m.x, wp.y-m.y) <= 17+8/S.zoom);
-      if(hitM){ showMarker(hitM); }                  // 點標記＝看照片
+      if(hitM){ showMarker(hitM); }
       else{
         const f=hitId?FURN.find(x=>x.id===hitId):null;
         select(f?f.id:null);                         // 輕點＝選取 / 點空白＝取消
@@ -836,14 +1076,11 @@ svg.addEventListener('lostpointercapture',e=>{      // 擷取被搶走＝那根�
   if(startPt && startPt.id===e.pointerId){ startPt=null; hitId=null; S.dragging=null; }
 });
 
-/* 🔴 v0.01.2：吸附後的朝向。
-   目前是正交擺放 → 在「平行新牆／垂直新牆」四個候選中，選最接近【目前絕對朝向】的
-                     → 既對齊牆，又不會翻面（Ali：不然畫面一直跳）
-   刻意斜擺（非 90 倍數）→ 完全保持絕對朝向，不去動它 */
+/* 吸附後的朝向（O-8：自動對齊只能對齊使用者沒有表態的維度） */
 function snapRot(absAng, wallAng, curRot){
   let rel=(absAng-wallAng)*180/Math.PI;
   rel=((rel%360)+360)%360;
-  const ortho = Math.abs(((curRot%90)+90)%90) < 0.5;
+  const ortho = Math.abs((((curRot||0)%90)+90)%90) < 0.5;
   return ortho ? (Math.round(rel/90)%4)*90 : rel;
 }
 /* 拖曳中：找吸附候選並產生預示（不當場跳貼，維持跟手）*/
@@ -851,8 +1088,9 @@ function previewMove(){
   S.snapCand=null;
   if(!S.snap||!S.dragging) return;
   const {f,gx,gy}=S.dragging;
+  if(!hasSize(f)) return;
   let best=null;
-  const ph=perpHalf(f);                       // v0.01.1：考慮自訂旋轉
+  const ph=perpHalf(f);
   WALLS.filter(w=>w.room===f.room).forEach(w=>{
     const {d,t}=distSeg(gx,gy,w);
     const gap=d-ph;
@@ -863,7 +1101,6 @@ function previewMove(){
   const w=best.w, a=wallAngle(w), n=wallNormal(w);
   const along=Math.max(f.w/2, Math.min(wallLen(w)-f.w/2, best.t*wallLen(w)));
   const bx=w.x1+Math.cos(a)*along, by=w.y1+Math.sin(a)*along;
-  // v0.01.2：幽靈要用「吸附後真正的朝向」畫，否則預示與結果不一致
   const nr=snapRot(S.dragging.ang, a, f.rot);
   S.snapCand={f, wall:w, along,
     gx:bx+n.x*ph, gy:by+n.y*ph, gang:a+nr*Math.PI/180};
@@ -871,26 +1108,41 @@ function previewMove(){
 function commitMove(){
   const {f,gx,gy,ang}=S.dragging;
   if(S.snapCand && S.snapCand.f.id===f.id){
-    /* 🔴 v0.01.2：吸附【不可以順手把家具轉正】。
-       Ali 實測：「餐桌長邊垂直某個牆面，去吸附另一個牆面時，
-                  長邊要維持和本來的牆面垂直，不然會覺得畫面一直跳」
-       原本：rot 保持不變、base 換成新牆角度 → 絕對朝向整個跳掉。
-       改成：以【目前的絕對朝向】為準，反算 rot。
-         ├─ 目前是正交擺放（rot 為 90 倍數）→ 在「平行新牆」與「垂直新牆」兩個候選中
-         │   選【最接近目前絕對朝向】的那個 → 既對齊牆、又不會翻面
-         └─ 刻意斜擺（非 90 倍數）→ 完全保持絕對朝向，不動它 */
+    /* 🔴 吸附【不可以順手把家具轉正】（O-8）。以目前的絕對朝向為準反算 rot。 */
     f.rot = snapRot(ang, wallAngle(S.snapCand.wall), f.rot);
     f.anchor={type:'wall', wall:S.snapCand.wall.id, along:S.snapCand.along, off:0};
   }else{
     f.anchor={type:'free', x:gx, y:gy};      // 錨點切換＝依附身分改變（_d §5-2）
     f.rot=((ang*180/Math.PI)%360+360)%360;   // 脫離牆面時同樣保持絕對朝向
   }
+  /* 🔴 需求 4：7 處「直接 in-place 改值」一律改成「改記憶體 → 呼叫 saveItem()」 */
+  saveItem(f).catch(e=>cloudErr(e));
 }
 
 /* ══════════════════════════════════════════════════════════════
-   選中面板 / 微調 / 尺寸
+   需求 12｜選中面板（重排）
    ══════════════════════════════════════════════════════════════ */
-function select(id){ S.selId=id; }
+function select(id){
+  S.selId=id;
+  S.sizeOpen=false; S.warnOpen=false;
+  $('sel').classList.remove('szopen');
+}
+
+/* 需求 12：撞到多件 → 截斷成「🔴 撞到：沙發 +2」；點警示展開全部 */
+function warnSummary(n){
+  if(n.hit.length){
+    const names=n.hit.map(x=>x.name||'未命名');
+    if(S.warnOpen || names.length===1) return {cls:'c', txt:`🔴 撞到：${names.join('、')}`};
+    return {cls:'c', txt:`🔴 撞到：${names[0]} +${names.length-1}`};
+  }
+  if(n.near.length){
+    const names=n.near.map(x=>x.name||'未命名');
+    if(S.warnOpen || names.length===1)
+      return {cls:'w', txt:`🟠 走道不足：與 ${names.join('、')} 之間不到 ${CLEAR_CM} 公分`};
+    return {cls:'w', txt:`🟠 走道不足：與 ${names[0]} +${names.length-1} 不到 ${CLEAR_CM} 公分`};
+  }
+  return {cls:'n', txt:'🟢 沒有碰撞，走道也夠'};
+}
 
 function syncSel(){
   const f=FURN.find(x=>x.id===S.selId);
@@ -898,23 +1150,42 @@ function syncSel(){
   if(!f || S.tab!=='plan'){ box.hidden=true; return; }
   box.hidden=false;
   const p=place(f);
-  $('selName').textContent = f.room==='r1'?`主臥 · ${f.name}`:`客廳 · ${f.name}`;
-  $('selPos').textContent  = p.wall ? `貼牆（${p.wall.id}）` : '未貼牆';
-  // 微調鍵整組跟著軸轉（_d §10-2b：箭頭跟「它依附誰」走）
+  $('selName').textContent = `${roomName(f.room)} · ${f.name||'未命名'}`;
+  $('selPos').textContent  = p.wall ? '貼牆' : '未貼牆';
+
+  // 微調鍵整組跟著軸轉（_d §10-2b：箭頭跟「它依附誰」走）。🔴 這段行為一行不改。
   let axis;
   if(p.wall) axis = wallAngle(p.wall);
   else if(f.rot) axis = f.rot*Math.PI/180;
   else axis = 0;
   $('pad').style.transform = `rotate(${axis*180/Math.PI}deg)`;
-  $('padc').textContent = nudgeCm()+' cm';
-  if(document.activeElement!==$('fw')) $('fw').value=Math.round(f.w);
-  if(document.activeElement!==$('fd')) $('fd').value=Math.round(f.d);
-  if(document.activeElement!==$('fh')) $('fh').value=Math.round(f.h);
-  $('btnUnsnap').style.display = p.wall?'':'none';
+  $('padc').textContent = nudgeCm()+' cm';     // ← 那是【狀態】，_d §10-0b 明訂要留
 
-  // 未旋轉原貌對照（Ali 指定：角度非 90 度倍數時，要知道它被轉過）
+  // 尺寸欄（按需展開）
+  const sizeOn=S.sizeOpen;
+  $('selFields').hidden = !sizeOn;
+  box.classList.toggle('szopen', sizeOn);
+  $('btnSize').textContent = sizeOn ? '▴ 收' : '📏 改尺寸';
+  if(sizeOn){
+    [['fw','w'],['fd','d'],['fh','h']].forEach(([id,k])=>{
+      if(document.activeElement!==$(id)){
+        $(id).value = f[k]==null ? '' : Math.round(f[k]*10)/10;
+        $(id).classList.remove('bad');
+      }
+    });
+  }
+
+  /* 需求 12 邊界：
+     · 未貼牆時「脫離牆面」disabled，不隱藏（否則按鈕會跳位）
+     · 尺寸未填時只有「📏 改尺寸」可按（沒有寬深算不出位置與碰撞） */
+  const noSize=!hasSize(f);
+  $('btnUnsnap').disabled = !p.wall || noSize;
+  $('btnRot').disabled    = noSize;
+  [...$('pad').querySelectorAll('button')].forEach(b=>{ b.disabled=noSize; });
+
+  // 未旋轉原貌對照（留什麼：一行都不改）
   const ob=$('origBox');
-  if(isSkew(f)){
+  if(hasSize(f) && isSkew(f)){
     ob.classList.add('show');
     const s=$('origSvg'); while(s.firstChild) s.removeChild(s.firstChild);
     const k=Math.min(20/f.w, 20/f.d);
@@ -925,9 +1196,6 @@ function syncSel(){
       fill:'var(--furnSel)','fill-opacity':.5,stroke:'var(--furnSel)','stroke-width':1.6,
       transform:`rotate(${deg})`});
     s.appendChild(r2);
-    /* v0.1.2：「僅供參考」只在【非矩形】家具出現（_d §13-19）。
-       實測證實矩形家具的碰撞是【精確】的（SAT，非外接矩形），
-       在矩形上顯示這句話會誤導使用者以為結果不可靠。 */
     const approx = (f.shape && f.shape!=='rect');
     $('origTxt').innerHTML =
       `虛線＝未旋轉的原貌，實色＝現況（${Math.round(deg)}°）。`+
@@ -935,28 +1203,17 @@ function syncSel(){
               : `<br>矩形家具的碰撞判定精確，不受角度影響。`);
   } else ob.classList.remove('show');
 
-  // 警告（只提示不擋 — _d 方向 #9）
-  const n=collisions(f), wb=$('warnBox'); wb.innerHTML='';
-  const add=(cls,txt)=>{const d=document.createElement('div');
-    d.className='warn '+cls; d.innerHTML=txt; wb.appendChild(d);};
-  if(n.hit.length) add('c', `🔴 撞到：${n.hit.map(x=>x.name).join('、')}`);
-  if(n.near.length) add('w',
-    `🟠 走道不足：與 ${n.near.map(x=>x.name).join('、')} 之間不到 ${CLEAR_CM} 公分`);
-  if(!n.hit.length && !n.near.length) add('n','🟢 沒有碰撞，走道也夠');
-  add('', `<span style="color:var(--sub)">👤 比例尺固定在平面圖下方（肩寬 45 公分）。`+
-          `<b>斜線圈只有 ${CLEAR_CM/2} 公分</b>＝走道的一半，另一半由對面讓出。<br>`+
-          `吸附範圍 ≈ ${Math.round(snapCm())} 公分（螢幕 ${SNAP_PX}px，放大後會變小）</span>`);
+  // 警示列（只提示不擋 — _d 方向 #9）。與「完成」同排，高度固定一列。
+  const n=collisions(f), w=warnSummary(n), wl=$('warnLine');
+  wl.className='w '+w.cls+(S.warnOpen?' open':'');
+  wl.textContent=w.txt;
 }
 
 /* 微調：沿「軸」移動；步進隨縮放、下限 1 公分 */
-/* v0.1.2｜Q-9：長按連發。
-   ⚠️ 依 _kb/obs_觸控與PointerEvents O-2 的教訓：計時器要綁「開始這一筆的那根手指」，
-      並在 pointerup／pointercancel／lostpointercapture 都清乾淨，
-      否則手指滑出按鈕、或被系統打斷，會留下停不下來的連發。 */
 let _rep=null, _repId=null;
 function stopRepeat(){ if(_rep){ clearInterval(_rep); clearTimeout(_rep); } _rep=null; _repId=null; }
 $('pad').addEventListener('pointerdown',e=>{
-  const b=e.target.closest('button'); if(!b) return;
+  const b=e.target.closest('button'); if(!b||b.disabled) return;
   e.stopPropagation();
   _repId=e.pointerId;
   _rep=setTimeout(()=>{                       // 按住 450ms 後開始連發
@@ -968,79 +1225,134 @@ $('pad').addEventListener('pointerdown',e=>{
 window.addEventListener('blur',stopRepeat);   // 切走分頁也要停
 
 $('pad').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b) return;
+  const b=e.target.closest('button'); if(!b||b.disabled) return;
   e.stopPropagation();                       // §2：擋住父層
   nudge(b.dataset.d);
 });
 function nudge(dir){
-  const b={dataset:{d:dir}};
-  const f=FURN.find(x=>x.id===S.selId); if(!f) return;
+  const f=FURN.find(x=>x.id===S.selId); if(!f||!hasSize(f)) return;
   const step=nudgeCm(), p=place(f);
   const axis = p.wall ? wallAngle(p.wall) : (f.rot? f.rot*Math.PI/180 : 0);
   const ux=Math.cos(axis), uy=Math.sin(axis);
-  /* ⚠️ 螢幕的 y 是【往下增加】。整組按鈕用 CSS rotate(axis) 轉，
-     所以「▲ 這顆鈕視覺上指的方向」＝ 把 (0,-1) 旋轉 axis 度 ＝ (sin, -cos) ＝ (uy, -ux)。
-     🔴 原本寫成 (-uy, ux)（差 180°）→ 按上往下跑、按下往上跑。Ali 實測回報「上下左右相反」。
-     修法：法線一律取 (uy,-ux)，讓「按鈕指哪、家具就往哪」。 */
+  /* ⚠️ O-6：螢幕的 y 是【往下增加】。整組按鈕用 CSS rotate(axis) 轉，
+     「▲ 這顆鈕視覺上指的方向」＝ 把 (0,-1) 旋轉 axis 度 ＝ (uy, -ux)。 */
   const nx=uy, ny=-ux;
   let dx=0,dy=0;
-  if(b.dataset.d==='r'){dx=ux*step;  dy=uy*step;}
-  if(b.dataset.d==='l'){dx=-ux*step; dy=-uy*step;}
-  if(b.dataset.d==='u'){dx=nx*step;  dy=ny*step;}
-  if(b.dataset.d==='d'){dx=-nx*step; dy=-ny*step;}
+  if(dir==='r'){dx=ux*step;  dy=uy*step;}
+  if(dir==='l'){dx=-ux*step; dy=-uy*step;}
+  if(dir==='u'){dx=nx*step;  dy=ny*step;}
+  if(dir==='d'){dx=-nx*step; dy=-ny*step;}
   if(f.anchor.type==='wall'){
-    // 把位移投影到「牆的座標系」：沿牆＝along、離牆＝off（沿內側法線為正）
-    // 推離牆不會被吸回去——吸附只在拖曳時作用
-    const w=wallById(f.anchor.wall), n2=wallNormal(w);
-    f.anchor.along += dx*ux + dy*uy;
-    f.anchor.off    = (f.anchor.off||0) + (dx*n2.x + dy*n2.y);
-  }else{ f.anchor.x+=dx; f.anchor.y+=dy; }
+    const w=wallById(f.anchor.wall);
+    if(w){
+      const n2=wallNormal(w);
+      f.anchor.along += dx*ux + dy*uy;
+      f.anchor.off    = (f.anchor.off||0) + (dx*n2.x + dy*n2.y);
+    }
+  }else{ f.anchor.x=(f.anchor.x||0)+dx; f.anchor.y=(f.anchor.y||0)+dy; }
+  saveItem(f).catch(e=>cloudErr(e));          // 需求 4：改記憶體 → 呼叫 saveItem()
   render(); syncSel();
 }
 
-['fw','fd','fh'].forEach((id,i)=>{
+/* ══════════════════════════════════════════════════════════════
+   需求 7｜存檔顆粒度：即時算、失焦才存
+     即時（input）：只重算【記憶體 ＋ 畫面】——碰撞、走道、警告顏色
+     存檔          ：① blur ② Enter ③ 🔴 visibilitychange → hidden
+   需求 7（v0.04_i §7）｜無效輸入：
+     打字中不阻止、不還原、不寫入，但該欄位加紅框
+     三個存檔觸發點：值無效 → 還原成【上一個有效值】並移除紅框
+   ══════════════════════════════════════════════════════════════ */
+const SZ=[['fw','w'],['fd','d'],['fh','h']];
+SZ.forEach(([id,key])=>{
   $(id).addEventListener('input',()=>{
     const f=FURN.find(x=>x.id===S.selId); if(!f) return;
-    const v=parseFloat($(id).value); if(!isFinite(v)||v<=0) return;
-    if(i===0) f.w=v; if(i===1) f.d=v; if(i===2) f.h=v;   // 即時重算
+    const raw=$(id).value.trim();
+    if(raw===''){                        // 尺寸從有值改成空白 → 視為 null（未填），不是 0
+      f[key]=null; $(id).classList.remove('bad'); render(); syncSel(); return;
+    }
+    const v=parseFloat(raw);
+    if(!isFinite(v)||v<=0){              // 無效：不寫入，保留上一個有效值，但標紅框
+      $(id).classList.add('bad'); return;
+    }
+    $(id).classList.remove('bad');
+    f[key]=v;                            // 即時重算（記憶體＋畫面），不存
     render(); syncSel();
   });
+  $(id).addEventListener('blur',()=>commitFieldEdits());
+  $(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ $(id).blur(); } });
 });
-/* 🔴 v0.01.1：轉 90°。Ali：「家具你設定自動轉 90 度，但我不一定想長邊靠牆」
-   吸附只決定「跟哪面牆」，不該連「哪一邊朝牆」也替使用者決定。
-   靠 place() 的 perpHalf() 自動重算離牆距離，轉完不會嵌進牆裡。 */
-$('btnRot').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(!f) return;
-  f.rot=(f.rot+90)%360; render(); syncSel(); };
-/* v0.1.2：「↺ 改回原尺寸」已移除。
-   _d §13-17（Ali 2026-09-06）：「原狀」這個概念本身沒有語意——
-   尺寸調整是常態，那個值只是「第一次填的數字」，不是基準。
-   替代方案（undo／從決策 log 挑歷史值）仍待決，本輪不做。 */
+function commitFieldEdits(){
+  const f=FURN.find(x=>x.id===S.selId); if(!f) return;
+  let dirty=false;
+  SZ.forEach(([id,key])=>{
+    const inp=$(id);
+    const raw=inp.value.trim();
+    const v=raw===''? null : parseFloat(raw);
+    if(raw!=='' && (!isFinite(v)||v<=0)){
+      // 🔴 無效 → 還原成上一個有效值（記憶體裡那個），移除紅框
+      inp.value = f[key]==null ? '' : Math.round(f[key]*10)/10;
+      inp.classList.remove('bad');
+      return;
+    }
+    inp.classList.remove('bad');
+    if(f[key]!==v){ f[key]=v; }
+    dirty=true;
+  });
+  if(dirty){ saveItem(f).catch(e=>cloudErr(e)); render(); syncSel(); }
+}
+/* 🔴 保險：手機上「失焦」不可靠——直接鎖屏或切 App 可能不觸發 blur */
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    commitFieldEdits();
+    commitNameEdits();
+  }
+});
+
+$('btnRot').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(!f||!hasSize(f)) return;
+  f.rot=((f.rot||0)+90)%360; saveItem(f).catch(e=>cloudErr(e)); render(); syncSel(); };
+$('btnSize').onclick=()=>{ S.sizeOpen=!S.sizeOpen; S.warnOpen=false; syncSel(); };
 $('btnUnsnap').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(!f) return;
   const p=place(f); f.anchor={type:'free',x:p.x,y:p.y};   // 脫離牆面＝換錨點
-  render(); syncSel(); };
-$('btnDone').onclick=()=>{ select(null); render(); syncSel(); };
+  saveItem(f).catch(e=>cloudErr(e)); render(); syncSel(); };
+$('btnDone').onclick=()=>{ commitFieldEdits(); select(null); render(); syncSel(); };
 $('btnFold').onclick=()=>{ const s=$('sel'); s.classList.toggle('mini');
-  $('btnFold').textContent = s.classList.contains('mini')?'展開 ▴':'收合 ▾'; };
+  $('btnFold').textContent = s.classList.contains('mini')?'▴':'▾'; };
+$('warnLine').onclick=()=>{ S.warnOpen=!S.warnOpen; syncSel(); };
+$('btnDel').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(f) confirmDeleteItem(f.id); };
 
 /* ══════════════════════════════════════════════════════════════
-   📷 照片探針（v0.1.2 階段 A）
-   ⭐ 這一段是【真的資料層】，不是假資料。
-   刻意做成 _d §3-3 的四個 async 函式——階段 B 接雲端時【只換這裡的底層】，
-   畫面那一層一行都不該動。若屆時需要改到畫面，代表 §3-3 的聲稱不成立。
+   需求 2｜本機持久化（IndexedDB）
+   🔴 DB_VER 升到 2：加 rooms / walls / beams / items 四個 store。
+   🔴 R-6：onblocked 沒掛 → Promise 永不 resolve 也永不 reject → 畫面停在「讀取中…」
    ══════════════════════════════════════════════════════════════ */
-const DB_NAME='deco_probe', DB_VER=1;
+const DB_NAME='deco_probe', DB_VER=2;
 let _db=null;
 function openDB(){
   return new Promise((res,rej)=>{
     if(_db) return res(_db);
     const r=indexedDB.open(DB_NAME,DB_VER);
     r.onupgradeneeded=e=>{const d=e.target.result;
-      if(!d.objectStoreNames.contains('photos')) d.createObjectStore('photos',{keyPath:'id'});
-      if(!d.objectStoreNames.contains('markers')) d.createObjectStore('markers',{keyPath:'id'});
+      ['photos','markers','rooms','walls','beams','items'].forEach(st=>{
+        if(!d.objectStoreNames.contains(st)) d.createObjectStore(st,{keyPath:'id'});
+      });
     };
-    r.onsuccess=e=>{_db=e.target.result; res(_db);};
+    r.onsuccess=e=>{
+      _db=e.target.result;
+      /* 另一個分頁要升級時，這一邊要主動讓位，否則那一邊會被 blocked 卡住 */
+      _db.onversionchange=()=>{ try{_db.close();}catch(err){} _db=null;
+        showDbNotice('資料庫版本被另一個分頁更新了。請重新載入這一頁。'); };
+      res(_db);
+    };
     r.onerror=e=>rej(e.target.error);
+    /* 🔴 這一條不做會【靜默卡死】：另一個分頁還開著舊版本 ⇒ 升級被擋 */
+    r.onblocked=()=>rej(new Error(
+      '另一個分頁還開著舊版本，資料庫升級被擋住。請把其他分頁關掉再重新載入。'));
   });
+}
+function showDbNotice(msg){
+  S.dataErr=msg;
+  try{ render(); }catch(e){}
+  const b=$('pstat'); if(b) b.innerHTML='🔴 '+esc(msg);
 }
 function tx(store,mode,fn){
   return openDB().then(d=>new Promise((res,rej)=>{
@@ -1050,9 +1362,8 @@ function tx(store,mode,fn){
     t.onerror=()=>rej(t.error);
   }));
 }
-/* ── id 產生器（資料層在下方，v0.1.3 起分成「本機」與「公開的七個」）── */
-/* ⚠️ v0.1.3：id 必須是【合法 UUID】——雲端 photos.id / markers.id 是 uuid 型別。
-   原本的後備寫法（'p'+時間+隨機）在雲端會被拒，而且錯誤訊息看不出是 id 的問題。 */
+/* ⚠️ id 必須是【合法 UUID】——雲端的 id 是 uuid 型別，非 UUID 會被拒，
+   而錯誤訊息看不出是 id 的問題（研究員 R-5）。🔴 種子資料也一律走這裡。 */
 function uid(){
   if(crypto.randomUUID) return crypto.randomUUID();
   const b=crypto.getRandomValues(new Uint8Array(16));
@@ -1060,51 +1371,345 @@ function uid(){
   const h=[...b].map(x=>x.toString(16).padStart(2,'0')).join('');
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
 }
-/* ── 本機（IndexedDB）：只在本區塊內部使用，畫面層不呼叫 ── */
+/* ── 本機（IndexedDB）低階：只在資料層內部使用，畫面層不呼叫 ── */
 async function lPut(st,rec){ rec.id=rec.id||uid(); await tx(st,'readwrite',s=>s.put(rec)); return rec.id; }
 async function lGet(st,id){ return tx(st,'readonly',s=>s.get(id)); }
 async function lAll(st){ return tx(st,'readonly',s=>s.getAll()); }
 async function lDel(st,id){ return tx(st,'readwrite',s=>s.delete(id)); }
 
-/* ── _d §3-3 的資料層：畫面只呼叫這七個 ──
-   🔑 v0.1.3 只換【裡面】的實作，簽名與呼叫端一行都沒改
-      ＝ _d §3-3 那條保險的第一次實測（測試項 E-7）。
-   規則：先寫本機（畫面立刻有東西）→ 再背景推雲端（失敗不擋畫面，標 pending）。 */
-async function savePhoto(rec){
-  rec.id = rec.id || uid();
-  rec.projectCode = CLOUD.code || null;
-  rec.updatedAt   = new Date().toISOString();
-  if(CLOUD.code && !rec.synced) rec.pending = true;
-  await lPut('photos',rec);
-  if(CLOUD.on) cloudPushPhoto(rec.id).catch(e=>cloudErr(e));
-  return rec.id;
+/* ══════════════════════════════════════════════════════════════
+   需求 4｜單位換算（_d §3-6b）
+     資料庫（IndexedDB ＋ 雲端）→ 公釐、整數
+     記憶體與幾何運算            → 公分、浮點
+     換算【只發生在資料層邊界】
+   🔴 含 anchor 內的 along / off / x / y —— 唯一一個「嵌在 JSON 裡的長度」，最容易漏。
+   ══════════════════════════════════════════════════════════════ */
+const toMM   = v => (v==null || v==='') ? null : Math.round(Number(v)*10);
+const fromMM = v => (v==null) ? null : Number(v)/10;
+
+/* 要換算的長度欄位（逐一列出，不可漏）。
+   ❌ 不換算：rot（度）、price（元）、color、name、note、所有布林、所有時間 */
+const LEN_FIELDS = {
+  rooms:['slabH'],
+  walls:['x1','y1','x2','y2','thickness','height'],
+  beams:['x1','y1','x2','y2','width','drop'],
+  items:['w','d','h']
+};
+function anchorToMM(a){
+  if(!a) return null;
+  if(a.type==='wall') return {type:'wall', wall:a.wall,
+    along:toMM(a.along), off:toMM(a.off||0)};
+  return {type:'free', x:toMM(a.x), y:toMM(a.y)};
 }
-async function loadPhoto(id){ return lGet('photos',id); }
-async function listPhotos(){ return lAll('photos'); }
-async function deletePhoto(id){
-  const r=await lGet('photos',id);
-  await lDel('photos',id);
-  if(CLOUD.on && r && r.projectCode===CLOUD.code) cloudDelPhoto(r).catch(e=>cloudErr(e));
+function anchorFromMM(a){
+  if(!a) return {type:'free', x:0, y:0};
+  if(a.type==='wall') return {type:'wall', wall:a.wall,
+    along:fromMM(a.along)||0, off:fromMM(a.off)||0};
+  return {type:'free', x:fromMM(a.x)||0, y:fromMM(a.y)||0};
 }
-async function saveMarker(m){
-  m.id = m.id || uid();
-  m.projectCode = CLOUD.code || null;
-  m.updatedAt   = new Date().toISOString();
-  if(CLOUD.code && !m.synced) m.pending = true;
-  await lPut('markers',m);
-  if(CLOUD.on) cloudPushMarker(m.id).catch(e=>cloudErr(e));
-  return m.id;
+/* 記憶體物件（公分） → IndexedDB 紀錄（公釐整數） */
+function toDb(store,obj){
+  const o=Object.assign({},obj);
+  (LEN_FIELDS[store]||[]).forEach(k=>{ o[k]=toMM(obj[k]); });
+  if(store==='items') o.anchor=anchorToMM(obj.anchor);
+  return o;
 }
-async function listMarkers(){ return lAll('markers'); }
-async function deleteMarker(id){
-  const m=await lGet('markers',id);
-  await lDel('markers',id);
-  if(CLOUD.on && m && m.projectCode===CLOUD.code) cloudDelMarker(m).catch(e=>cloudErr(e));
+/* IndexedDB 紀錄（公釐整數） → 記憶體物件（公分浮點） */
+function fromDb(store,rec){
+  const o=Object.assign({},rec);
+  (LEN_FIELDS[store]||[]).forEach(k=>{ o[k]=fromMM(rec[k]); });
+  if(store==='items') o.anchor=anchorFromMM(rec.anchor);
+  return o;
 }
+/* 🔴 需求 4｜時區：一律存 ISO（UTC），顯示時才轉本地。
+   現況 W1（寫 '2026-09-08 10:30' 無時區）／W2（把 UTC 當本地印）各偏 8 小時。 */
+const nowISO = ()=> new Date().toISOString();
+function fmtLocal(iso){
+  if(!iso) return '';
+  const s=String(iso);
+  /* ⚠️ 舊紀錄的 addedAt 是無時區字串 → new Date() 會得到 Invalid Date。
+     邊界處理：沒有 T 也沒有 Z → 原樣輸出（那是舊紀錄，isLegacy() 已經會標它）。 */
+  if(s.indexOf('T')<0 && s.indexOf('Z')<0) return s;
+  const d=new Date(s);
+  if(isNaN(d.getTime())) return s;
+  const z=x=>String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} `+
+         `${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
+/* ── 物件資料層（與照片線同構）──
+   🔴 save* 與 savePhoto() 同一個模式：① 寫本機 ② 標 pending ③ 背景推雲端（失敗不擋畫面）
+   🔴 delete* 【不是】。delete* 一律走軟刪除（需求 5 / 6 / 7），
+      不可抄 deletePhoto() 的 lDel()。（v0.04_i §6） */
+async function lAllObj(st){ return (await lAll(st)).map(r=>fromDb(st,r)); }
+async function lAllLive(st){ return (await lAllObj(st)).filter(x=>!x.deletedAt); }
+async function lGetObj(st,id){ const r=await lGet(st,id); return r? fromDb(st,r) : null; }
+async function lPutObj(st,obj){ return lPut(st, toDb(st,obj)); }
+
+function stampObj(o){
+  o.id = o.id || uid();
+  o.projectCode = CLOUD.code || null;
+  o.updatedAt   = nowISO();
+  o.appVer      = APP_VER;
+  if(o.deletedAt===undefined) o.deletedAt=null;
+  /* 🔴 v0.05_i §3（修三）：createdAt 只在【新建】時寫入（見 newObj()），
+     這裡【一個字都不准動它】——之後任何更新、pull 覆蓋都要保留。
+     🔴 也【不准】在這裡幫舊資料補一個假的 createdAt（obs O-13：偽裝成有資料）。 */
+  /* ⚠️ 與 savePhoto 的一點差異（刻意）：物件【會被反覆修改】，
+     每次存都要重新標 pending，否則改過的值永遠推不上去（N-59）。 */
+  if(CLOUD.code){ o.pending=true; o.synced=false; }
+  return o;
+}
+/* 🔴 v0.05_i §3（修三）：唯一可以寫 createdAt 的地方。
+   四種物件（Room/Wall/Beam/Item）新建時都要經過這裡。
+   ⚠️ 只有「這一筆真的是現在被造出來的」才准蓋這個章——
+      從雲端 pull 回來的那條路不走這裡（它帶著雲端的 created_at，見 fromRow）。 */
+function newObj(o){
+  o.id = o.id || uid();
+  o.createdAt = nowISO();
+  return o;
+}
+async function saveRoom(r){ stampObj(r); await lPutObj('rooms',r);
+  if(CLOUD.on) cloudPushObj('rooms',r.id).catch(e=>cloudErr(e)); return r.id; }
+async function saveWall(w){ stampObj(w); await lPutObj('walls',w);
+  if(CLOUD.on) cloudPushObj('walls',w.id).catch(e=>cloudErr(e)); return w.id; }
+async function saveBeam(b){ stampObj(b); await lPutObj('beams',b);
+  if(CLOUD.on) cloudPushObj('beams',b.id).catch(e=>cloudErr(e)); return b.id; }
+async function saveItem(i){ stampObj(i); await lPutObj('items',i);
+  if(CLOUD.on) cloudPushObj('items',i.id).catch(e=>cloudErr(e)); return i.id; }
+
+/* delete*：🔴 軟刪除（進垃圾桶），不是 lDel */
+async function softDelete(store, arr, id, saver){
+  const o=arr.find(x=>x.id===id) || await lGetObj(store,id);
+  if(!o) return;
+  o.deletedAt=nowISO();
+  await saver(o);
+}
+async function deleteRoom(id){ return softDelete('rooms',ROOMS,id,saveRoom); }
+async function deleteWall(id){ return softDelete('walls',WALLS,id,saveWall); }
+async function deleteBeam(id){ return softDelete('beams',BEAMS,id,saveBeam); }
+async function deleteItem(id){ return softDelete('items',FURN,id,saveItem); }
+
+/* ── 需求 4／15｜啟動時一次載入 ──
+   🔴 順序寫死（v0.04_i §1）：
+      lAll × 四個 store → pull（若已連線）→ seedIfEmpty → purgeTrash
+      ⚠️ pull 失敗（丟錯）→ 【不要】跑 seedIfEmpty，讓使用者看到錯誤訊息。
+         理由：pull 失敗時「本機全空」不代表「這個專案是空的」。 */
+async function reloadObjects(){
+  ROOMS_ALL = await lAllObj('rooms');      // 🔴 含墓碑，給 roomOrder() 用（v0.05_i §3 / N-93）
+  ROOMS = await lAllLive('rooms');
+  WALLS = await lAllLive('walls');
+  BEAMS = await lAllLive('beams');
+  FURN  = await lAllLive('items');
+}
+async function loadAll(){
+  await reloadObjects();
+  let pulled=false;
+  if(CLOUD.on){
+    await cloudPull();            // 丟錯 → 由呼叫端接，且不會走到 seed
+    await reloadObjects();
+    pulled=true;
+  }
+  if(!CLOUD.on || pulled) await seedIfEmpty();
+  await purgeTrash();
+  await reloadObjects();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   需求 5｜種子範例、兩種清空、垃圾桶
+   ══════════════════════════════════════════════════════════════ */
+const SEED_ROOM_NAME='範例房間（可刪）';
+/* 判準是「四個 store 全空（活的）」，不是「第一次開啟」——否則清空後不會重新出現。 */
+async function seedIfEmpty(){
+  if(ROOMS.length || WALLS.length || BEAMS.length || FURN.length) return;
+  const rid=uid();
+  const room=newObj({ id:rid, name:SEED_ROOM_NAME, slabH:300, note:'',
+    projectCode:CLOUD.code||null, synced:false, pending:false,
+    appVer:APP_VER, deletedAt:null });
+  await saveRoom(room);
+  // 矩形 400×300 公分（＝4000×3000 公釐）、state='proposed'、isBoundary=true、thickness=10cm
+  const P=[[0,0],[400,0],[400,300],[0,300]];
+  for(let i=0;i<4;i++){
+    const a=P[i], b=P[(i+1)%4];
+    await saveWall(newObj({ id:uid(), room:rid, x1:a[0],y1:a[1],x2:b[0],y2:b[1],
+      /* 🔴 v0.05_i §1（修一）：種子牆是 state:'proposed'，不是 'existing'。
+         _d §4-2c：existing ＝ 後台匯入、前台唯讀；種子是【前台自己造的】
+         ⇒ 它在定義上就不可能是 existing。
+         ⚠️ 寫 'existing' 的後果（建造者實測推出來的）：需求 3 的 insert 政策
+            with check (… and state='proposed') 會回 42501 ⇒ 四道牆永遠 pending
+            ⇒「有 N 筆未上傳」永遠不歸零。 */
+      thickness:10, height:null, isBoundary:true, state:'proposed',
+      total:null, note:'', isPlaced:true, isBudgeted:false,
+      projectCode:CLOUD.code||null, synced:false, pending:false,
+      appVer:APP_VER, deletedAt:null }));
+  }
+  // 🔴 家具 ×0（零件）。要試就自己建一件——那正是本輪的功能。
+  await reloadObjects();
+}
+/* 種子還沒被動過？（提示句只留到使用者建了第一件東西為止） */
+function isSeedPristine(){
+  return FURN.length===0 && ROOMS.length===1 && ROOMS[0].name===SEED_ROOM_NAME;
+}
+
+/* 甲｜清擺設：什麼都不刪，只把所有 Item 的 isPlaced 設成 false。
+   🔴 anchor 保留！只是不擺（它記得上次擺哪，切回來就回原位）。
+   ⚠️ 逐筆更新、逐筆標 pending，不做交易（探針階段）。 */
+async function clearPlacement(){
+  for(const f of FURN.slice()){ f.isPlaced=false; await saveItem(f); }
+  await reloadObjects();
+}
+/* 乙｜清清單：Room / Wall / Beam / Item 的【全部】列 → deletedAt = nowISO()
+   🔴 留什麼：photos / markers 【完全不動】（照片不屬於清單）。 */
+async function clearAll(){
+  for(const r of ROOMS.slice()){ r.deletedAt=nowISO(); await saveRoom(r); }
+  for(const w of WALLS.slice()){ w.deletedAt=nowISO(); await saveWall(w); }
+  for(const b of BEAMS.slice()){ b.deletedAt=nowISO(); await saveBeam(b); }
+  for(const f of FURN.slice()) { f.deletedAt=nowISO(); await saveItem(f); }
+  await reloadObjects();
+}
+/* 垃圾桶｜真刪除的兩個條件【先到先算】：① 超過 20 筆刪最舊 ② deletedAt 超過 1 個月
+   🔴 只刪【本機】那一列。雲端那一列【保留】當墓碑（v0.04_i §2）——
+      兩邊都刪會讓墓碑消失，另一台未到期的那筆會把它重新插回雲端 ⇒ 復活迴路。 */
+async function purgeTrash(){
+  const MONTH=30*24*3600*1000, now=Date.now();
+  for(const st of ['rooms','walls','beams','items']){
+    const all=await lAllObj(st);
+    const trash=all.filter(x=>x.deletedAt)
+      .sort((a,b)=>String(a.deletedAt).localeCompare(String(b.deletedAt)));
+    const kill=[];
+    const rest=[];
+    for(const x of trash){
+      const t=new Date(x.deletedAt).getTime();
+      if(isFinite(t) && now-t>MONTH) kill.push(x.id); else rest.push(x);
+    }
+    while(rest.length>20) kill.push(rest.shift().id);
+    for(const id of kill) await lDel(st,id);        // 🔴 只刪本機
+  }
+}
+async function trashSize(){
+  let n=0;
+  for(const st of ['rooms','walls','beams','items'])
+    n += (await lAllObj(st)).filter(x=>x.deletedAt).length;
+  return n;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   需求 6｜房間：改名／刪除（含 anchor 重設）
+   ══════════════════════════════════════════════════════════════ */
+async function renameRoom(id,name){
+  const r=ROOMS.find(x=>x.id===id); if(!r) return;
+  r.name=(name==null?'':String(name)).trim();       // 可留空 → 顯示「未命名」，不報錯
+  await saveRoom(r); await reloadObjects();
+}
+/* 🔴 刪什麼／留什麼（spec-authoring §5-1）
+   刪：該 Room／該 Room 底下所有 Wall／Beam 的列（軟刪除）
+   留：Item 一筆都不刪；name/w/d/h/note/price/color/log/isBudgeted 全部不動；
+       🔴 anchor 必須【就地轉成絕對座標】，不可留著指向已刪的牆
+   🔴 順序硬規則：【先算 place()、再刪牆】。反了就取不到牆。 */
+async function deleteRoomCascade(rid){
+  const items=FURN.filter(f=>f.room===rid);
+  const snap=items.map(f=>({f, p:place(f)}));       // ← 先算（此時牆還在）
+  for(const {f,p} of snap){
+    if(f.anchor && f.anchor.type==='wall'){
+      f.anchor={type:'free', x:p.x, y:p.y};
+      f.rot = p.ang*180/Math.PI;                    // 保住視覺朝向（沿用 btnUnsnap 的做法）
+    }
+    f.room=null;
+    f.isPlaced=false;
+    await saveItem(f);
+  }
+  for(const w of WALLS.filter(w=>w.room===rid)){ w.deletedAt=nowISO(); await saveWall(w); }
+  for(const b of BEAMS.filter(b=>b.room===rid)){ b.deletedAt=nowISO(); await saveBeam(b); }
+  await deleteRoom(rid);
+  if(S.selId && items.some(f=>f.id===S.selId)) { /* 家具沒刪，但已不在平面圖上 */ }
+  await reloadObjects();
+}
+/* 確認框要列出家具名稱（Ali 定 Q-2）。N 很多時列前 10 筆 ＋「…等 N 件」 */
+function confirmDeleteRoomText(rid){
+  const items=FURN.filter(f=>f.room===rid);
+  const names=items.map(f=>f.name||'未命名');
+  const shown=names.slice(0,10);
+  let li=shown.map(n=>`<li>${esc(n)}</li>`).join('');
+  if(names.length>10) li+=`<li>…等 ${names.length} 件</li>`;
+  return `刪除房間「${esc(roomName(rid))}」。<br>`+
+    `牆與樑會一起刪除。<b>家具一件都不刪</b>，會變成未擺放：`+
+    (names.length? `<ul>${li}</ul>` : '<br>（這個房間目前沒有家具）');
+}
+async function confirmDeleteRoom(rid){
+  const ok=await askDialog({title:'刪除房間', body:confirmDeleteRoomText(rid), okText:'刪除'});
+  if(!ok) return;
+  await deleteRoomCascade(rid);
+  render(); buildList(); syncSel(); refreshTop();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   需求 7｜家具／項目 CRUD
+   ══════════════════════════════════════════════════════════════ */
+/* 新增：只有 name 也能建；連 name 都留空也允許（顯示「未命名」）。 */
+async function addItem(init){
+  const it=Object.assign({
+    id:uid(), room:null, name:'', w:null, d:null, h:null,
+    note:'', price:null, color:null, rot:0,
+    anchor:{type:'free', x:0, y:0},
+    isPlaced:false, isBudgeted:false, log:[],
+    projectCode:CLOUD.code||null, synced:false, pending:false,
+    appVer:APP_VER, deletedAt:null
+  }, init||{});
+  newObj(it);                                   // 🔴 v0.05_i §3：新建才蓋 createdAt
+  await saveItem(it);
+  await reloadObjects();
+  return it.id;
+}
+async function confirmDeleteItem(id){
+  const f=FURN.find(x=>x.id===id); if(!f) return;
+  const ok=await askDialog({title:'刪除項目',
+    body:`刪除「${esc(f.name||'未命名')}」。<br>它會進垃圾桶（之後可能自動清掉）。`,
+    okText:'刪除'});
+  if(!ok) return;
+  await deleteItem(id);
+  await reloadObjects();
+  if(S.selId===id) select(null);
+  render(); buildList(); syncSel();
+}
+async function updateItemField(id,field,value){
+  const f=FURN.find(x=>x.id===id); if(!f) return;
+  f[field]=value;
+  await saveItem(f);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   需求 13｜頁內覆蓋層確認／輸入（取代 confirm()／prompt()——O-11）
+   ══════════════════════════════════════════════════════════════ */
+let _askRes=null;
+function askDialog(opts){
+  const o=opts||{};
+  $('askTitle').textContent=o.title||'確認';
+  $('askBody').innerHTML=o.body||'';
+  const hasInput = ('input' in o);
+  $('askInputLine').hidden=!hasInput;
+  if(hasInput) $('askInput').value=o.input==null?'':o.input;
+  $('askYes').textContent=o.okText||'確定';
+  $('ovAsk').hidden=false;
+  if(hasInput) setTimeout(()=>$('askInput').focus(),30);
+  return new Promise(res=>{ _askRes=res; });
+}
+function askClose(v){
+  $('ovAsk').hidden=true;
+  const r=_askRes; _askRes=null;
+  if(r) r(v);
+}
+$('askNo').onclick=()=>askClose(false);
+$('askYes').onclick=()=>{
+  const hasInput=!$('askInputLine').hidden;
+  askClose(hasInput ? $('askInput').value : true);
+};
+$('askInput').addEventListener('keydown',e=>{ if(e.key==='Enter') $('askYes').click(); });
 
 /* ══════════════════════════════════════════════════════════════
    v0.1.3｜雲端（Supabase）——_d §12-1b 方案 B：匿名身分 ＋ members
    🔒 anon key 是設計上公開的；service_role 永不進本檔。
+   🔴 需求 13：CLOUD 模組與 cloudJoin/cloudLeave/cloudSync 的邏輯一行不改，
+      只換觸發它的按鈕在哪。cloudPull 只准在末端加一行（需求 15）。
    ══════════════════════════════════════════════════════════════ */
 const CLOUD = {
   url : 'https://dcagkkbzfzirxpearzoq.supabase.co',
@@ -1121,8 +1726,8 @@ function cloudErr(e){
   cloudStat();
   return null;
 }
-/* ⚠️ fetch 被 CSP 擋掉時丟的是 TypeError，訊息看起來像網路問題。
-   要把它與「真的連不上」分開講，否則測試的人會以為程式壞了（＝O-11 那個坑的形狀）。 */
+/* ⚠️ O-14：fetch 被 CSP 擋掉時丟的是 TypeError，訊息看起來像網路問題。
+   要把它與「真的連不上」分開講，否則測試的人會以為程式壞了。 */
 async function sbFetch(path, opt){
   opt = opt || {};
   const h = Object.assign({ apikey: CLOUD.key }, opt.headers||{});
@@ -1137,7 +1742,7 @@ async function sbFetch(path, opt){
   CLOUD.blocked = false;
   if(r.status===401 && !opt._retry && path.indexOf('/auth/')<0){
     await signInAnon(true);                     // 身分過期 → 重新拿一個
-    /* 🔴 v0.1.3.1 R-1：新身分是【全新的 uid】，不在 members 裡。
+    /* 🔴 R-1：新身分是【全新的 uid】，不在 members 裡。
        少了這一步，接下來每個讀取都會回 200 []（有權限問題，但長得像「雲端空了」）。 */
     if(CLOUD.code && !_rejoining){
       _rejoining = true;
@@ -1163,12 +1768,12 @@ async function signInAnon(force){
     throw new Error('拿匿名身分失敗（Anonymous sign-ins 開了嗎？）：'+(j.msg||j.error_description||j.error||t.slice(0,160)));
   const prev=CLOUD.uid;
   CLOUD.tok=j.access_token; CLOUD.uid=(j.user&&j.user.id)||null;
-  if(force && prev && prev!==CLOUD.uid) CLOUD.reauth++;   // v0.1.3.1：身分真的換掉了
+  if(force && prev && prev!==CLOUD.uid) CLOUD.reauth++;   // 身分真的換掉了
   LS.set('deco_sess', JSON.stringify({t:CLOUD.tok,u:CLOUD.uid}));
 }
-/* 🔴 v0.1.3.1 R-1 的核心修法：把「雲端 0 筆」這個有歧義的訊號，
+/* 🔴 R-1 的核心修法：把「雲端 0 筆」這個有歧義的訊號，
    換成一個有明確答案的問題——「這台的身分在 members 裡嗎？」
-   （SQL 的 members_self_select 政策讓每個身分讀得到【自己的】那幾筆。） */
+   ⚠️ 需求 15 留什麼：這一段【一行不動】。 */
 async function cloudVerifyMember(){
   const r=await sbFetch('/rest/v1/members?select=project_code&project_code=eq.'
                         +encodeURIComponent(CLOUD.code));
@@ -1185,25 +1790,100 @@ async function joinProject(code){
   try{ return JSON.parse(t); }catch(e){ return String(code).toUpperCase().trim(); }
 }
 
-/* ── 推：本機 → 雲端 ── */
+/* ══════════════════════════════════════════════════════════════
+   需求 15｜四張新表的 push／pull 欄位對照
+   🔴 fromRow() 必須做 fromMM()，含 anchor 內的 along/off/x/y
+   ⚠️ synced / pending / appVer 是本機專用欄位，不可送上雲端（雲端 schema 沒有）
+   ══════════════════════════════════════════════════════════════ */
+function toRow(store,o){
+  const base={ id:o.id, project_code:CLOUD.code,
+    deleted_at:o.deletedAt||null, updated_at:o.updatedAt||nowISO() };
+  /* 🔴 v0.05_i §3（修三）：有 createdAt 才送 created_at。
+     ⚠️ 沒有的【不要送 null】——雲端那一欄是 not null default now()，
+        送 null 會被拒；而 omit 掉就由資料庫自己蓋（那是真的時間，不是假造的）。
+        這正好就是「不要補寫一個假的 createdAt」（obs O-13）的另一半。 */
+  if(o.createdAt) base.created_at=o.createdAt;
+  if(store==='rooms') return Object.assign(base,{
+    name:o.name??null, slab_h:toMM(o.slabH), note:o.note??null });
+  if(store==='walls') return Object.assign(base,{
+    room_id:o.room||null, x1:toMM(o.x1), y1:toMM(o.y1), x2:toMM(o.x2), y2:toMM(o.y2),
+    thickness:toMM(o.thickness), height:toMM(o.height),
+    /* 🔴 v0.05_i §1（修一）：前台是唯一的 insert 來源，它只能寫 proposed
+       ⇒ 這裡的後備值也必須是 'proposed'，否則一道沒有 state 的牆會被 42501 拒掉。 */
+    is_boundary:o.isBoundary!==false, state:o.state||'proposed',
+    total:o.total??null, note:o.note??null,
+    is_placed:o.isPlaced!==false, is_budgeted:!!o.isBudgeted });
+  if(store==='beams') return Object.assign(base,{
+    room_id:o.room||null, x1:toMM(o.x1), y1:toMM(o.y1), x2:toMM(o.x2), y2:toMM(o.y2),
+    width:toMM(o.width), drop_mm:toMM(o.drop), note:o.note??null });
+  // items
+  return Object.assign(base,{
+    room_id:o.room||null, name:o.name??null,
+    w:toMM(o.w), d:toMM(o.d), h:toMM(o.h),
+    note:o.note??null, price:o.price??null, color:o.color??null, rot:o.rot||0,
+    anchor:anchorToMM(o.anchor),
+    is_placed:!!o.isPlaced, is_budgeted:!!o.isBudgeted, log:o.log||[] });
+}
+function fromRow(store,row){
+  const base={ id:row.id, projectCode:row.project_code||null,
+    deletedAt:row.deleted_at||null, updatedAt:row.updated_at||null,
+    /* 🔴 v0.05_i §3（修三）：pull 覆蓋時要【保留】建立時間 ⇒ 直接讀雲端的 created_at。
+       雲端沒有（舊列）→ null，不偽造。 */
+    createdAt:row.created_at||null,
+    appVer:APP_VER };
+  if(store==='rooms') return Object.assign(base,{
+    name:row.name||'', slabH:fromMM(row.slab_h), note:row.note||'' });
+  if(store==='walls') return Object.assign(base,{
+    room:row.room_id||null,
+    x1:fromMM(row.x1), y1:fromMM(row.y1), x2:fromMM(row.x2), y2:fromMM(row.y2),
+    thickness:fromMM(row.thickness), height:fromMM(row.height),
+    isBoundary:row.is_boundary!==false, state:row.state||'existing',
+    total:row.total??null, note:row.note||'',
+    isPlaced:row.is_placed!==false, isBudgeted:!!row.is_budgeted });
+  if(store==='beams') return Object.assign(base,{
+    room:row.room_id||null,
+    x1:fromMM(row.x1), y1:fromMM(row.y1), x2:fromMM(row.x2), y2:fromMM(row.y2),
+    width:fromMM(row.width), drop:fromMM(row.drop_mm), note:row.note||'' });
+  // items
+  return Object.assign(base,{
+    room:row.room_id||null, name:row.name||'',
+    w:fromMM(row.w), d:fromMM(row.d), h:fromMM(row.h),
+    note:row.note||'', price:row.price??null, color:row.color||null, rot:row.rot||0,
+    anchor:anchorFromMM(row.anchor),
+    isPlaced:!!row.is_placed, isBudgeted:!!row.is_budgeted, log:row.log||[] });
+}
+/* 推：本機 → 雲端（單筆） */
+async function cloudPushObj(store,id){
+  const o=await lGetObj(store,id);
+  if(!o || !CLOUD.on || o.projectCode!==CLOUD.code) return;
+  const row=toRow(store,o);
+  const ins=await sbFetch(`/rest/v1/${store}?on_conflict=id`,{method:'POST',
+    headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify(row)});
+  if(!ins.ok) throw new Error(`寫入雲端 ${store} 失敗：`+(await ins.text()).slice(0,200));
+  o.pending=false; o.synced=true; await lPutObj(store,o);
+  cloudStat();
+}
+
+/* ── 推：本機 → 雲端（照片與標記，一行不改）── */
 async function cloudPushPhoto(id){
   const r=await lGet('photos',id);
   if(!r || !CLOUD.on || r.projectCode!==CLOUD.code) return;
   if(!r.storagePath){
     const blob=r.small||r.orig;
     if(!blob) return;
-    const path=`${CLOUD.code}/${r.id}.jpg`;      // 🔑 路徑第一段＝權限鍵（SQL §5）
+    const path=`${CLOUD.code}/${r.id}.jpg`;      // 🔑 路徑第一段＝權限鍵
     const up=await sbFetch('/storage/v1/object/photos/'+path,{method:'POST',
       headers:{'Content-Type':blob.type||'image/jpeg','x-upsert':'true'}, body:blob});
     if(!up.ok) throw new Error('上傳照片檔失敗：'+(await up.text()).slice(0,200));
     r.storagePath=path;
   }
-  /* ⚠️ 先上傳檔案、成功才寫列。反序會留下「指不到檔的列」（需求表 §4）。 */
+  /* ⚠️ 先上傳檔案、成功才寫列。反序會留下「指不到檔的列」。 */
   const row={ id:r.id, project_code:CLOUD.code, name:r.name, mime:r.mime,
     orig_size:r.origSize||null, small_size:r.smallSize||null,
     width:r.w||null, height:r.h||null, date_taken:r.dateTaken||null,
     added_at:r.addedAt||null, storage_path:r.storagePath,
-    updated_at:new Date().toISOString() };
+    updated_at:nowISO() };
   const ins=await sbFetch('/rest/v1/photos?on_conflict=id',{method:'POST',
     headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
     body:JSON.stringify(row)});
@@ -1215,7 +1895,7 @@ async function cloudPushMarker(id){
   const m=await lGet('markers',id);
   if(!m || !CLOUD.on || m.projectCode!==CLOUD.code) return;
   const row={ id:m.id, project_code:CLOUD.code, photo_id:m.photoId,
-    x:m.x, y:m.y, updated_at:new Date().toISOString() };
+    x:m.x, y:m.y, updated_at:nowISO() };
   const ins=await sbFetch('/rest/v1/markers?on_conflict=id',{method:'POST',
     headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
     body:JSON.stringify(row)});
@@ -1231,11 +1911,58 @@ async function cloudDelMarker(m){
   await sbFetch('/rest/v1/markers?id=eq.'+m.id,{method:'DELETE'});
 }
 
-/* ── 拉：雲端 → 本機（含「別台刪掉的，本機也要消失」）── */
+/* ══════════════════════════════════════════════════════════════
+   🔴 需求 15｜四張物件表的 pull
+   掛在 cloudPull() 內、照片與標記【之後】。
+   前提：cloudPull() 開頭的 cloudVerifyMember() 已通過（R-1 守門），本函式不重複做。
+   🔴 【不准】抄照片線的兩條：
+      · 「本機已有就跳過」—— 房間/家具會改，抄了就永遠拉不到修改
+      · 「雲端沒這個 id ⇒ 刪本機」—— 四張表有 deletedAt，刪除是寫得出來的事實
+   ══════════════════════════════════════════════════════════════ */
+async function cloudPullObjects(){
+  const q = '&project_code=eq.' + encodeURIComponent(CLOUD.code);
+  for(const store of ['rooms','walls','beams','items']){
+    const r = await sbFetch(`/rest/v1/${store}?select=*${q}`);
+    if(!r.ok) throw new Error(`讀雲端${store}失敗：` + (await r.text()).slice(0,200));
+    const rows  = await r.json();
+    const local = await lAllObj(store);
+    const lmap  = new Map(local.map(x => [x.id, x]));
+
+    for(const row of rows){
+      const inc = fromRow(store, row);        // 欄位改名 ＋ fromMM() ＋ anchor 內的長度
+      const cur = lmap.get(inc.id);
+
+      if(!cur){
+        if(inc.deletedAt) continue;           // ① 墓碑：本機沒有 → 不要把它生出來
+        await lPutObj(store, Object.assign({}, inc, {synced:true, pending:false}));
+        continue;
+      }
+      if(cur.pending) continue;               // ② 本機有還沒推成功的修改 → 不覆蓋，等 push
+      if(!inc.updatedAt) continue;            // ③ 雲端沒時間戳 → 當最舊，不覆蓋
+      if(new Date(inc.updatedAt) > new Date(cur.updatedAt))
+        await lPutObj(store, Object.assign({}, inc, {synced:true, pending:false,
+          /* 🔴 v0.05_i §3（修三）：整筆覆蓋時 createdAt 要【保留】。
+             雲端那一欄是 not null，正常一定有值；只有「雲端是舊列、沒有 created_at」
+             這個情況才會回 null —— 那時用本機原本記得的，不要被 null 蓋掉。 */
+          createdAt: inc.createdAt || cur.createdAt || null})); // ④ 晚的贏
+    }
+    // 🔴 ⑤ 這裡【沒有】「雲端沒有就刪本機」那一段。刪除一律走 deletedAt。
+  }
+  /* ⑥ 補推：本機還沒推成功的（pending）。
+     ⚠️ 這一段是建造者依【規則②「等 push」】＋ 既有 ③ 補推（照片/標記）的對稱性補的，
+        _i 需求 15 的函式本體沒有寫。若規格者認為不該有，砍掉這一個 for 即可。 */
+  for(const store of ['rooms','walls','beams','items']){
+    for(const x of await lAllObj(store))
+      if(x.projectCode===CLOUD.code && x.pending)
+        await cloudPushObj(store,x.id).catch(e=>cloudErr(e));
+  }
+}
+
+/* ── 拉：雲端 → 本機 ── */
 async function cloudPull(){
   if(!CLOUD.on) return;
-  /* 🔴 v0.1.3.1 R-1：先確認身分，再談同步。
-     ⚠️ 這一步失敗就【中止】——下面有刪除傳播迴路，
+  /* 🔴 R-1：先確認身分，再談同步。
+     ⚠️ 這一步失敗就【中止】——下面有刪除傳播迴路（照片線），
         身分不對時它會把「讀不到」誤讀成「別台刪了」，然後刪掉本機。 */
   if(!await cloudVerifyMember())
     throw new Error(`這台的身分不在專案 ${CLOUD.code} 裡（身分可能已變更）。`
@@ -1258,17 +1985,18 @@ async function cloudPull(){
     const f=await sbFetch('/storage/v1/object/photos/'+row.storage_path);
     if(!f.ok) continue;                          // 檔案還沒到 → 下次再拉
     const blob=await f.blob();
-    /* ⚠️ 雲端存的是【已轉正】的壓縮圖 → rawW/rawH 填上，才不會被 isLegacy() 當成舊紀錄。
-       方向欄位標 null＋rotated:false ⇒ 顯示「（不需轉）」，對這個檔案是正確的敘述。 */
     await lPut('photos',{ id:row.id, name:row.name, source:'雲端', mime:row.mime||'image/jpeg',
       origSize:row.orig_size||blob.size, smallSize:row.small_size||blob.size,
       w:row.width, h:row.height, rawW:row.width, rawH:row.height,
       dateTaken:row.date_taken||null,
-      addedAt:(row.added_at||'').replace('T',' ').slice(0,16) || nowStr(),
+      addedAt:row.added_at || nowISO(),
       decoded:true, orientation:null, rotated:false, oriBy:null, err:null,
-      appVer:'v0.1.3（雲端）', small:blob, storagePath:row.storage_path,
+      appVer:'v0.1.4（雲端）', small:blob, storagePath:row.storage_path,
       projectCode:CLOUD.code, synced:true, pending:false });
   }
+  /* 🔴 照片段落的「雲端沒這個 id → lDel」【一行不動】（需求 15 留什麼）。
+     理由：照片沒有 deletedAt 欄位，它只能用「消失」表達刪除。
+     ⚠️ 這是兩套刪除語言並存，【刻意的】，不要統一。 */
   const rid=new Set(rows.map(r=>r.id));
   for(const x of local)
     if(x.synced && x.projectCode===CLOUD.code && !rid.has(x.id)) await lDel('photos',x.id);
@@ -1295,15 +2023,22 @@ async function cloudPull(){
     if(x.projectCode===CLOUD.code && x.pending) await cloudPushPhoto(x.id).catch(e=>cloudErr(e));
   for(const x of await lAll('markers'))
     if(x.projectCode===CLOUD.code && x.pending) await cloudPushMarker(x.id).catch(e=>cloudErr(e));
+
+  // ④ 🔴 需求 15：四張物件表（掛在照片與標記【之後】）
+  await cloudPullObjects();
 }
 
 async function cloudSync(){
   if(!CLOUD.on || CLOUD.busy) return;
   CLOUD.busy=true; CLOUD.msg=''; cloudStat();
-  try{ await cloudPull(); }
-  catch(e){ cloudErr(e); }
+  try{ await cloudPull(); S.dataErr=''; }
+  catch(e){ cloudErr(e); S.dataErr=(e&&e.message)||String(e); }
   CLOUD.busy=false;
-  await loadMarkers(); render(); renderPhotos();
+  /* ⚠️ 需求 15 邊界：pull 結束後呼叫【一次】render() ＋ buildList()，
+     不要每寫一筆就重畫。 */
+  await loadMarkers();
+  await reloadObjects();
+  render(); buildList(); syncSel(); refreshTop(); renderPhotos();
 }
 
 /* ── 連線 / 離開 / 狀態 ── */
@@ -1322,6 +2057,31 @@ async function cloudJoin(){
       if(!x.projectCode){ x.projectCode=code; x.pending=true; await lPut('photos',x); }
     for(const x of await lAll('markers'))
       if(!x.projectCode){ x.projectCode=code; x.pending=true; await lPut('markers',x); }
+    /* ══ 🔴 v0.05_i §2（修二）：離線建立的【物件】也要被認領 ══
+       v0.04_i 需求 15「留什麼」原本寫「cloudJoin 一行不改」⇒ 建造者依規格沒動
+       ⇒ 未連線時建的房間／家具 projectCode 永遠是 null
+       ⇒ cloudPushObj 第一行 `o.projectCode!==CLOUD.code` 就 return ⇒ 連線後也推不上去。
+       v0.05_i 把那一條改成「cloudJoin 只准【加一段物件認領】」。
+       ⚠️ 刻意【不】改寫上面照片與標記那兩段，也【不】把三者合併成一個泛用迴圈——
+          照片與物件的欄位形狀不同（照片走 lPut，物件要走 lPutObj 做單位換算），
+          合併會讓下一手看不出哪個是哪個。 */
+    for(const store of ['rooms','walls','beams','items']){
+      for(const x of await lAllObj(store)){
+        if(x.projectCode) continue;          // 已屬於某個專案 → 不動（不搶別人的）
+        if(x.deletedAt)   continue;          // 🔴 垃圾桶裡的不認領（避免把墓碑推上去）
+        /* 🔴 邊界：認領到一道 state='existing' 的牆 ——修一之後前台不會造出這種牆，
+           但若真的遇到（例如手動塞的測試資料），插入必被 RLS 擋（42501）。
+           ⇒ 跳過不認領，並留一筆錯誤在狀態列（_d §10-0b：狀態與錯誤必留）。 */
+        if(store==='walls' && x.state==='existing'){
+          cloudErr(new Error(`有一道既有牆（state=existing）無法認領進專案 ${code}：`
+            +`既有牆只能由後台匯入。這一道留在本機，不會上傳。`));
+          continue;
+        }
+        x.projectCode = code;
+        x.pending     = true;                // 標成待推，交給 cloudPullObjects() 的 ⑥ 補推
+        await lPutObj(store, x);             // ⚠️ 逐筆寫入、不做交易（與需求 5 甲同一個模式）
+      }
+    }
   }catch(e){ CLOUD.on=false; cloudErr(e); CLOUD.busy=false; cloudStat(); return; }
   CLOUD.busy=false;
   await cloudSync();
@@ -1329,16 +2089,22 @@ async function cloudJoin(){
 function cloudLeave(){
   CLOUD.on=false; CLOUD.code=null; CLOUD.msg='';
   LS.del('deco_code');
-  cloudStat(); renderPhotos();
+  cloudStat(); refreshTop(); renderPhotos();
   /* ⚠️ 刻意【不刪】本機資料——離開只是停止同步，不是清空這台 */
 }
+
+/* 🔴 需求 13：cloudStat() 的【狀態】與【錯誤與歸屬】文字一字不改，只換輸出目標
+   （.cloudbar → 頂列徽章 ＋ 同步對話框）。
+   ⚠️ 已刪：未連線時那兩行【說明文字】（依 _d §10-0b，不搬）。 */
 async function cloudStat(){
-  const bar=$('cloudbar'), box=$('cstat');
+  const box=$('cstat');
   if(!box) return;
   let pend=0;
   try{ for(const x of await lAll('photos')) if(x.pending) pend++;
-       for(const x of await lAll('markers')) if(x.pending) pend++; }catch(e){}
-  bar.classList.toggle('blocked', !!CLOUD.blocked);
+       for(const x of await lAll('markers')) if(x.pending) pend++;
+       for(const st of ['rooms','walls','beams','items'])
+         for(const x of await lAll(st)) if(x.pending) pend++; }catch(e){}
+  $('syncDlg').classList.toggle('blocked', !!CLOUD.blocked);
   $('btnJoin').textContent = CLOUD.on?'重新連線':'連線';
   $('btnLeave').hidden = !CLOUD.on;
   $('btnSync').hidden  = !CLOUD.on;
@@ -1348,27 +2114,49 @@ async function cloudStat(){
       `Artifact 頁面有安全政策（CSP），只允許連少數幾個網址，`+
       `<b>連不到資料庫，而且不會有錯誤提示</b>。<br>`+
       `⚠️ <b>這不是程式的問題，是頁面被放在哪裡的問題。</b><br>`+
-      `→ 正解：把本檔放到 Supabase 的 public bucket 當網頁開（同一個網域就沒這個限制）。`+
+      `→ 正解：把本檔放到 GitHub Pages 當網頁開。`+
       `步驟見 <code>階段B_放上網_20260908.md</code>`;
   }else if(CLOUD.on){
-    html = `<span class="on">✅ 已連線</span>　專案代碼 <b>${CLOUD.code}</b>`+
-      `　這台的身分 <b>…${(CLOUD.uid||'').slice(-6)}</b><br>`+
+    html = `<span class="on">✅ 已連線</span>　專案代碼 <b>${esc(CLOUD.code)}</b>`+
+      `　這台的身分 <b>…${esc((CLOUD.uid||'').slice(-6))}</b><br>`+
       (CLOUD.busy? `⏳ 同步中…` : (pend? `⏳ 有 <b>${pend}</b> 筆還沒上傳` : `雲端與這台一致`))+
-      /* v0.1.3.1：身分換過就講出來。R-1 的症狀之一是使用者完全不知道身分變了。 */
       (CLOUD.reauth? `<br><span class="er">⚠️ 這次連線期間身分重新取得過 ${CLOUD.reauth} 次</span>`:'')+
       `<br>⚠️ 安全等級＝<b>知道代碼的人就看得到</b>。只放測試照片。`;
   }else{
-    html = `<span class="off">未連線</span>　照片只存這台（行為與 v0.1.2.2 完全相同）<br>`+
-      `輸入專案代碼按「連線」→ 另一台輸入<b>同一組代碼</b> ⇒ 兩台看到同一批。<br>`+
-      `不用開帳號、不會有登入畫面（匿名身分）。`;
+    html = `<span class="off">未連線</span>　照片只存這台（行為與 v0.1.2.2 完全相同）`;
   }
-  if(CLOUD.msg) html += `<br><span class="er">⚠️ ${CLOUD.msg}</span>`;
+  if(CLOUD.msg) html += `<br><span class="er">⚠️ ${esc(CLOUD.msg)}</span>`;
   box.innerHTML = html;
+  refreshTop(pend);
+}
+/* 需求 13：頂列徽章。未連線 → 「未連線」（中性色），仍可點。
+   連線被擋 → 紅色「⚠️ 連線被擋」，點了在對話框內顯示完整錯誤與歸屬句。 */
+function refreshTop(pend){
+  const b=$('btnCode'); if(!b) return;
+  b.classList.remove('off','er');
+  if(CLOUD.blocked){ b.classList.add('er'); b.textContent='⚠️ 連線被擋'; }
+  else if(CLOUD.on){ b.textContent='✅ '+(CLOUD.code||''); }
+  else { b.classList.add('off'); b.textContent='未連線'; }
+  const t=$('appTitle');
+  if(t) t.textContent =
+      S.tab==='list' ? '清單'
+    : S.tab==='photo'? '照片'
+    : S.tab==='proj' ? '專案'
+    : S.tab==='cost' ? '估價'
+    : S.tab==='layout'?'格局'
+    : (ROOMS.length? (ROOMS[0].name||'未命名') : '平面圖');
 }
 $('btnJoin').onclick  = cloudJoin;
 $('btnLeave').onclick = cloudLeave;
 $('btnSync').onclick  = cloudSync;
 $('pcode').addEventListener('keydown',e=>{ if(e.key==='Enter') cloudJoin(); });
+$('btnCode').onclick  = openSyncDialog;
+$('btnCloseSync').onclick = ()=>{ $('ovSync').hidden=true; };
+$('ovSync').addEventListener('click',e=>{ if(e.target.id==='ovSync') $('ovSync').hidden=true; });
+function openSyncDialog(){ $('ovSync').hidden=false; cloudStat(); }
+function openProjectPage(){ setTab('proj'); }
+$('btnGear').onclick = openProjectPage;
+$('btnOpenSync').onclick = openSyncDialog;
 
 async function cloudInit(){
   const code=LS.get('deco_code');
@@ -1378,19 +2166,80 @@ async function cloudInit(){
     await signInAnon();
     CLOUD.code=await joinProject(code);   // 冪等：已加入就什麼都不做
     CLOUD.on=true;
-  }catch(e){ CLOUD.on=false; cloudErr(e); cloudStat(); return; }
-  await cloudSync();
+  }catch(e){ CLOUD.on=false; cloudErr(e); }
+  cloudStat();
 }
 
-/* ── 最小 EXIF 解析：只取 DateTimeOriginal 與 Orientation ──
-   ⚠️ 刻意不引外部函式庫：離線也要能跑，且少一個相依。 */
+/* ══════════════════════════════════════════════════════════════
+   需求 13｜專案頁（整理）
+   ══════════════════════════════════════════════════════════════ */
+$('btnClearPlace').onclick = async ()=>{
+  const ok=await askDialog({title:'清擺設',
+    body:'所有項目會變成「未擺放」。<b>項目本身、尺寸、價錢、備註都留著</b>，上次擺的位置也記得。',
+    okText:'清擺設'});
+  if(!ok) return;
+  await clearPlacement();
+  render(); buildList(); syncSel(); await refreshProj();
+};
+$('btnClearAll').onclick = async ()=>{
+  /* 需求 5：要先看到「共 N 個房間、M 件家具」才可按 */
+  const ok=await askDialog({title:'清清單',
+    body:`即將清掉 <b>共 ${ROOMS.length} 個房間、${FURN.length} 件家具</b>（含牆與樑）。<br>`+
+         `它們會進垃圾桶。<b>照片與標記完全不受影響。</b>`,
+    okText:'清清單'});
+  if(!ok) return;
+  await clearAll();
+  select(null);
+  render(); buildList(); syncSel(); refreshTop(); await refreshProj();
+};
+async function refreshProj(){
+  try{ $('trashCount').textContent='垃圾桶 '+(await trashSize())+' 筆'; }
+  catch(e){ $('trashCount').textContent='垃圾桶 — 筆'; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   📷 照片資料層（_d §3-3 的七個函式；簽名與呼叫端一行不改）
+   ══════════════════════════════════════════════════════════════ */
+async function savePhoto(rec){
+  rec.id = rec.id || uid();
+  rec.projectCode = CLOUD.code || null;
+  rec.updatedAt   = nowISO();
+  if(CLOUD.code && !rec.synced) rec.pending = true;
+  await lPut('photos',rec);
+  if(CLOUD.on) cloudPushPhoto(rec.id).catch(e=>cloudErr(e));
+  return rec.id;
+}
+async function loadPhoto(id){ return lGet('photos',id); }
+async function listPhotos(){ return lAll('photos'); }
+async function deletePhoto(id){
+  const r=await lGet('photos',id);
+  await lDel('photos',id);           // ⚠️ 照片是物理刪除（照片線刻意如此，不要統一）
+  if(CLOUD.on && r && r.projectCode===CLOUD.code) cloudDelPhoto(r).catch(e=>cloudErr(e));
+}
+async function saveMarker(m){
+  m.id = m.id || uid();
+  m.projectCode = CLOUD.code || null;
+  m.updatedAt   = nowISO();
+  if(CLOUD.code && !m.synced) m.pending = true;
+  await lPut('markers',m);
+  if(CLOUD.on) cloudPushMarker(m.id).catch(e=>cloudErr(e));
+  return m.id;
+}
+async function listMarkers(){ return lAll('markers'); }
+async function deleteMarker(id){
+  const m=await lGet('markers',id);
+  await lDel('markers',id);
+  if(CLOUD.on && m && m.projectCode===CLOUD.code) cloudDelMarker(m).catch(e=>cloudErr(e));
+}
+
+/* ── 最小 EXIF 解析：只取 DateTimeOriginal 與 Orientation ── */
 function parseExif(buf){
   const v=new DataView(buf), out={dateTaken:null, orientation:null};
   if(v.byteLength<4 || v.getUint16(0)!==0xFFD8) return out;   // 不是 JPEG
   let off=2;
   while(off+4<v.byteLength){
     if(v.getUint16(off)!==0xFFE1){ off+=2+v.getUint16(off+2); continue; }
-    const len=v.getUint16(off+2), start=off+4;
+    const start=off+4;
     if(v.getUint32(start)!==0x45786966) return out;           // "Exif"
     const tiff=start+6;
     const le=v.getUint16(tiff)===0x4949;
@@ -1421,22 +2270,11 @@ function parseExif(buf){
   }
   return out;
 }
-/* 🔴 v0.1.2.1 B-1：EXIF 方向 1~8 的 canvas 變換。
-   ⚠️ 矩陣裡用的是【來源】的寬高（rw/rh，縮放後未旋轉），不是畫布的寬高。
-      用錯會變成整張被切掉一半——而且縮圖裁切時看不出來（＝B-2 為什麼要先修）。
-   1 正常｜2 左右鏡射｜3 轉180°｜4 上下鏡射
-   5 轉90°CW＋鏡射｜6 轉90°CW｜7 轉90°CCW＋鏡射｜8 轉90°CCW */
 const orientOf = v => (Number.isInteger(v) && v>=1 && v<=8) ? v : 1;
 
-/* 🔴 v0.1.2.1 B-1（第二版）：瀏覽器會不會自己套 EXIF 方向？——**測**，不猜。
-   實測差異：Ali 的手機不套；桌機 Chrome 套（且忽略 imageOrientation:'none'）。
-   → 造一張 2×1、EXIF 方向 6 的極小 JPEG：
-        回來 1×2 ⇒ 這個瀏覽器自己會轉
-        回來 2×1 ⇒ 不會轉，由 applyOrient() 接手
-   只測一次，結果記在 _oriByBrowser。 */
+/* 🔴 O-12：瀏覽器會不會自己套 EXIF 方向？——【測】，不猜（能力探測）。 */
 let _oriByBrowser = null;
 function _probeJpegOri6(bytes){
-  // 把 APP1（Exif／小端 TIFF／IFD0 只有一個 0x0112=6）插在 SOI 後面
   const body=[0x45,0x78,0x69,0x66,0x00,0x00,
               0x49,0x49,0x2A,0x00, 0x08,0x00,0x00,0x00,
               0x01,0x00,
@@ -1477,45 +2315,34 @@ function applyOrient(ctx, ori, rw, rh){
 }
 const fmtBytes=n=> n>=1048576 ? (n/1048576).toFixed(2)+' MB'
                  : n>=1024 ? (n/1024).toFixed(0)+' KB' : n+' B';
-const nowStr=()=>{const d=new Date();const z=x=>String(x).padStart(2,'0');
-  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;};
 
-/* ── 收一張照片：這裡是探針的核心，每一步都要能回報成功或失敗 ── */
-/* v0.1.2.2 B-4④：每筆紀錄帶上「是哪一版存的」。
-   ⚠️ 之前分辨新舊只能靠「rawW 在不在」這種推論——推論會過期，欄位不會。 */
-const APP_VER='v0.1.3.1';
+/* ── 收一張照片 ── */
 async function intake(file, source){
   const rec={ id:uid(), name:file.name||'(無檔名)', source, appVer:APP_VER,
     mime:file.type||'(未知)', origSize:file.size,
-    addedAt:nowStr(), dateTaken:null, orientation:null,
+    addedAt:nowISO(), dateTaken:null, orientation:null,     // 🔴 需求 4：存 ISO
     decoded:false, err:null, w:0,h:0, small:null, smallSize:0 };
-  // 1. 讀 EXIF
   try{
     const head=await file.slice(0, 256*1024).arrayBuffer();
     const ex=parseExif(head);
     rec.dateTaken=ex.dateTaken; rec.orientation=ex.orientation;
   }catch(e){ rec.err='EXIF 讀取失敗：'+e.message; }
-  // 2. 解碼（HEIC 在多數瀏覽器會在這裡失敗——這正是要測的）
   let bmp=null;
   try{
-    /* 🔴 v0.1.2.1 B-1：不傳 imageOrientation——桌機實測會【忽略】它。
-       改成先問 browserAppliesOrientation()：誰該轉，由實測決定。 */
     bmp=await createImageBitmap(file);
     rec.decoded=true; rec.rawW=bmp.width; rec.rawH=bmp.height;
   }catch(e){
     rec.err=(rec.err? rec.err+'｜':'')+'解碼失敗（可能是 HEIC/HEIF）：'+e.message;
   }
-  // 3. 壓縮（長邊 1600、JPEG 0.8）＋ 套用 EXIF 方向
   if(bmp){
     try{
-      const exifOri=orientOf(rec.orientation);    // 1~8，取不到當 1
+      const exifOri=orientOf(rec.orientation);
       const byBrowser=await browserAppliesOrientation();
-      /* 🔴 瀏覽器已經轉過了 → 本程式不能再轉一次（會變成轉兩次）。 */
       const ori = byBrowser ? 1 : exifOri;
       rec.oriBy = (exifOri>1) ? (byBrowser?'瀏覽器':'本程式') : null;
       const k=Math.min(1, 1600/Math.max(bmp.width,bmp.height));
-      const rw=Math.round(bmp.width*k), rh=Math.round(bmp.height*k);  // 縮放後、【未旋轉】
-      const swap = ori>=5;                        // 5~8 會讓寬高互換
+      const rw=Math.round(bmp.width*k), rh=Math.round(bmp.height*k);
+      const swap = ori>=5;
       const cv=document.createElement('canvas');
       cv.width  = swap? rh : rw;
       cv.height = swap? rw : rh;
@@ -1524,26 +2351,19 @@ async function intake(file, source){
       ctx.drawImage(bmp,0,0,rw,rh);
       const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.8));
       rec.small=blob; rec.smallSize=blob? blob.size : 0;
-      rec.w=cv.width; rec.h=cv.height;            // 存【轉正後】的尺寸
-      rec.rotated = (exifOri>1);                  // 卡片上要標「已轉正（誰轉的）」
+      rec.w=cv.width; rec.h=cv.height;
+      rec.rotated = (exifOri>1);
     }catch(e){
       rec.err=(rec.err? rec.err+'｜':'')+'壓縮失敗：'+e.message;
       rec.w=rec.rawW; rec.h=rec.rawH;
     }
     bmp.close && bmp.close();
   }
-  rec.orig=file;                       // 原始檔也存，才量得出真實容量
+  rec.orig=file;
   await savePhoto(rec);
   return rec;
 }
-
-/* 🔴 v0.1.2.2 B-4①：這一筆是舊版存的嗎？
-   判準用 rawW（v0.1.2.1 才開始寫，舊紀錄一定沒有），不用 appVer——
-   ⚠️ 因為 appVer 是 v0.1.2.2 才加的，v0.1.2.1 存的那些也沒有它。
-   → 三種紀錄要分得出來：
-        無 rawW        ＝ v0.1.2 存的，方向【沒處理過】
-        有 rawW 無 appVer ＝ v0.1.2.1 存的，方向【處理過】
-        有 appVer      ＝ 本版之後存的 */
+/* 🔴 O-13：這一筆是舊版存的嗎？判準用 rawW（舊紀錄一定沒有）。 */
 const isLegacy = r => (r.rawW===undefined || r.rawW===null);
 const verOf = r => r.appVer || (isLegacy(r)? 'v0.1.2（舊）' : 'v0.1.2.1');
 
@@ -1553,30 +2373,29 @@ function revokeAll(){ _urls.forEach(u=>URL.revokeObjectURL(u)); _urls=[]; }
 function objURL(b){ const u=URL.createObjectURL(b); _urls.push(u); return u; }
 
 /* ⚠️ 環境偵測：某些情境下 IndexedDB 會被【整個擋掉】，且錯誤訊息看起來像程式壞了。
-   已實測會擋的：data: URL（不透明來源）、部分無痕視窗、瀏覽器關閉網站資料時。
-   → 要先講清楚「這是環境，不是程式」，否則測試的人會誤判。 */
+   → 要先講清楚「這是環境，不是程式」（留什麼：整段一字不動）。 */
 function envNote(){
   const bad = (location.protocol==='data:' || location.origin==='null');
   return bad ? `<div class="pstat" style="border-color:var(--warnB)">
       🔴 <b>這個環境擋住了瀏覽器儲存</b>（來源：<code>${location.origin}</code>／<code>${location.protocol}</code>）。<br>
       IndexedDB 與 localStorage 都用不了 → <b>照片存不進去，這不是程式的問題。</b><br>
-      ⚠️ 請改用 <b>Artifact 網址</b>（有正式的來源）開啟本頁再測。</div>` : '';
+      ⚠️ 請改用 <b>正式網址</b>（有正式的來源）開啟本頁再測。</div>` : '';
 }
 async function renderPhotos(){
-  const box=$('plist'); revokeAll(); box.innerHTML='';
+  const box=$('plist'); if(!box) return;
+  revokeAll(); box.innerHTML='';
   const warn=envNote();
   let recs=[];
   try{ recs=await listPhotos(); }
   catch(e){
     box.innerHTML = warn || `<div class="pstat" style="border-color:var(--warnB)">
-      🔴 瀏覽器儲存讀取失敗：${e.name}｜${e.message}<br>
+      🔴 瀏覽器儲存讀取失敗：${esc(e.name)}｜${esc(e.message)}<br>
       常見原因：無痕視窗、瀏覽器設定擋網站資料、或裝置空間不足。</div>`;
     $('pstat').innerHTML='張數：<b>—</b>（儲存不可用）';
     return;
   }
   if(warn) box.innerHTML=warn;
-  // 時間軸排序：拍攝時間優先，取不到用加入時間（_d §8-1b，Ali 2026-09-07 裁決）
-  recs.sort((a,b)=>(a.dateTaken||a.addedAt).localeCompare(b.dateTaken||b.addedAt));
+  recs.sort((a,b)=>String(a.dateTaken||a.addedAt).localeCompare(String(b.dateTaken||b.addedAt)));
   const mk=await listMarkers().catch(()=>[]);
   recs.forEach(r=>{
     const c=document.createElement('div'); c.className='pcard';
@@ -1584,7 +2403,7 @@ async function renderPhotos(){
     if(r.small||r.orig){
       const im=document.createElement('img'); im.src=objURL(r.small||r.orig);
       im.title='點縮圖看全圖';
-      im.onclick=()=>openViewer(r.id);            // 🔴 v0.1.2.1 B-2：點縮圖＝看全圖
+      im.onclick=()=>openViewer(r.id);
       const l1=document.createElement('div'); l1.className='tlab'; l1.textContent='👆 點看全圖';
       th.appendChild(im); th.appendChild(l1);
     }else{
@@ -1595,29 +2414,23 @@ async function renderPhotos(){
     const m=document.createElement('div'); m.className='meta';
     const pinned=mk.find(x=>x.photoId===r.id);
     m.innerHTML=
-      `<b>${r.name}</b><br>`+
-      `來源：${r.source}｜格式：${r.mime}<br>`+
+      `<b>${esc(r.name)}</b><br>`+
+      `來源：${esc(r.source)}｜格式：${esc(r.mime)}<br>`+
       `原始：${fmtBytes(r.origSize)}`+(r.decoded?`（${r.rawW??r.w}×${r.rawH??r.h}）`:'')+
-      /* v0.1.2.2 B-4③：舊紀錄的 w/h 其實是原始尺寸，不是壓縮後的畫布尺寸。
-         印出來會變成假資料（Ali 截圖：壓縮後 4032×2268），所以舊紀錄只印檔案大小。 */
       (r.smallSize?`　→ 壓縮後：${fmtBytes(r.smallSize)}`+
         ((!isLegacy(r) && r.w)?`（${r.w}×${r.h}）`:''):'')+`<br>`+
       `解碼：${r.decoded?'<span class="good">成功</span>':'<span class="bad">失敗</span>'}`+
       `｜EXIF 方向：${r.orientation??'<span class="bad">無</span>'}`+
-      /* 🔴 v0.1.2.1 B-1：把「有沒有真的轉」寫在畫面上。
-         只印 EXIF 值不夠——v0.1.2 就是印了 6 但沒有轉，數字對、圖是躺的。
-         🔴 v0.1.2.2 B-4：舊紀錄不可以印「（不需轉）」——它沒被處理過，
-            不是「不需要」。兩者在畫面上必須分得出來。 */
       (isLegacy(r) ? `<br><span class="bad">⚠️ 舊版存的，方向未處理</span>`+
                      `<span style="opacity:.8">（請刪掉重新加入）</span>`
-        : (r.rotated? `　<span class="good">✅ 已轉正（${r.oriBy||'?'}）</span>`
+        : (r.rotated? `　<span class="good">✅ 已轉正（${esc(r.oriBy||'?')}）</span>`
                     : (r.decoded? `　（不需轉）`:'')))+`<br>`+
       `🕐 <b>時間軸用</b>：`+
-      (r.dateTaken? `<span class="good">拍攝時間 ${r.dateTaken}</span>`
-                  : `<span class="bad">加入時間 ${r.addedAt}</span>（取不到拍攝時間）`)+
-      (r.err? `<br><span class="bad">⚠️ ${r.err}</span>`:'')+
+      (r.dateTaken? `<span class="good">拍攝時間 ${esc(r.dateTaken)}</span>`
+                  : `<span class="bad">加入時間 ${esc(fmtLocal(r.addedAt))}</span>（取不到拍攝時間）`)+
+      (r.err? `<br><span class="bad">⚠️ ${esc(r.err)}</span>`:'')+
       (pinned? `<br>📍 已標在平面圖上`:'')+
-      `<br><span style="opacity:.65">存於 ${verOf(r)}</span>`;
+      `<br><span style="opacity:.65">存於 ${esc(verOf(r))}</span>`;
     const acts=document.createElement('div'); acts.className='acts';
     const b1=document.createElement('button'); b1.className='btn';
     b1.textContent=pinned?'📍 重新標位置':'📍 標到平面圖';
@@ -1625,30 +2438,26 @@ async function renderPhotos(){
     const b2=document.createElement('button'); b2.className='btn'; b2.textContent='刪除';
     b2.onclick=async()=>{ await deletePhoto(r.id);
       const ms=await listMarkers(); for(const x of ms) if(x.photoId===r.id) await deleteMarker(x.id);
-      renderPhotos(); render(); };
+      await loadMarkers(); renderPhotos(); render(); };
     acts.appendChild(b1); acts.appendChild(b2);
     m.appendChild(acts); c.appendChild(m); box.appendChild(c);
   });
   if(!recs.length) box.innerHTML=warn+'<div class="pstat">還沒有照片。按上面兩顆鈕的其中一個。</div>';
-  // 容量
   let est='（此瀏覽器不支援容量查詢）';
   try{ const e=await navigator.storage.estimate();
     est=`已用 <b>${fmtBytes(e.usage||0)}</b> / 可用上限約 <b>${fmtBytes(e.quota||0)}</b>`;
   }catch(e){}
-  $('pstat').innerHTML=`張數：<b>${recs.length}</b>　｜　${est}<br>`+
-    `⚠️ 這些都存在<b>這支手機的瀏覽器</b>裡，沒有上傳。`;
+  $('pstat').innerHTML=`張數：<b>${recs.length}</b>　｜　${est}`;
 }
 async function onPick(e, source){
   const files=[...e.target.files||[]];
-  e.target.value='';                                  // 讓同一張可以再選一次
+  e.target.value='';
   for(const f of files){
     try{ await intake(f, source); }
-    catch(err){ alert('這張處理失敗：'+err.message); }
+    catch(err){ await askDialog({title:'這張處理失敗', body:esc(err.message), okText:'知道了'}); }
   }
   renderPhotos(); render();
 }
-/* v0.1.3：收完照片後同步一次。⚠️ intake() 走的是 savePhoto()，
-   所以推雲端已經在資料層做掉了；這裡只是更新狀態列的待上傳筆數。 */
 $('fCam').onchange=e=>onPick(e,'拍照');
 $('fLib').onchange=e=>onPick(e,'相簿');
 
@@ -1666,10 +2475,7 @@ async function dropMarker(wx,wy){
 }
 let MARKERS=[];
 async function loadMarkers(){ try{ MARKERS=await listMarkers(); }catch(e){ MARKERS=[]; } }
-/* 🔴 v0.1.2.1 B-3：原本用 window.open('','_blank')＋document.write。
-   Artifact 跑在沙箱 iframe 內 → 新分頁被擋 → 回 null → 走 alert；
-   但手機上 alert 也沒出現，使用者看到的是「點了完全沒反應」。
-   → 改成頁內檢視層，與「點縮圖看全圖」共用同一個入口。 */
+/* 🔴 O-11：不開新分頁，改頁內檢視層（與「點縮圖看全圖」共用同一個入口）。 */
 async function showMarker(mk){ openViewer(mk.photoId); }
 
 let _vURL=null;
@@ -1683,17 +2489,16 @@ async function openViewer(photoId){
     $('vBar').innerHTML='<b>這張照片已被刪除</b>（平面圖上的標記可以直接刪掉）';
     v.hidden=false; return;
   }
-  if(_vURL) URL.revokeObjectURL(_vURL);            // 檢視層自己管 URL，不進 _urls
+  if(_vURL) URL.revokeObjectURL(_vURL);
   _vURL = URL.createObjectURL(r.small||r.orig);
   im.src=_vURL;
-  /* v0.1.2.2 B-4：檢視層與卡片用同一套判定，避免兩處說法不一致 */
-  $('vBar').innerHTML=`<b>${r.name}</b>　${r.source}<br>`+
+  $('vBar').innerHTML=`<b>${esc(r.name)}</b>　${esc(r.source)}<br>`+
     ((!isLegacy(r) && r.w)? `顯示尺寸 ${r.w}×${r.h}`:'')+
     (r.orientation!=null? `　｜EXIF 方向 ${r.orientation}`:'　｜EXIF 方向：無')+
     (isLegacy(r)? `　<b style="color:#ff8a8a">⚠️ 舊版存的，方向未處理</b>`
-                : (r.rotated? `　<b>✅ 已轉正（${r.oriBy||'?'}）</b>`:''))+`<br>`+
-    (r.dateTaken? `🕐 拍攝 ${r.dateTaken}` : `🕐 加入 ${r.addedAt}（取不到拍攝時間）`)+
-    `　<span style="opacity:.7">存於 ${verOf(r)}</span>`;
+                : (r.rotated? `　<b>✅ 已轉正（${esc(r.oriBy||'?')}）</b>`:''))+`<br>`+
+    (r.dateTaken? `🕐 拍攝 ${esc(r.dateTaken)}` : `🕐 加入 ${esc(fmtLocal(r.addedAt))}（取不到拍攝時間）`)+
+    `　<span style="opacity:.7">存於 ${esc(verOf(r))}</span>`;
   v.hidden=false;
 }
 function closeViewer(){
@@ -1702,54 +2507,319 @@ function closeViewer(){
   if(_vURL){ URL.revokeObjectURL(_vURL); _vURL=null; }
 }
 $('vClose').onclick=closeViewer;
-/* 點底下的深色底也關；點在圖片本身不關（避免想放大卻關掉） */
 $('viewer').addEventListener('click', e=>{ if(e.target.id!=='vImg') closeViewer(); });
 
 /* ══════════════════════════════════════════════════════════════
-   分頁（_d §10-0）／清單（按房間分組）
+   需求 8｜清單頁（版位依預覽 v0.04 確認）
+     分組標題：[房間色小橫條] 房間名　N 件
+     卡片    ：[色條4px][icon 欄 46px 留空] 名稱／尺寸 ＋ [計價][已擺] ＋ 價錢
+     分組順序：各房間 → 最後是「未擺放」（色條用中性灰）
    ══════════════════════════════════════════════════════════════ */
-function buildList(){
-  const box=$('listPage'); box.innerHTML='';
-  ROOMS.forEach(r=>{
-    const h=document.createElement('div'); h.className='grp';
-    h.textContent=r.name; box.appendChild(h);
-    FURN.filter(f=>f.room===r.id).forEach(f=>{
-      const c=document.createElement('div'); c.className='card';
-      c.innerHTML=`<span><span class="nm">${f.name}</span><br>`+
-        `<span class="dim">${Math.round(f.w)} × ${Math.round(f.d)} × ${Math.round(f.h)} cm</span></span>`+
-        `<span class="go">›</span>`;
-      c.onclick=()=>{ select(f.id); centerOn(f); setTab('plan'); };  // 跳回平面圖
-      box.appendChild(c);
-    });
-  });
-  const n=document.createElement('div'); n.className='listnote';
-  n.innerHTML='⚠️ 線框原型：4~5 項寫死，不能新增/搜尋/分類。<br>'+
-              '點任一項 → <b>跳回平面圖</b>並選中該件（不在清單裡展開，'+
-              '因為輸入與結果必須同屏）。';
-  box.appendChild(n);
+/* 🔴 v0.05_i §4（修四）：清單卡片上的三個就地編輯欄（name / price / note）
+   共用一套「即時改記憶體＋畫面、失焦才存」的顆粒度（需求 7）：
+     input            → 記下 dirty（price 另外做無效標示），不存
+     blur / Enter     → commitCardEdits()
+     visibilitychange → commitCardEdits()（手機鎖屏／切 App 時 blur 不可靠）
+   ⚠️ 原本只有 name（`_nameDirty`），本輪擴成三個欄位，改用 `id::欄位` 當 key。 */
+let _cardDirty=new Set();
+const cardKey=(id,fld)=>id+'::'+fld;
+function commitCardEdits(){
+  if(!_cardDirty.size) return;
+  const keys=[..._cardDirty]; _cardDirty.clear();
+  let touched=false;
+  for(const key of keys){
+    const [id,fld]=key.split('::');
+    const inp=document.querySelector(`.cardedit[data-id="${id}"][data-fld="${fld}"]`);
+    const f=FURN.find(x=>x.id===id);
+    if(!inp||!f) continue;
+    const raw=inp.value.trim();
+    if(fld==='price'){
+      /* 需求 7（v0.04_i §7）：無效 → 還原成【上一個有效值】、移除紅框；
+         清空 → null（未填），🔴 不是 0 ⇒ 卡片回到顯示「缺價錢」。 */
+      if(raw!=='' && !/^\d+$/.test(raw)){
+        inp.value = f.price==null ? '' : String(f.price);
+        inp.classList.remove('bad');
+        continue;
+      }
+      inp.classList.remove('bad');
+      const v = raw==='' ? null : parseInt(raw,10);
+      if(f.price!==v){ f.price=v; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
+      continue;
+    }
+    // name / note：文字，空字串就是空字串
+    if(f[fld]!==raw){ f[fld]=raw; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
+  }
+  render();
+  if(touched) buildList();      // 讓「缺價錢」⇄ 數字、未命名 ⇄ 名稱的顯示跟上
 }
+/* 舊名保留為別名：setTab／visibilitychange 兩個既有呼叫點不必改語意 */
+function commitNameEdits(){ commitCardEdits(); }
+/* 卡片上的就地編輯欄工廠 */
+function cardInput(f, fld, opts){
+  const o=opts||{};
+  const inp=document.createElement('input');
+  inp.className='cardedit '+(o.cls||'');
+  inp.dataset.id=f.id; inp.dataset.fld=fld;
+  inp.value = o.value!=null ? o.value : (f[fld]==null ? '' : String(f[fld]));
+  if(o.placeholder) inp.placeholder=o.placeholder;
+  if(o.inputmode) inp.setAttribute('inputmode',o.inputmode);
+  inp.onclick=e=>e.stopPropagation();
+  inp.addEventListener('input',()=>{
+    _cardDirty.add(cardKey(f.id,fld));
+    if(fld==='price'){
+      const raw=inp.value.trim();
+      /* 打字中：不阻止、不還原、不寫入 —— 但無效就加紅框，
+         讓「這個值沒被採用」看得出來（_d §10-0b 允許狀態提示）。 */
+      inp.classList.toggle('bad', raw!=='' && !/^\d+$/.test(raw));
+    }
+  });
+  inp.addEventListener('blur',()=>commitCardEdits());
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); });
+  return inp;
+}
+function chipBtn(label,on,onClick){
+  const b=document.createElement('button');
+  b.className='chip'+(on?' on':'');
+  b.textContent=label;
+  b.onclick=e=>{ e.stopPropagation(); onClick(); };
+  return b;
+}
+function itemCard(f){
+  const card=document.createElement('div'); card.className='icard';
+  const st=document.createElement('div'); st.className='stripe';
+  st.style.background=roomColor(f.room);
+  card.appendChild(st);
+  const inb=document.createElement('div'); inb.className='in';
+  /* 🔴 icon 欄【留空】：不畫邊框、不畫底色、不放佔位圖示 —— 就是內距（46px） */
+  const ic=document.createElement('div'); ic.className='icon';
+  inb.appendChild(ic);
+
+  const col=document.createElement('div'); col.className='col';
+  const r1=document.createElement('div'); r1.className='r1';
+  const nm=cardInput(f,'name',{cls:'nm'+(f.name?'':' ph'), placeholder:'未命名'});
+  const dm=document.createElement('span'); dm.className='dim';
+  /* 缺什麼直接寫在卡片上（_d §9-1b 允許不完整，§9-2 結算前要抓） */
+  if(f.w==null||f.d==null){ dm.className='dim miss'; dm.textContent='還沒填尺寸'; }
+  else dm.textContent=`${Math.round(f.w)} × ${Math.round(f.d)}`
+      +(f.h!=null?` × ${Math.round(f.h)}`:'')+' cm';
+  r1.appendChild(nm); r1.appendChild(dm);
+  col.appendChild(r1);
+
+  const r2=document.createElement('div'); r2.className='r2';
+  r2.appendChild(chipBtn('計價', !!f.isBudgeted, async()=>{
+    f.isBudgeted=!f.isBudgeted; await saveItem(f); buildList();
+  }));
+  r2.appendChild(chipBtn('已擺', !!f.isPlaced, ()=>toggleChipPlaced(f.id)));
+  /* 🔴 v0.05_i §4（修四）：價錢的位置就是輸入框（含「缺價錢」那個狀態）。
+     ⚠️ 不另外開對話框。「缺價錢」用 placeholder 呈現（warnA 色），
+        所以「點缺價錢 → 就地打字」是同一個元素，沒有第二個狀態要維護。
+     🔴 is_budgeted=false 的項目照樣能填價錢（_d §9-1：兩個布林互相獨立）。 */
+  const pw=document.createElement('span'); pw.className='pricewrap';
+  const cur=document.createElement('span'); cur.className='cur'; cur.textContent='$';
+  cur.hidden = (f.price==null);
+  const pi=cardInput(f,'price',{cls:'price', placeholder:'缺價錢', inputmode:'numeric',
+    value: f.price==null ? '' : String(f.price)});
+  pi.addEventListener('input',()=>{ cur.hidden = (pi.value.trim()===''); });
+  pw.appendChild(cur); pw.appendChild(pi);
+  r2.appendChild(pw);
+  col.appendChild(r2);
+
+  /* 展開列（🔴 v0.05_i §4：房間下拉與備註【同一列、同一個展開狀態】，不做兩個獨立展開）
+       · 需求 8 §3-2：room===null 時點〔已擺〕→ 由 S.expandCause='chip' 進來
+       · 修四      ：點卡片右側的 ▾ → 由 S.expandCause='manual' 進來 */
+  if(S.expandId===f.id){
+    const rr=document.createElement('div'); rr.className='roomrow';
+    const sl=document.createElement('select');
+    const o0=document.createElement('option'); o0.value=''; o0.textContent='未指定';
+    sl.appendChild(o0);
+    ROOMS.forEach(r=>{ const o=document.createElement('option');
+      o.value=r.id; o.textContent=r.name||'未命名'; sl.appendChild(o); });
+    sl.value = f.room || '';
+    sl.onclick=e=>e.stopPropagation();
+    sl.onchange=async e=>{
+      e.stopPropagation();
+      commitCardEdits();                     // 先把同一列的備註存掉，再改房間
+      const v=sl.value;
+      if(!v){
+        if(S.expandCause==='chip'){          // 選「未指定」→ 收起，〔已擺〕維持沒點亮
+          S.expandId=null; S.expandCause=null; buildList(); return;
+        }
+        f.room=null; f.isPlaced=false;       // 手動展開時，「未指定」＝真的把房間清掉
+        await saveItem(f);
+        await reloadObjects(); render(); buildList(); refreshTop(); return;
+      }
+      f.room=v;
+      if(S.expandCause==='chip') f.isPlaced=true;
+      if(f.isPlaced) placeIntoRoomIfOutside(f);
+      await saveItem(f);
+      if(S.expandCause==='chip'){ S.expandId=null; S.expandCause=null; }
+      await reloadObjects(); render(); buildList(); refreshTop();
+    };
+    const nt=cardInput(f,'note',{cls:'note', placeholder:'備註'});
+    rr.appendChild(sl); rr.appendChild(nt);
+    col.appendChild(rr);
+  }
+  inb.appendChild(col);
+
+  /* 卡片右側：▾（展開房間／備註）＋ ›（跳回平面圖並選中） */
+  const tg=document.createElement('button'); tg.className='go';
+  tg.textContent = (S.expandId===f.id) ? '▴' : '▾';
+  tg.title='房間與備註';
+  tg.onclick=e=>{
+    e.stopPropagation();
+    commitCardEdits();
+    if(S.expandId===f.id){ S.expandId=null; S.expandCause=null; }
+    else { S.expandId=f.id; S.expandCause='manual'; }
+    buildList();
+  };
+  inb.appendChild(tg);
+  const go=document.createElement('button'); go.className='go'; go.textContent='›';
+  go.onclick=e=>{ e.stopPropagation(); commitCardEdits();
+    select(f.id); centerOn(f); setTab('plan'); };
+  inb.appendChild(go);
+  card.appendChild(inb);
+  return card;
+}
+/* is_placed false → true 的兩條邊界（需求 8） */
+function inRoomBBox(rid,x,y){
+  const ws=WALLS.filter(w=>w.room===rid);
+  if(!ws.length) return false;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  ws.forEach(w=>{x0=Math.min(x0,w.x1,w.x2);x1=Math.max(x1,w.x1,w.x2);
+                 y0=Math.min(y0,w.y1,w.y2);y1=Math.max(y1,w.y1,w.y2);});
+  /* ⚠️ 用【嚴格內部】而不是含邊界：新建項目的 anchor 是 (0,0)，
+     而房間的左上角常常就是 (0,0) ⇒ 含邊界會判成「已經在房間裡」，
+     那件家具就會卡在牆角（需求 7 明寫新建家具要放房間中心）。 */
+  return x>x0 && x<x1 && y>y0 && y<y1;
+}
+function placeIntoRoomIfOutside(f){
+  const a=f.anchor||{};
+  if(a.type!=='free') return;
+  if(inRoomBBox(f.room, a.x||0, a.y||0)) return;
+  const c=roomCenter(f.room);
+  if(c) f.anchor={type:'free', x:c.x, y:c.y};
+}
+async function toggleChipPlaced(id){
+  const f=FURN.find(x=>x.id===id); if(!f) return;
+  if(f.isPlaced){
+    /* 🔴 true → false：anchor 保留不動（與「清擺設」一致）——它記得上次擺哪 */
+    f.isPlaced=false;
+    await saveItem(f);
+    await reloadObjects(); render(); buildList(); syncSel();
+    return;
+  }
+  // 🔴 先要求選房間（不可擺到「沒有房間」）→ 展開同一個列，cause='chip'
+  if(!f.room){ S.expandId=id; S.expandCause='chip'; buildList(); return; }
+  f.isPlaced=true;
+  placeIntoRoomIfOutside(f);
+  await saveItem(f);
+  await reloadObjects(); render(); buildList(); syncSel();
+}
+function groupHead(label,color,count,rid){
+  const h=document.createElement('div'); h.className='grp';
+  const bar=document.createElement('span'); bar.className='bar'; bar.style.background=color;
+  const nm=document.createElement('span'); nm.className='gname';
+  nm.textContent=`${label}　${count} 件`;
+  h.appendChild(bar); h.appendChild(nm);
+  if(rid){
+    // 需求 6：房間分組要能點進改名／刪除
+    const b1=document.createElement('button'); b1.className='gbtn'; b1.textContent='改名';
+    b1.onclick=async()=>{
+      const r=ROOMS.find(x=>x.id===rid); if(!r) return;
+      const v=await askDialog({title:'房間改名', body:'名稱可以留空（會顯示「未命名」）。',
+        input:r.name||'', okText:'儲存'});
+      if(v===false) return;
+      await renameRoom(rid, v);
+      render(); buildList(); refreshTop();
+    };
+    const b2=document.createElement('button'); b2.className='gbtn'; b2.textContent='刪除';
+    b2.onclick=()=>confirmDeleteRoom(rid);
+    h.appendChild(b1); h.appendChild(b2);
+  }
+  return h;
+}
+function buildList(){
+  const box=$('listPage'); if(!box) return;
+  box.innerHTML='';
+  const unplaced=FURN.filter(f=>!f.isPlaced || !f.room);
+  if(!FURN.length && !ROOMS.length){
+    // 空狀態：一個圖示 ＋「還沒有項目」＋ (+) 仍在（同一顆）
+    const e=document.createElement('div'); e.className='empty';
+    e.innerHTML='<span class="ic">📋</span>還沒有項目';
+    box.appendChild(e);
+    return;
+  }
+  ROOMS.forEach(r=>{
+    const items=FURN.filter(f=>f.room===r.id && f.isPlaced);
+    // 一個房間 0 件 → 分組標題仍顯示（「N 件」寫 0）
+    box.appendChild(groupHead(r.name||'未命名', roomColor(r.id), items.length, r.id));
+    items.forEach(f=>box.appendChild(itemCard(f)));
+  });
+  if(unplaced.length || !FURN.length){
+    box.appendChild(groupHead('未擺放','var(--dim)',unplaced.length,null));
+    if(!unplaced.length){
+      const e=document.createElement('div'); e.className='empty';
+      e.innerHTML='<span class="ic">📋</span>還沒有項目';
+      box.appendChild(e);
+    }
+    unplaced.forEach(f=>box.appendChild(itemCard(f)));
+  }
+}
+/* 需求 8 §3-1：點 (+) 直接建一筆新項目（🔴 不開挑選器——挑選器是 v0.1.5），
+   並立刻捲動到那張新卡片、游標落在名稱欄。 */
+async function addItemFromList(){
+  const id=await addItem({});
+  buildList();
+  const inp=document.querySelector(`.nm[data-id="${id}"]`);
+  if(inp){
+    inp.closest('.icard').scrollIntoView({block:'center'});
+    inp.focus();
+  }
+  refreshTop();
+}
+$('fabAdd').onclick=addItemFromList;
+
 function centerOn(f){
   const p=place(f), r=svg.getBoundingClientRect();
   S.zoom=Math.max(S.zoom,.9);
   S.panX=r.width/2 - p.x*S.zoom;
   S.panY=r.height/2 - p.y*S.zoom;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   需求 13｜分頁（_d §10-0c：最多 5 格，前 4 格永遠不動）
+   ══════════════════════════════════════════════════════════════ */
 function setTab(t){
+  if(S.tab==='list' && t!=='list'){ commitNameEdits(); }
   S.tab=t;
   $('listPage').hidden  = (t!=='list');
   $('photoPage').hidden = (t!=='photo');
+  $('projPage').hidden  = (t!=='proj');
+  $('soonPage').hidden  = !(t==='cost'||t==='layout');
   $('zoombtns').hidden  = (t!=='plan');
+  $('fabAdd').hidden    = (t!=='list');
+  if(t==='cost'||t==='layout'){
+    /* 🔴 依 _d §10-0b 不寫「這裡以後會有…」——只給狀態 */
+    $('soonIc').textContent = t==='cost' ? '💰' : '📐';
+    $('soonTxt').textContent = '之後';
+  }
   if(t==='photo') renderPhotos();
+  if(t==='proj')  refreshProj();
   $('tabPlan').classList.toggle('on',t==='plan');
   $('tabList').classList.toggle('on',t==='list');
+  $('tabCost').classList.toggle('on',t==='cost');
   $('tabPhoto').classList.toggle('on',t==='photo');
+  $('tabLayout').classList.toggle('on',t==='layout');
   if(t==='list') buildList();
-  try{ localStorage.setItem('deco.tab',t); }catch(e){}   // 記住上次
+  try{ if(t==='plan'||t==='list'||t==='photo') localStorage.setItem('deco.tab',t); }catch(e){}
+  refreshTop();
   render(); syncSel();
 }
-$('tabPlan').onclick=()=>setTab('plan');
-$('tabList').onclick=()=>setTab('list');
-$('tabPhoto').onclick=()=>setTab('photo');
+$('tabPlan').onclick  =()=>setTab('plan');
+$('tabList').onclick  =()=>setTab('list');
+$('tabCost').onclick  =()=>setTab('cost');
+$('tabPhoto').onclick =()=>setTab('photo');
+$('tabLayout').onclick=()=>setTab('layout');
 
 /* ── 原型控制 ── */
 $('segGesture').addEventListener('click',e=>{
@@ -1771,7 +2841,7 @@ function applyModeClass(){
   st.classList.remove('m-obj','m-pan');
   if(S.gesture==='A1') st.classList.add(S.mode==='obj'?'m-obj':'m-pan');
 }
-/* ── 縮放：三種入口（雙指 / 滾輪 / 按鈕）────────────────── */
+/* ── 縮放：三種入口（雙指 / 滾輪 / 按鈕）——O-5 ── */
 function zoomAt(cx,cy,factor){
   const r=svg.getBoundingClientRect();
   const mx=cx-r.left, my=cy-r.top;
@@ -1795,29 +2865,61 @@ $('snapOn').onchange=e=>{S.snap=e.target.checked; render(); syncSel();};
 $('gridAll').onchange=e=>{S.gridAll=e.target.checked; render();};
 
 /* ── 啟動 ── */
+/* 資料變了（種子只有 400×300，不再是舊假資料的 900×400）⇒ fit() 改成依實際資料算範圍。
+   ⚠️ 這不是 _i 指定的改動，是換掉假資料後 fit() 的必要適配（見交付報告）。 */
+function planBounds(){
+  if(!WALLS.length) return {x0:0, y0:0, x1:400, y1:barY()+80};
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  WALLS.forEach(w=>{x0=Math.min(x0,w.x1,w.x2);x1=Math.max(x1,w.x1,w.x2);
+                    y0=Math.min(y0,w.y1,w.y2);y1=Math.max(y1,w.y1,w.y2);});
+  y1=Math.max(y1, barY()+80);                 // 含下方的示意帶與比例尺
+  x1=Math.max(x1, x0+340);
+  return {x0,y0,x1,y1};
+}
 function fit(){
   const r=svg.getBoundingClientRect();
-  // ⚠️ 版面還沒定案時 rect 是 0 → 算出 zoom=0 → 整張圖縮成一個點、畫面全白。
-  //    語法檢查對這種完全瞎眼（實際踩到）。等下一幀再試。
+  /* ⚠️ O-1：版面還沒定案時 rect 是 0 → 算出 zoom=0 → 整張圖縮成一個點、畫面全白。
+     語法檢查對這種完全瞎眼（實際踩到）。等下一幀再試。 */
   if(!r.width || !r.height){ requestAnimationFrame(fit); return; }
-  const z=Math.min(r.width/980, r.height/560)*.92;   // 560：含下方比例尺
-  S.zoom = (z>0 && isFinite(z)) ? z : 1;
-  S.panX=(r.width-900*S.zoom)/2;
-  S.panY=(r.height-510*S.zoom)/2;
+  const b=planBounds();
+  const W=Math.max(1,(b.x1-b.x0)+90), H=Math.max(1,(b.y1-b.y0)+90);
+  const z=Math.min(r.width/W, r.height/H);
+  S.zoom = (z>0 && isFinite(z)) ? z : 1;      // ← isFinite 那一層不能省（O-1）
+  S.panX = (r.width  - (b.x1-b.x0)*S.zoom)/2 - b.x0*S.zoom;
+  S.panY = (r.height - (b.y1-b.y0)*S.zoom)/2 - b.y0*S.zoom;
   render(); syncSel(); zLbl();
 }
 window.addEventListener('resize',()=>{
   if(!(S.zoom>0)) { fit(); return; }
   render(); syncSel();
 });
-loadMarkers().then(()=>render());          // v0.1.2：把上次存的標記讀回來
-cloudInit();                               // v0.1.3：有存過代碼就自動連線並同步
+
 let t0='plan'; try{ t0=localStorage.getItem('deco.tab')||'plan'; }catch(e){}
-// v0.1.2：預設 A2（_d §10-1 定案）。A1 開關保留為比較用
+if(t0!=='plan' && t0!=='list' && t0!=='photo') t0='plan';
 document.querySelectorAll('#segGesture button').forEach(b=>
   b.classList.toggle('on', b.dataset.g==='A2'));
 $('modebar').classList.toggle('show', S.gesture==='A1');
 applyModeClass();
-fit();
-setTab(t0);
+
+/* 🔴 啟動序列（需求 15 的順序寫死）：
+     loadMarkers → cloudInit（可能連上）→ loadAll（lAll → pull → seed → purge）
+     → render → buildList → setTab
+   ⚠️ pull 丟錯 → 不跑 seed、把錯誤留在畫面上（不可用「本機全空」當成「專案是空的」）。 */
+(async function boot(){
+  await loadMarkers();
+  await cloudInit();
+  try{
+    await loadAll();
+    S.dataErr='';
+  }catch(e){
+    cloudErr(e);
+    S.dataErr=(e&&e.message)||String(e);
+    await reloadObjects();          // 至少把本機已有的畫出來，但【不產生種子】
+  }
+  fit();
+  render();
+  buildList();
+  setTab(t0);
+  refreshTop();
+})();
 </script>
