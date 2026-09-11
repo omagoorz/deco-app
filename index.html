@@ -1,12 +1,25 @@
 <!-- 🔴 charset 必須在最前面：python -m http.server 不送 charset，
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
-<title>裝修估價 App 互動預覽 v0.1.4.2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>裝修估價 App 互動預覽 v0.1.4.3</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.4.2（補釘）
+  裝修估價 App — 手機互動預覽　版次：v0.1.4.3（補釘微調）
   作者：claude / 2026-09-11 / 對應 _d v0.16
-  上一版：v0.1.4.1、v0.1.4（同資料夾）／v0.1.3.1（../../v0.1.3_探索/修正需求/）
+  上一版：v0.1.4.2、v0.1.4.1、v0.1.4（同資料夾）／v0.1.3.1（../../v0.1.3_探索/修正需求/）
           ⚠️ 以上全部保留不覆蓋
+
+  ── 本補釘微調（v0.1.4.2 → v0.1.4.3）：補上 viewport meta（需求 27）──
+  規格：../修正需求/裝修估價App_修正需求表_v0.08_i_claude_20260911.md
+
+   需求 27 🔴 補上 <meta name="viewport" content="width=device-width, initial-scale=1">
+           根因：v0.1.3～v0.1.4.2 全部【從來沒有】viewport 設定
+                 ⇒ Android Chrome 用預設 980px layout viewport 假裝桌機、再縮到 ~42% 塞進手機螢幕
+                 ⇒ 11.5px 字變成 ~4.8px、44px 按鈕變成 ~18px ⇒ Ali：「手機按不到任何物件」
+           ⚠️ 前面兩輪的手機修正（需求 20／21）建立在「980 是正常寬度」的錯誤前提上，
+              需要等 Ali 在真實寬度下看過後再決定要不要調整——本輪【不動】那兩條的內容。
+           🔴 本補釘只加這一行，不加 maximum-scale／user-scalable=no（會禁止使用者自行縮放），
+              不動任何 CSS 數值、不動任何版面結構。
 
   ── 本補釘（v0.1.4.1 → v0.1.4.2）：Ali 第二次實機測試（電腦端）＋ claude 線上重現 ──
   規格：../修正需求/裝修估價App_修正需求表_v0.07_i_claude_20260911.md
@@ -700,7 +713,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.4.2';
+const APP_VER = 'v0.1.4.3';
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
