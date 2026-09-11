@@ -1,11 +1,30 @@
 <!-- 🔴 charset 必須在最前面：python -m http.server 不送 charset，
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
-<title>裝修估價 App 互動預覽 v0.1.4.1</title>
+<title>裝修估價 App 互動預覽 v0.1.4.2</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.4.1（補釘）
+  裝修估價 App — 手機互動預覽　版次：v0.1.4.2（補釘）
   作者：claude / 2026-09-11 / 對應 _d v0.16
-  上一版：v0.1.4（同資料夾，保留不覆蓋）／v0.1.3.1（../../v0.1.3_探索/修正需求/，保留不覆蓋）
+  上一版：v0.1.4.1、v0.1.4（同資料夾）／v0.1.3.1（../../v0.1.3_探索/修正需求/）
+          ⚠️ 以上全部保留不覆蓋
+
+  ── 本補釘（v0.1.4.1 → v0.1.4.2）：Ali 第二次實機測試（電腦端）＋ claude 線上重現 ──
+  規格：../修正需求/裝修估價App_修正需求表_v0.07_i_claude_20260911.md
+
+   需求 24 🔴 〔已擺〕false→true 成功後【三件一起做】：選中它 → 切到平面圖 → 平移進畫面
+           Ali 原話：「我看不到這個東西在畫面上的哪裡，因此，我亂按平面圖的〔📏 改尺寸〕，
+                     看到裡面都是空白的，故重新填寫。她會改到清單中的數值。」
+           claude 線上重現：擺完之後 tab 還是 'list'、selId 是 null、面板隱藏
+           ⇒ 東西有擺好、尺寸有保留、圖上也畫了，但【畫面沒有一處指向「它去哪了」】
+           ⇒ 她只能在圖上猜，猜錯就把尺寸填到別一件身上
+           ⭐ 她說的「我亂按」是這個缺陷造出來的，不是使用者的隨機行為
+   需求 25 專案頁最下方加診斷列（版次／畫面 CSS 像素／縮放／瀏覽器），純狀態無解釋句
+           ⚠️ 這條是 claude 在 v0.06_i 整理時自己漏掉的，不是新需求
+   需求 26 🟡 `_cardDirty` 由 Set<key> 改成 Map<key,value>：值存記憶體，不依賴 DOM 還在不在
+
+  ⚠️ 本補釘【不做】：字級分級（_d §13-37）、chip 兩段式標籤（§13-36，交說書人重盤）、
+     家具挑選器／上視圖 icon（v0.1.5）、一位置多張照片（§13-32）、兩個選取開關（§13-33）、
+     種子雲端唯一性（§13-34）、換代碼搬家（§13-35）。「同步是聯集」不改（v0.06_i §3）。
 
   ── 本補釘（v0.1.4 → v0.1.4.1）：Ali 2026-09-11 實機測試回報八條 ──
   規格：../修正需求/裝修估價App_修正需求表_v0.06_i_claude_20260911.md
@@ -437,6 +456,11 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .prow{display:flex;gap:6px;flex-wrap:wrap}
 .prow .btn{flex:1;min-width:96px}
 .tcount{font-size:12px;color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
+/* 🔴 v0.07_i 需求 25：診斷列（專案頁最下方）。等寬＋可選取，方便截圖或複製。 */
+.diagrow{margin-top:16px;padding:9px 10px;border-top:1px solid var(--line);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  font-size:11px;color:var(--sub);line-height:1.7;word-break:break-all;
+  font-variant-numeric:tabular-nums;user-select:text;-webkit-user-select:text}
 
 /* ── 底部分頁（_d §10-0c：最多 5 格，前 4 格永遠不動）── */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:520px;margin:0 auto;
@@ -526,6 +550,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
       <div class="tcount" id="trashCount">垃圾桶 — 筆</div>
       <div class="projsec">之後</div>
       <div class="soonrow off"><div class="k">📦 結案封存</div></div>
+      <!-- 🔴 v0.07_i 需求 25：診斷列。
+           位置在【專案頁最下方】，不是主畫面——依 _d §10-0b：主畫面不解釋功能，
+           而這一行是排查用的，不是日常操作要看的。
+           內容純狀態、沒有解釋句。⭐ 存在目的就是讓 Ali 截這一行給 claude
+           ⇒ 不要縮寫、不要用圖示代替數字。 -->
+      <div class="diagrow" id="diagRow">—</div>
     </div>
 
     <!-- 需求 13：估價／格局（灰化，點了只給狀態，不寫功能說明） -->
@@ -670,7 +700,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.4.1';
+const APP_VER = 'v0.1.4.2';
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
@@ -2498,6 +2528,32 @@ $('btnClearAll').onclick = async ()=>{
 async function refreshProj(){
   try{ $('trashCount').textContent='垃圾桶 '+(await trashSize())+' 筆'; }
   catch(e){ $('trashCount').textContent='垃圾桶 — 筆'; }
+  refreshDiag();
+}
+/* 🔴 v0.07_i 需求 25：診斷列。
+   ⚠️ 畫面尺寸是 window.innerWidth×innerHeight（【CSS 像素】），不是螢幕解析度——
+      Ali 要判斷的是「版面在她那台上有多少空間」，不是硬體規格。
+   ⚠️ userAgent 認不出來 → 印「未知」，不要印空白（_d §10-0b：狀態必須看得出來）。 */
+function uaShort(){
+  const u=navigator.userAgent||'';
+  let eng='未知', plat='未知';
+  if(/Edg\//.test(u)) eng='Edge';
+  else if(/OPR\//.test(u)) eng='Opera';
+  else if(/SamsungBrowser/.test(u)) eng='Samsung';
+  else if(/Firefox\//.test(u)) eng='Firefox';
+  else if(/Chrome\//.test(u)) eng='Chrome';
+  else if(/Safari\//.test(u)) eng='Safari';
+  if(/Android/.test(u)) plat='Android';
+  else if(/iPhone|iPad|iPod/.test(u)) plat='iOS';
+  else if(/Windows/.test(u)) plat='Windows';
+  else if(/Mac OS X|Macintosh/.test(u)) plat='macOS';
+  else if(/Linux/.test(u)) plat='Linux';
+  return eng+'/'+plat;
+}
+function refreshDiag(){
+  const b=$('diagRow'); if(!b) return;
+  b.textContent = `${APP_VER}　畫面 ${window.innerWidth}×${window.innerHeight}`
+    + `　縮放 ${Math.round(S.zoom*100)}%　${uaShort()}`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2824,27 +2880,38 @@ $('viewer').addEventListener('click', e=>{ if(e.target.id!=='vImg') closeViewer(
      blur / Enter     → commitCardEdits()
      visibilitychange → commitCardEdits()（手機鎖屏／切 App 時 blur 不可靠）
    ⚠️ 原本只有 name（`_nameDirty`），本輪擴成三個欄位，改用 `id::欄位` 當 key。 */
-let _cardDirty=new Set();
+/* 🔴 v0.07_i 需求 26：從 Set<key> 改成 Map<key, 使用者打的原始字串>。
+   ⚠️ 原本的弱點（claude 重現時發現，**不是** Ali 這次踩到的路徑，見 v0.07_i §0-2b）：
+        值只存在 DOM 的 input 裡，commitCardEdits() 存檔時才回頭去 DOM 撈
+        ⇒ 若在存檔之前 buildList() 重建了清單，那個 input 就不存在了
+        ⇒ `if(!inp) continue` ⇒ 值【安靜地丟掉】，
+           而 _cardDirty 在函式開頭就已 clear ⇒ 連重試的機會都沒有
+   ⇒ 改成值一律從 Map 取，不再依賴 DOM 還在不在。
+      「還原成上一個有效值」「移除紅框」仍要摸 DOM ⇒ 那兩步只在 inp 存在時做；
+      inp 不存在時【只寫值、跳過畫面還原】（清單等下會被重建，本來就會重畫）。 */
+let _cardDirty=new Map();
 const cardKey=(id,fld)=>id+'::'+fld;
 function commitCardEdits(){
   if(!_cardDirty.size) return;
-  const keys=[..._cardDirty]; _cardDirty.clear();
+  const entries=[..._cardDirty.entries()]; _cardDirty.clear();
   let touched=false;
-  for(const key of keys){
+  for(const [key,rawVal] of entries){
     const [id,fld]=key.split('::');
     const inp=document.querySelector(`.cardedit[data-id="${id}"][data-fld="${fld}"]`);
     const f=FURN.find(x=>x.id===id);
-    if(!inp||!f) continue;
-    const raw=inp.value.trim();
+    if(!f) continue;                       // 🔴 只有「這一筆不在了」才跳過，不再看 inp
+    const raw=String(rawVal==null?'':rawVal).trim();
     if(fld==='price'){
       /* 需求 7（v0.04_i §7）：無效 → 還原成【上一個有效值】、移除紅框；
          清空 → null（未填），🔴 不是 0 ⇒ 卡片回到顯示「缺價錢」。 */
       if(raw!=='' && !/^\d+$/.test(raw)){
-        inp.value = f.price==null ? '' : String(f.price);
-        inp.classList.remove('bad');
+        /* 🔴 需求 26：值無效 → 不寫入（與現況一致）。
+           畫面還原（還原成上一個有效值＋移除紅框）要摸 DOM ⇒ 只在 inp 還在時做；
+           inp 不在＝清單已重建，重建時本來就會顯示舊值，不需要還原。 */
+        if(inp){ inp.value = f.price==null ? '' : String(f.price); inp.classList.remove('bad'); }
         continue;
       }
-      inp.classList.remove('bad');
+      if(inp) inp.classList.remove('bad');
       const v = raw==='' ? null : parseInt(raw,10);
       if(f.price!==v){ f.price=v; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
       continue;
@@ -2854,12 +2921,24 @@ function commitCardEdits(){
          🔴 與選中面板改的是【同一個值】（同一個 FURN 物件、同一個 saveItem）。 */
       const v = raw==='' ? null : parseFloat(raw);
       if(raw!=='' && (!isFinite(v)||v<=0)){
-        inp.value = f[fld]==null ? '' : String(Math.round(f[fld]*10)/10);
-        inp.classList.remove('bad');
+        // 🔴 需求 26：同上，畫面還原只在 inp 還在時做
+        if(inp){ inp.value = f[fld]==null ? '' : String(Math.round(f[fld]*10)/10);
+                 inp.classList.remove('bad'); }
         continue;
       }
-      inp.classList.remove('bad');
-      if(f[fld]!==v){ f[fld]=v; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
+      if(inp) inp.classList.remove('bad');
+      /* 🔴🔴 v0.1.4.2 建造者實測抓到的缺陷（v0.1.4.1 需求 22 引入、已上線）：
+         這裡【不可以】用 `if(f[fld]!==v)` 當「有沒有改」的判準。
+         理由：需求 22 的 input handler 為了讓「還沒填尺寸」立刻消失、
+               並讓平面圖同屏看後果（BP-F2），已經把值【先寫進記憶體】了
+               ⇒ commit 時 f[fld] 早就等於 v ⇒ 判成「沒變」⇒ 【不存檔】
+         最小重現（實測）：只改尺寸、不碰其他欄位 → commit → IndexedDB 仍是 null
+               → 下一次 reloadObjects()（同步／按〔已擺〕／重新載入）把記憶體抹回 null
+               ⇒ 140 變成 null，而畫面在被抹掉之前一直顯示 140
+         ⚠️ 之前沒被抓到，是因為只要同一張卡片有【別的】欄位一起提交（例如價錢），
+            saveItem(f) 會把整個物件寫下去 ⇒ 尺寸被順便存到 ⇒ 症狀時有時無。
+         ⇒ 改成【有效就一律存】。多一次寫入的成本遠低於靜默掉資料。 */
+      f[fld]=v; touched=true; saveItem(f).catch(e=>cloudErr(e));
       continue;
     }
     // name / note：文字，空字串就是空字串
@@ -2881,7 +2960,9 @@ function cardInput(f, fld, opts){
   if(o.inputmode) inp.setAttribute('inputmode',o.inputmode);
   inp.onclick=e=>e.stopPropagation();
   inp.addEventListener('input',()=>{
-    _cardDirty.add(cardKey(f.id,fld));
+    /* 🔴 需求 26：把【值】一起記進 Map，不要只記「哪個欄位被改了」。
+       同一欄位連打多次 → Map 覆蓋，最後一次為準。 */
+    _cardDirty.set(cardKey(f.id,fld), inp.value);
     const raw=inp.value.trim();
     /* 打字中：不阻止、不還原、不寫入 —— 但無效就加紅框，
        讓「這個值沒被採用」看得出來（_d §10-0b 允許狀態提示）。 */
@@ -3054,11 +3135,45 @@ async function toggleChipPlaced(id){
     return;
   }
   // 🔴 先要求選房間（不可擺到「沒有房間」）→ 展開同一個列，cause='chip'
+  //    ⚠️ v0.07_i 需求 24 邊界：這一條路【一行不改】——仍然只展開房間下拉，
+  //       不切分頁、不選中。選了房間之後才會走到下面。
   if(!f.room){ S.expandId=id; S.expandCause='chip'; buildList(); return; }
   f.isPlaced=true;
   placeIntoRoomIfOutside(f);
   await saveItem(f);
-  await reloadObjects(); render(); buildList(); syncSel();
+  await reloadObjects();
+  /* ── 🔴 v0.07_i 需求 24：擺好之後【三件一起做】，順序不可換 ──
+     Ali 原話：「我看不到這個東西在畫面上的哪裡，因此，我亂按平面圖的〔📏 改尺寸〕，
+                看到裡面都是空白的，故重新填寫。她會改到清單中的數值。」
+     claude 線上重現 v0.1.4.1：擺完之後 tab='list'、selId=null、面板隱藏
+       ⇒ 物件本身沒問題（有擺好、尺寸保留、平面圖上有畫）
+       ⇒ 缺的是【指向】：畫面沒有任何一處告訴她那件東西去哪了
+       ⇒ 她只能在圖上猜，猜到另一件沒填尺寸的，就把尺寸填到那一件身上。
+     ⚠️ 尺寸未填的照樣要帶過去——面板尺寸欄是空的【是正確的狀態】（它真的沒填）。 */
+  S.selId = f.id;              // ① 選中它 ⇒ 面板直接出現、尺寸已經是它的值
+  setTab('plan');              // ② 帶到它在的地方（setTab 內含 render/syncSel）
+  ensureVisible(f);            // ③ 若它在畫面外 → 平移過去（🔴 不動 zoom）
+  render(); buildList(); syncSel();
+}
+/* 🔴 v0.07_i 需求 24：只平移，【不動 zoom】。
+   理由：zoom 是使用者剛剛自己調的，而長度比例尺是由 zoom 實算的（需求 14／_d §10-2c）
+        ⇒ 擅自改 zoom 會讓她失去「我現在看的是幾分之一」這個參考。
+   邊界：已完全在可見範圍內 → 什麼都不做（不要「為了置中」而抖一下）。 */
+function ensureVisible(f){
+  if(!onPlan(f)) return;
+  const p=place(f);
+  const {w,h}=svgSize();
+  if(!(w>0&&h>0)) return;
+  /* 用它的外接矩形（含旋轉）判斷，不是只看中心點 */
+  const pts = hasSize(f) ? corners(p.x,p.y,f.w,f.d,p.ang,0) : [{x:p.x,y:p.y}];
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const q of pts){ const s=w2s(q.x,q.y);
+    x0=Math.min(x0,s.x); x1=Math.max(x1,s.x); y0=Math.min(y0,s.y); y1=Math.max(y1,s.y); }
+  const inside = x0>=SVG_PAD && y0>=SVG_PAD && x1<=w-SVG_PAD && y1<=h-SVG_PAD;
+  if(inside) return;                                   // 已看得到 → 不動
+  const z=S.zoom;                                      // 🔴 全程不改它
+  S.panX = w/2 - p.x*z;
+  S.panY = h/2 - p.y*z;
 }
 function groupHead(label,color,count,rid){
   const h=document.createElement('div'); h.className='grp';
@@ -3242,6 +3357,8 @@ function fit(){
   render(); syncSel(); zLbl();
 }
 window.addEventListener('resize',()=>{
+  /* 🔴 需求 25 邊界：轉向或網址列收起造成高度變化時，診斷列要跟著現況（它是狀態）。 */
+  refreshDiag();
   if(!(S.zoom>0)) { fit(); return; }
   render(); syncSel();
 });
