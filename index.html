@@ -2,10 +2,19 @@
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>裝修估價 App 互動預覽 v0.1.4.4</title>
+<title>裝修估價 App 互動預覽 v0.1.4.5</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.4.3（補釘微調）
-  作者：claude / 2026-09-11 / 對應 _d v0.16
+  裝修估價 App — 手機互動預覽　版次：v0.1.4.5（補釘）
+  作者：claude / 2026-09-12 / 對應 _d v0.17
+  規格：../修正需求/裝修估價App_修正需求表_v0.10_i_claude_20260911.md（需求 34~39）
+        ＋ 裝修估價App_修正需求表_v0.11_i_claude_20260912.md（回修，衝突時以此為準）
+  本補釘（v0.1.4.4 → v0.1.4.5）：
+    需求 34 身分用 refresh_token 續期／35 續期失敗要講出來＋舊格式 session 丟棄
+    需求 36 存檔不准覆寫 projectCode（含照片線）＋孤兒資料要看得見
+    需求 37 同步完成改狀態式／38 上次同步時間持久＋頂列橘點／39 拿掉手勢 A1／A2
+    需求 40 版號
+  ── 以下為 v0.1.4.3 的說明，保留備查 ──
+  上一版說明：版次 v0.1.4.3（補釘微調）／claude / 2026-09-11 / 對應 _d v0.16
   上一版：v0.1.4.2、v0.1.4.1、v0.1.4（同資料夾）／v0.1.3.1（../../v0.1.3_探索/修正需求/）
           ⚠️ 以上全部保留不覆蓋
 
@@ -159,30 +168,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
   background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;
   font-size:calc(17px * var(--fs));flex:none;cursor:pointer;padding:0;font-family:inherit}
 
-/* ── 頂部：原型控制列（正式版沒有這排，只是給你切方案用）──
-   ⚠️ _i 三份都沒有把它列進「刪什麼」，故保留（CLAUDE.md 3-2：不刪規格沒說要刪的）。 */
+/* ── 頂部：擺放輔助列 ──
+   🔴 需求 39（v0.11_i 修一）：這排【不是】原型殘留，留在原位、不搬家。
+      吸附＝擺放手感；網格全顯＝Ali 用來自己確認走道有沒有相撞（_d §13-38，
+      方向 #9「算給你看，不替你判斷」）。舊註解說「正式版沒有這排」已過期，已改寫。 */
 .protobar{flex:none;background:var(--panel);border-bottom:1px solid var(--line);
   padding:5px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:calc(12px * var(--fs))}
-.protobar .tag{color:var(--sub);font-size:calc(11px * var(--fs));margin-right:2px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.seg button{border:0;background:transparent;color:var(--sub);padding:4px 8px;font-size:calc(12px * var(--fs));
-  font-family:inherit;cursor:pointer;min-height:28px}
-.seg button.on{background:var(--accent);color:#fff}
 .chk{display:inline-flex;align-items:center;gap:4px;color:var(--sub)}
-
-/* ── 模式列（A1 才顯示）── */
-.modebar{flex:none;display:none;padding:5px 8px;background:var(--panel);
-  border-bottom:1px solid var(--line);align-items:center;gap:8px}
-.modebar.show{display:flex}
-.modebar .hint{font-size:calc(11px * var(--fs));color:var(--sub)}
 
 /* ── 舞台（§22：flex 子項要捲動/收縮必須 min-height:0）── */
 .stage{flex:1;min-height:0;position:relative;overflow:hidden}
 #plan{width:100%;height:100%;display:block;touch-action:none;background:var(--bg)}
-.stage.m-obj::after,.stage.m-pan::after{content:"";position:absolute;inset:0;
-  pointer-events:none;border:3px solid transparent;transition:border-color .15s}
-.stage.m-obj::after{border-color:var(--accent)}
-.stage.m-pan::after{border-color:var(--sub);opacity:.45}
 
 .zoombtns{position:absolute;right:8px;top:8px;z-index:10;
   display:flex;flex-direction:column;gap:5px;align-items:center}
@@ -514,24 +510,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
     <button class="gear" id="btnGear" title="專案">⚙️</button>
   </div>
 
-  <!-- 原型控制列：正式版沒有這排（_i 未列入刪除清單，故保留） -->
+  <!-- 擺放輔助列（🔴 需求 39：這排要留在原位）
+       吸附＝擺放的手感；網格全顯＝使用者自己判斷走道有沒有相撞（_d §13-38）。
+       ⚠️ 不是原型殘留，Ali 實際會用到，不要在下一輪順手刪掉。 -->
   <div class="protobar">
-    <span class="tag">手勢</span>
-    <span class="seg" id="segGesture">
-      <button data-g="A1">A1 模式切換</button>
-      <button data-g="A2" class="on">A2 點選再拖</button>
-    </span>
     <label class="chk"><input type="checkbox" id="snapOn" checked> 吸附</label>
     <label class="chk"><input type="checkbox" id="gridAll"> 網格全顯</label>
-  </div>
-
-  <!-- A1 的模式鈕 -->
-  <div class="modebar" id="modebar">
-    <span class="seg" id="segMode">
-      <button data-m="pan">✋ 移動畫面</button>
-      <button data-m="obj" class="on">🪑 移動家具</button>
-    </span>
-    <span class="hint" id="modeHint">現在拖曳＝移動家具</span>
   </div>
 
   <div class="stage" id="stage">
@@ -734,7 +718,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.4.4';
+const APP_VER = 'v0.1.4.5';
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
@@ -757,7 +741,9 @@ const GRAB_PAD_PX = 14; // 選中家具的命中緩衝（螢幕距離）
 /* 需求 8：房間色盤（系統自動配，本輪不讓使用者選）。色盤用完循環使用。 */
 const ROOM_PALETTE = ['#3a6ea5','#4a8f5e','#c98a2e','#8e5ba6','#2f8f8f','#b0553f'];
 
-const S = { gesture:'A2', mode:'obj', snap:true, gridAll:false,
+/* 🔴 需求 39：gesture／mode 兩個欄位已移除（A1／A2 收斂成單一路徑＝原本的 A2）。
+   拖曳＝先點選再拖；沒選中時拖背景＝平移畫面。不要再加回來。 */
+const S = { snap:true, gridAll:false,
             selId:null, zoom:1, panX:0, panY:0, tab:'plan',
             dragging:null, snapCand:null,
             pinPhoto:null,
@@ -1242,8 +1228,7 @@ function furnAt(sx,sy){
 function canDragFurn(f){
   if(!f) return false;
   if(!hasSize(f)) return false;        // 🔴 需求 7：尺寸未填不可拖（點選仍可，供編輯）
-  if(S.gesture==='A1') return S.mode==='obj';
-  return S.selId===f.id;               // A2：要先選中才拖得動
+  return S.selId===f.id;               // 🔴 需求 39：唯一路徑——要先選中才拖得動
 }
 svg.addEventListener('pointerdown',e=>{
   try{ svg.setPointerCapture(e.pointerId); }catch(err){}
@@ -1288,20 +1273,12 @@ svg.addEventListener('pointermove',e=>{
     S.dragging.gx=p.x+S.dragging.ox;
     S.dragging.gy=p.y+S.dragging.oy;
     previewMove(); render(); syncSel();
-  }else if(S.gesture==='A1' && S.mode==='obj'){
-    nudgeHint('這裡是空白處。要移動畫面請先切到「✋ 移動畫面」');
   }else{
+    /* 🔴 需求 39：沒有在拖家具 ⇒ 一律平移。原 A1 的 nudgeHint 分支已整段移除——
+       它那句提示會叫使用者去按一顆已經不存在的按鈕。平移是唯一路徑，不可以壞。 */
     S.panX=startPt.panX+dx; S.panY=startPt.panY+dy; render();
   }
 });
-let hintT=null;
-function nudgeHint(msg){
-  const h=$('modeHint'); if(!h) return;
-  h.textContent=msg; h.style.color='var(--warnA)';
-  clearTimeout(hintT);
-  hintT=setTimeout(()=>{ h.style.color='';
-    h.textContent = S.mode==='obj'?'現在拖曳＝移動家具':'現在拖曳＝移動畫面'; },1600);
-}
 function endPointer(e){
   pts.delete(e.pointerId);
   if(pts.size<2) pinch0=null;
@@ -1718,7 +1695,11 @@ async function lPutObj(st,obj){ return lPut(st, toDb(st,obj)); }
 
 function stampObj(o){
   o.id = o.id || uid();
-  o.projectCode = CLOUD.code || null;
+  /* 🔴 需求 36（obs O-19）：只有【還沒歸屬】的才蓋章。
+     「認領」只能由 cloudJoin 明確做，不可以靠「順便存檔」偷偷改變一筆資料屬於誰。
+     ⚠️ 判斷用 == null（同時涵蓋 null 與 undefined）；不可用 !o.projectCode，
+        空字串也會被當成「沒歸屬」而被蓋掉。 */
+  if(o.projectCode == null) o.projectCode = CLOUD.code || null;
   o.updatedAt   = nowISO();
   o.appVer      = APP_VER;
   if(o.deletedAt===undefined) o.deletedAt=null;
@@ -1999,8 +1980,14 @@ const CLOUD = {
   url : 'https://dcagkkbzfzirxpearzoq.supabase.co',
   key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjYWdra2J6ZnppcnhwZWFyem9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDg4MDYsImV4cCI6MjEwNDI4NDgwNn0.tPycXGs0Iv6P6dpT3gAqQLBgEunMkSuhuNzBW2EhRN8',
   code:null, tok:null, uid:null, on:false, blocked:false, msg:'', busy:false,
-  reauth:0            // v0.1.3.1：這次連線期間重新取得身分幾次（R-1 的可見度）
+  reauth:0,           // v0.1.3.1：這次連線期間重新取得身分幾次（R-1 的可見度）
+  /* 🔴 需求 35-1：續期失敗、真的換了身分 ⇒ 畫面要講一句人話（旗標，不是計數） */
+  reidentified:false,
+  /* 需求 34 邊界：signup 回應沒有 refresh_token ＝ 這個環境不支援續期 ⇒ 標一次，不沉默 */
+  noRefresh:false
 };
+/* 🔴 需求 38：多久沒同步就算「舊了」。寫成具名常數，方便日後調（測試時可暫時改成 1）。 */
+const STALE_MIN = 30;
 const LS={ get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
            set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},
            del:k=>{try{localStorage.removeItem(k)}catch(e){}} };
@@ -2044,25 +2031,75 @@ async function sbFetch(path, opt){
     throw new Error('對外連線失敗（可能被這個環境的安全政策擋住）：'+e.message);
   }
   CLOUD.blocked = false;
+  /* 🔴 需求 34：401 先【續期】，續不動才換身分。
+     ⚠️ path.indexOf('/auth/')<0 這一行守衛不准動——refreshSession 本身也走 sbFetch，
+        少了它就會遞迴。 */
   if(r.status===401 && !opt._retry && path.indexOf('/auth/')<0){
-    await signInAnon(true);                     // 身分過期 → 重新拿一個
-    /* 🔴 R-1：新身分是【全新的 uid】，不在 members 裡。
-       少了這一步，接下來每個讀取都會回 200 []（有權限問題，但長得像「雲端空了」）。 */
-    if(CLOUD.code && !_rejoining){
-      _rejoining = true;
-      try{ await joinProject(CLOUD.code); }
-      finally{ _rejoining = false; }            // ⚠️ 防遞迴：joinProject 本身也走 sbFetch
+    const okRefresh = await refreshSession();
+    if(!okRefresh){
+      await signInAnon(true);                   // 身分過期且續不動 → 重新拿一個
+      /* 🔴 R-1：新身分是【全新的 uid】，不在 members 裡。
+         少了這一步，接下來每個讀取都會回 200 []（有權限問題，但長得像「雲端空了」）。 */
+      if(CLOUD.code && !_rejoining){
+        _rejoining = true;
+        try{ await joinProject(CLOUD.code); }
+        finally{ _rejoining = false; }          // ⚠️ 防遞迴：joinProject 本身也走 sbFetch
+      }
+      CLOUD.reidentified = true;                // 🔴 需求 35-1：這件事不可以靜默
     }
     return sbFetch(path, Object.assign({}, opt, {_retry:true}));
   }
   return r;
 }
 let _rejoining = false;
+
+/* 🔴 需求 35-2：舊格式（沒有 v:2 ＝ 沒有 refresh_token）的 session 一律丟棄。
+   ⚠️ 只丟【身分】，不丟 deco_code——代碼是 Ali 唯一的鑰匙。 */
+function dropLegacySession(){
+  try{
+    const raw = LS.get('deco_sess');
+    if(!raw) return;
+    const j = JSON.parse(raw);
+    if(!j || j.v !== 2) LS.del('deco_sess');
+  }catch(e){ LS.del('deco_sess'); }             // 壞掉的也丟
+}
+
+/* 🔴 需求 34：用 refresh_token 續期。
+   ⚠️ 回來的 refresh_token 是【新的】，一定要覆蓋存起來，否則下一次續期必失敗。
+   ⚠️ in-flight 共用：兩個請求同時 401 時只能真的續一次，否則第二個拿到已被輪替掉的
+      舊 token ⇒ 失敗 ⇒ 白白掉回重新註冊。 */
+let _refreshing = null;
+async function refreshSession(){
+  if(_refreshing) return _refreshing;
+  _refreshing = (async ()=>{
+    let saved={};
+    try{ saved = JSON.parse(LS.get('deco_sess')||'{}') || {}; }catch(e){ saved={}; }
+    if(!saved.r) return false;                  // 沒有 refresh token → 續不了
+    let r;
+    try{
+      r = await sbFetch('/auth/v1/token?grant_type=refresh_token',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ refresh_token: saved.r })});
+    }catch(e){ return false; }                  // 離線／被擋：不換身分，錯誤由外層那條路報
+    if(!r.ok) return false;                     // 400／401：token 失效或被撤銷
+    let j={}; try{ j = await r.json(); }catch(e){ return false; }
+    if(!j.access_token) return false;
+    CLOUD.tok = j.access_token;
+    CLOUD.uid = (j.user && j.user.id) || CLOUD.uid;
+    LS.set('deco_sess', JSON.stringify({ v:2, t:j.access_token,
+            r: j.refresh_token || saved.r, u: CLOUD.uid }));
+    return true;
+  })().finally(()=>{ _refreshing = null; });
+  return _refreshing;
+}
+
 async function signInAnon(force){
+  dropLegacySession();                          // 🔴 需求 35-2：早於任何還原邏輯
   if(CLOUD.tok && !force) return;
   if(!force){
     const saved=LS.get('deco_sess');
-    if(saved){ try{ const j=JSON.parse(saved); CLOUD.tok=j.t; CLOUD.uid=j.u; return; }catch(e){} }
+    if(saved){ try{ const j=JSON.parse(saved);
+      if(j && j.v===2 && j.t){ CLOUD.tok=j.t; CLOUD.uid=j.u; return; } }catch(e){} }
   }
   const r=await sbFetch('/auth/v1/signup',{method:'POST',
     headers:{'Content-Type':'application/json'}, body:'{}'});
@@ -2073,7 +2110,10 @@ async function signInAnon(force){
   const prev=CLOUD.uid;
   CLOUD.tok=j.access_token; CLOUD.uid=(j.user&&j.user.id)||null;
   if(force && prev && prev!==CLOUD.uid) CLOUD.reauth++;   // 身分真的換掉了
-  LS.set('deco_sess', JSON.stringify({t:CLOUD.tok,u:CLOUD.uid}));
+  /* 🔴 需求 34：refresh_token 一定要存下來，否則到期時只能重新註冊一個新身分。
+     邊界：這個環境沒有給 refresh_token ⇒ 標起來，讓 cloudStat() 說一句（不要沉默）。 */
+  CLOUD.noRefresh = !j.refresh_token;
+  LS.set('deco_sess', JSON.stringify({v:2, t:CLOUD.tok, r:j.refresh_token||null, u:CLOUD.uid}));
 }
 /* 🔴 R-1 的核心修法：把「雲端 0 筆」這個有歧義的訊號，
    換成一個有明確答案的問題——「這台的身分在 members 裡嗎？」
@@ -2368,6 +2408,28 @@ async function cloudPull(){
   await cloudPullObjects();
 }
 
+/* 🔴 需求 37：狀態式那一行要用的兩個計數。
+   ⚠️ M（pend）在 cloudSync 的【成功分支】現算，不沿用 cloudStat 開頭那個舊值（v0.11_i 修三）。 */
+async function countPending(){
+  let n=0;
+  try{
+    for(const x of await lAll('photos'))  if(x.pending) n++;
+    for(const x of await lAll('markers')) if(x.pending) n++;
+    for(const st of ['rooms','walls','beams','items'])
+      for(const x of await lAll(st)) if(x.pending) n++;
+  }catch(e){}
+  return n;
+}
+/* 房間／家具用 lAllLive()（不含墓碑）；照片用 lAll('photos')。 */
+async function countLive(){
+  const out={rooms:0, items:0, photos:0};
+  try{
+    out.rooms  = (await lAllLive('rooms')).length;
+    out.items  = (await lAllLive('items')).length;
+    out.photos = (await lAll('photos')).length;
+  }catch(e){}
+  return out;
+}
 async function cloudSync(){
   if(!CLOUD.on || CLOUD.busy) return;
   CLOUD.busy=true; CLOUD.msg='';
@@ -2383,8 +2445,25 @@ async function cloudSync(){
   /* 🔴 需求 18 ②③：完成／失敗都要有一行【帶時間】的結果。
      ⚠️ 失敗時的錯誤與歸屬句由 cloudStat() 照原樣輸出，這裡只給狀態行。 */
   if(ok){
-    syncProg(`<span class="done">✅ 同步完成</span>　`
-      +`新增 <b>${SYNC.added}</b> 筆、上傳 <b>${SYNC.pushed}</b> 筆　${hhmm()}`);
+    /* 🔴 需求 38：同步成功才寫入（失敗不寫）。語意＝「這台拉到雲端資料」的時間。 */
+    LS.set('deco_lastsync', new Date().toISOString());
+    /* 🔴 需求 37（＋v0.11_i 修三）：改成【狀態式】——說現在是什麼樣子，
+       不是「剛剛搬了幾筆」。她問的是「我那兩件家具到底上去了沒」。
+       🔴 M（pend）必須在 cloudPull() 【結束之後】重算，不可以沿用先前的值，否則會說謊。 */
+    const m = await countPending();
+    const c = await countLive();
+    let line2;
+    if(CLOUD.msg){
+      /* 🔴 v0.11_i 修三：這一輪有任何錯誤被 cloudErr 記下 ⇒ 不准說「一致」。
+         一致是一個【承諾】；有錯誤還承諾一致，比不承諾更糟。 */
+      line2 = `<span class="er">⚠️ 同步完成，但有錯誤（下方有詳細訊息）</span>`;
+    }else if(m > 0){
+      line2 = `<span class="er">⏳ 還有 <b>${m}</b> 筆沒上傳</span>`;
+    }else{
+      line2 = `雲端與這台一致　房間 <b>${c.rooms}</b>、家具 <b>${c.items}</b>、照片 <b>${c.photos}</b>`;
+    }
+    syncProg(`<span class="done">✅ 同步完成</span>　${hhmm()}<br>`+line2
+      + (SYNC.added? `<br>這次從雲端拿到 <b>${SYNC.added}</b> 筆` : ''));
   }else{
     syncProg(`<span class="fail">🔴 同步失敗</span>　${hhmm()}`);
   }
@@ -2504,6 +2583,39 @@ function cloudLeave(){
 /* 🔴 需求 13：cloudStat() 的【狀態】與【錯誤與歸屬】文字一字不改，只換輸出目標
    （.cloudbar → 頂列徽章 ＋ 同步對話框）。
    ⚠️ 已刪：未連線時那兩行【說明文字】（依 _d §10-0b，不搬）。 */
+/* 🔴 需求 36-2：本機有多少筆「屬於別的專案代碼」的東西（改完之後它們會永遠不同步，
+   而那正是 obs O-18 的形狀——不說出來就是把會報錯的坑換成不會報錯的坑）。
+   ⚠️ v0.11_i 修二：要掃【六個】store，含 photos／markers，否則孤兒照片會完全看不見。
+   ⚠️ 含已軟刪除的（墓碑也還在推）。
+   ⚠️ 這裡只【數】，不動任何一筆——cloudJoin 的認領邏輯一行不改（N-169）。 */
+const ORPHAN_STORES = ['rooms','walls','beams','items','photos','markers'];
+async function countOrphans(){
+  if(!CLOUD.on || !CLOUD.code) return 0;
+  let n=0;
+  try{
+    for(const st of ORPHAN_STORES)
+      for(const x of await lAll(st))
+        if(x.projectCode != null && x.projectCode !== CLOUD.code) n++;
+  }catch(e){ return 0; }
+  return n;
+}
+/* 🔴 需求 38：上次【這台拉到雲端資料】的時間。
+   ⚠️ 不是「雲端最後被改的時間」——兩者不同，文案不可寫成後者。 */
+function lastSyncDate(){
+  const s=LS.get('deco_lastsync'); if(!s) return null;
+  const d=new Date(s); return isNaN(d.getTime())? null : d;
+}
+function lastSyncLabel(){
+  const d=lastSyncDate();
+  if(!d) return '還沒同步過';                    // 🔴 不要顯示空白或 --:--
+  const z=x=>String(x).padStart(2,'0');
+  return `${z(d.getMonth()+1)}/${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function isStale(){
+  const d=lastSyncDate();
+  if(!d) return true;                            // 從來沒同步過 ⇒ 也算舊的
+  return (Date.now()-d.getTime()) > STALE_MIN*60*1000;
+}
 async function cloudStat(){
   const box=$('cstat');
   if(!box) return;
@@ -2512,6 +2624,7 @@ async function cloudStat(){
        for(const x of await lAll('markers')) if(x.pending) pend++;
        for(const st of ['rooms','walls','beams','items'])
          for(const x of await lAll(st)) if(x.pending) pend++; }catch(e){}
+  const orphan = await countOrphans();
   $('syncDlg').classList.toggle('blocked', !!CLOUD.blocked);
   $('btnJoin').textContent = CLOUD.on?'重新連線':'連線';
   /* 🔴 需求 23：〔離開專案〕整區（含分隔線）一起顯示／隱藏 */
@@ -2531,6 +2644,14 @@ async function cloudStat(){
     html = `<span class="on">✅ 已連線</span>　專案代碼 <b class="codetxt">${esc(CLOUD.code)}</b>`+
       `　這台的身分 <b>…${esc((CLOUD.uid||'').slice(-6))}</b><br>`+
       (CLOUD.busy? `⏳ 同步中…` : (pend? `⏳ 有 <b>${pend}</b> 筆還沒上傳` : `雲端與這台一致`))+
+      /* 🔴 需求 38 ①：接在那一行後面，對話框一關也還記得（存在 localStorage）。 */
+      `　上次同步 <b>${esc(lastSyncLabel())}</b>`+
+      /* 🔴 需求 35-1：換身分是「資料歸屬會改變」的事件，不可以靜默。旗標，不是計數。 */
+      (CLOUD.reidentified? `<br><span class="er">⚠️ 這台的身分已過期，已用專案代碼重新加入。資料沒有掉，但這台在雲端是一個新身分。</span>`:'')+
+      /* 需求 34 邊界：這個環境沒給續期憑證 ⇒ 說出來，不要讓它安靜地每小時換一次身分。 */
+      (CLOUD.noRefresh? `<br><span class="er">⚠️ 這個環境沒有給續期用的憑證，身分到期時會換成新的身分。</span>`:'')+
+      /* 🔴 需求 36-2：孤兒資料必須看得見。N=0 整行不顯示。 */
+      (orphan? `<br><span class="er">⚠️ 有 <b>${orphan}</b> 筆資料屬於別的專案代碼，不會同步。</span>`:'')+
       (CLOUD.reauth? `<br><span class="er">⚠️ 這次連線期間身分重新取得過 ${CLOUD.reauth} 次</span>`:'')+
       `<br>⚠️ 安全等級＝<b>知道代碼的人就看得到</b>。只放測試照片。`;
   }else{
@@ -2546,7 +2667,13 @@ function refreshTop(pend){
   const b=$('btnCode'); if(!b) return;
   b.classList.remove('off','er');
   if(CLOUD.blocked){ b.classList.add('er'); b.textContent='⚠️ 連線被擋'; }
-  else if(CLOUD.on){ b.textContent='✅ '+(CLOUD.code||''); }
+  else if(CLOUD.on){
+    /* 🔴 需求 38 ②：這一處才是關鍵——Ali 困惑那次【根本沒打開同步對話框】。
+       已連線且超過 STALE_MIN 分鐘沒同步 → 加一個橘點，點進去看得到時間。
+       ⚠️ 只加一個點，不動版面、不動尺寸。 */
+    b.innerHTML='✅ '+esc(CLOUD.code||'')
+      + (isStale()? ` <span style="color:var(--warnB)">●</span>` : '');
+  }
   else { b.classList.add('off'); b.textContent='未連線'; }
   const t=$('appTitle');
   if(t) t.textContent =
@@ -2557,6 +2684,12 @@ function refreshTop(pend){
     : S.tab==='layout'?'格局'
     : (ROOMS.length? (ROOMS[0].name||'未命名') : '平面圖');
 }
+/* 🔴 v0.11_i 修四｜需求 38 的橘點要有東西去觸發它。
+   refreshTop() 全部是事件驅動；App 開著不動時，30 分鐘到了不會有人去重算 ⇒ 做了等於沒做。
+   三個時機：① 從背景切回來（本行）② setTab() 切分頁（既有，已呼叫 refreshTop）
+             ③ 每次同步結束（既有）。
+   ⚠️ 刻意【不用】setInterval：手機背景計時器不可靠，而且會在沒人看的時候空轉。 */
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshTop(); });
 $('btnJoin').onclick  = cloudJoin;
 $('btnLeave').onclick = cloudLeave;
 $('btnSync').onclick  = cloudSync;
@@ -2586,6 +2719,11 @@ async function cloudInit(){
   $('pcode').value=code;
   try{
     await signInAnon();
+    /* ⚠️ 需求 34 的副作用（已知、刻意接受，v0.11_i 修五）：
+       身分留住之後，「每小時換身分順便重新加入專案」這個自我修復會消失。
+       membership 的修復點改為 cloudInit()（每次開 App 一次，冪等）。
+       ⇒ 若在 App 開著的期間於後台改動 members，畫面不會自動修復，
+          要重新整理。這是取捨，不是缺陷。 */
     CLOUD.code=await joinProject(code);   // 冪等：已加入就什麼都不做
     CLOUD.on=true;
   }catch(e){ CLOUD.on=false; cloudErr(e); }
@@ -2650,7 +2788,8 @@ function refreshDiag(){
    ══════════════════════════════════════════════════════════════ */
 async function savePhoto(rec){
   rec.id = rec.id || uid();
-  rec.projectCode = CLOUD.code || null;
+  /* 🔴 需求 36（v0.11_i 修二）：照片線與 stampObj 同一個 bug——存檔不可以順手改變歸屬。 */
+  if(rec.projectCode == null) rec.projectCode = CLOUD.code || null;
   rec.updatedAt   = nowISO();
   if(CLOUD.code && !rec.synced) rec.pending = true;
   await lPut('photos',rec);
@@ -2666,7 +2805,8 @@ async function deletePhoto(id){
 }
 async function saveMarker(m){
   m.id = m.id || uid();
-  m.projectCode = CLOUD.code || null;
+  /* 🔴 需求 36（v0.11_i 修二）：標記線同上。 */
+  if(m.projectCode == null) m.projectCode = CLOUD.code || null;
   m.updatedAt   = nowISO();
   if(CLOUD.code && !m.synced) m.pending = true;
   await lPut('markers',m);
@@ -3395,26 +3535,9 @@ $('tabCost').onclick  =()=>setTab('cost');
 $('tabPhoto').onclick =()=>setTab('photo');
 $('tabLayout').onclick=()=>setTab('layout');
 
-/* ── 原型控制 ── */
-$('segGesture').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  S.gesture=b.dataset.g;
-  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
-  $('modebar').classList.toggle('show', S.gesture==='A1');
-  applyModeClass(); render(); syncSel();
-});
-$('segMode').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  S.mode=b.dataset.m;
-  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
-  $('modeHint').textContent = S.mode==='obj'?'現在拖曳＝移動家具':'現在拖曳＝移動畫面';
-  applyModeClass();
-});
-function applyModeClass(){
-  const st=$('stage');
-  st.classList.remove('m-obj','m-pan');
-  if(S.gesture==='A1') st.classList.add(S.mode==='obj'?'m-obj':'m-pan');
-}
+/* 🔴 需求 39：手勢 A1／A2 切換與 A1 的模式列（segGesture／segMode／modebar／modeHint／
+   applyModeClass）已整組移除——元素、CSS、狀態欄位、事件繫結、啟動時的初始化全部一起刪。
+   ⚠️ 教訓（v0.11_i 修一）：只刪元素、留下讀它的那幾行，node --check 會過而畫面是白的。 */
 /* ── 縮放：三種入口（雙指 / 滾輪 / 按鈕）——O-5 ── */
 function zoomAt(cx,cy,factor){
   const r=svg.getBoundingClientRect();
@@ -3479,10 +3602,6 @@ window.addEventListener('resize',()=>{
 
 let t0='plan'; try{ t0=localStorage.getItem('deco.tab')||'plan'; }catch(e){}
 if(t0!=='plan' && t0!=='list' && t0!=='photo') t0='plan';
-document.querySelectorAll('#segGesture button').forEach(b=>
-  b.classList.toggle('on', b.dataset.g==='A2'));
-$('modebar').classList.toggle('show', S.gesture==='A1');
-applyModeClass();
 
 /* 🔴 啟動序列（需求 15 的順序寫死）：
      loadMarkers → cloudInit（可能連上）→ loadAll（lAll → pull → seed → purge）
