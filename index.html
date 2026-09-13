@@ -2,13 +2,33 @@
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>裝修估價 App 互動預覽 v0.1.4.5</title>
+<title>裝修估價 App 互動預覽 v0.1.5</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.4.5（補釘）
-  作者：claude / 2026-09-12 / 對應 _d v0.17
-  規格：../修正需求/裝修估價App_修正需求表_v0.10_i_claude_20260911.md（需求 34~39）
+  裝修估價 App — 手機互動預覽　版次：v0.1.5（進版）── 第一批
+  作者：claude / 2026-09-13 / 對應 _d v0.19
+  規格（三份都是驗收條件，衝突時以版次較新者為準）：
+    ../修正需求/裝修估價App_修正需求表_v0.12_i_claude_20260913.md（需求 41~48 全文）
+    ../修正需求/裝修估價App_修正需求表_v0.13_i_claude_20260913.md（前·規格刀 30 條回修）
+    ../修正需求/裝修估價App_修正需求表_v0.14_i_claude_20260913.md（複驗 10 條回修）
+
+  本進版（v0.1.4.5 → v0.1.5）：「我的房子出現在畫面上，而且擺得下東西」
+    需求 41 分區用自己的 poly 畫（六處公釐↔公分換算：fromRow／toRow／toDb／fromDb
+            ＋ projects.floorH ＋ items.zBase）
+    需求 42 牆厚照畫 ＋ 高亮換通道（變色不變粗）＋ 貼牆改內側面（三條綁死）
+    需求 43 樑畫出來（只畫兩邊虛線、壓在牆上面、未填高度要看得出來）
+    需求 44 projects 表 ＋ 設定頁（專案名字／全域樓高／逐根樑的下垂量＋〔預覽〕往返）
+            🔴 本批 projects【不做 pull】⇒ 兩台之間樓高不同步（刻意取捨，v0.13_i 修三）
+    需求 45 吸附不過濾房間 ＋ side 由拖曳當下位置決定並【存下來】＋ 吸附距離上限 50cm
+    需求 46 items 只加 category／z_base 兩個欄位（不做任何邏輯）
+    需求 47 clearAll 不准動【房子本身】（判準是 isHouse／isHouseRoom，不是 state）
+    需求 48 房間色盤 6 → 20 色
+  🔴 DB_VER 2 → 3（新增 projects store）。升級後第一次開若看到「另一個分頁還開著舊版本」，
+     把其他分頁關掉再重整（只發生一次）。
+  ── 以下為 v0.1.4.5 的說明，保留備查 ──
+  上一版：v0.1.4.5（補釘）／claude / 2026-09-12 / 對應 _d v0.17
+  規格：../../v0.1.4_探索/修正需求/裝修估價App_修正需求表_v0.10_i_claude_20260911.md（需求 34~39）
         ＋ 裝修估價App_修正需求表_v0.11_i_claude_20260912.md（回修，衝突時以此為準）
-  本補釘（v0.1.4.4 → v0.1.4.5）：
+  上一補釘（v0.1.4.4 → v0.1.4.5）：
     需求 34 身分用 refresh_token 續期／35 續期失敗要講出來＋舊格式 session 丟棄
     需求 36 存檔不准覆寫 projectCode（含照片線）＋孤兒資料要看得見
     需求 37 同步完成改狀態式／38 上次同步時間持久＋頂列橘點／39 拿掉手勢 A1／A2
@@ -481,6 +501,25 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .prow{display:flex;gap:6px;flex-wrap:wrap}
 .prow .btn{flex:1;min-width:96px}
 .tcount{font-size:calc(12px * var(--fs));color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
+/* 🔴 v0.12_i 需求 44-b：設定頁欄位（專案名字／全域樓高／逐根樑的下垂量）。
+   ⚠️ 沿用既有 .soonrow 的版位語彙（同樣的圓角卡片一列），不新造一種版面。 */
+.setrow{display:flex;align-items:center;gap:9px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px}
+.setrow .k{font-size:calc(13px * var(--fs));flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow input{flex:0 0 110px;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));
+  min-height:34px;text-align:right;font-variant-numeric:tabular-nums}
+.setrow input.txt{flex:1 1 120px;text-align:left}
+/* 需求 7 的輸入規則：打字中值無效 → 紅框（這個值沒被採用看得出來） */
+.setrow input.bad{border-color:var(--warnB);border-width:1.5px}
+.setrow .btn{flex:none;padding:7px 11px}
+/* 🔴 需求 44-c ＋ v0.13_i 修十一 F-17：成功與失敗【都】要在欄位旁邊看得到，
+   不可以只寫在同步對話框裡（她不會為了確認一個欄位去開同步對話框）。 */
+.savenote{margin:2px 2px 10px;font-size:calc(11.5px * var(--fs));line-height:1.6;color:var(--sub)}
+.savenote.er{color:var(--warnB);font-weight:600}
+.savenote.ok{color:var(--ok)}
+.savenote:empty{display:none}
 /* 🔴 v0.07_i 需求 25：診斷列（專案頁最下方）。等寬＋可選取，方便截圖或複製。 */
 .diagrow{margin-top:16px;padding:9px 10px;border-top:1px solid var(--line);
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
@@ -555,6 +594,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
       <div class="projsec">同步</div>
       <div class="soonrow"><div class="k">🔗 專案代碼</div>
         <button class="btn" id="btnOpenSync">開啟</button></div>
+      <!-- 🔴 v0.12_i 需求 44-b：設定。
+           ⚠️ 依 _d §10-0b：只放控制項與狀態，不寫「這裡可以設定…」這種功能說明。 -->
+      <div class="projsec">設定</div>
+      <div class="setrow"><div class="k">專案名字</div>
+        <input id="pjName" class="txt" placeholder="（可留空）" autocomplete="off"></div>
+      <div class="setrow"><div class="k">全域樓高　cm</div>
+        <input id="pjFloorH" inputmode="decimal" placeholder="（未填）"></div>
+      <div class="savenote" id="pjSaveNote"></div>
+      <div class="projsec">樑的下垂量　cm</div>
+      <div id="beamRows"></div>
+      <div class="savenote" id="beamSaveNote"></div>
       <div class="projsec">整理</div>
       <div class="prow">
         <button class="btn" id="btnClearPlace">清擺設</button>
@@ -581,6 +631,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
   <button class="fab" id="fabAdd" hidden>＋</button>
 
   <div class="pinning" id="pinning" hidden>👆 點平面圖上要標記的位置（再按一次此列取消）</div>
+
+  <!-- 🔴 v0.13_i 修九：從設定頁按〔預覽〕過來時的返回列。
+       落點沿用 .pinning（bottom:56px、z-index 25），不新造版位。
+       ⚠️ v0.14_i 補五：按〔預覽〕時一併 select(null)，
+          否則選中家具面板（.sel，同樣 bottom:56px）會跟這一列重疊。 -->
+  <div class="pinning" id="beamBack" hidden>‹ 返回設定</div>
 
   <!-- 全螢幕檢視層。不開新分頁（O-11：沙箱 iframe 會擋）
        🔴 需求 17：關閉鈕從【右上角】移到【圖片正下方】。
@@ -718,14 +774,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.4.5';
+const APP_VER = 'v0.1.5';
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
       換算只發生在資料層邊界（toDb/fromDb、toRow/fromRow）。 */
 let ROOMS = [];
 let WALLS = [];
-let BEAMS = [];        // 需求 1：樑。本輪【只有欄位與儲存，沒有 UI】
+let BEAMS = [];        // 需求 43：樑。v0.1.5 起【畫得出來】＋設定頁可填下垂量
+/* 🔴 v0.12_i 需求 44 ＋ v0.13_i 修三：專案設定（一列）。
+   單位：floorH 是【公分】（與 UI 一致），雲端 floor_h 是公釐。 */
+let PROJECT = { code:null, name:'', floorH:null };
 let FURN  = [];
 
 /* ── 常數 ───────────────────────────────────────────────
@@ -737,9 +796,33 @@ const NUDGE_MIN = 1;    // 步進下限 1 公分（Ali：1 公分是極限）
 const DRAG_PX   = 4;    // 點/拖判定門檻（技法筆記 §2）
 const CLEAR_CM  = 60;   // 走道淨空預設值（_d §5-6，必須顯示在畫面上）
 const GRAB_PAD_PX = 14; // 選中家具的命中緩衝（螢幕距離）
+/* 🔴 v0.12_i 需求 45-c：吸附距離的【世界座標上限】。
+   全屋 fit 之後 zoom 很小 ⇒ SNAP_PX/zoom 會換算成好幾公尺；
+   以前只找同一間房的牆所以吸不遠，現在找全部 33 道 ⇒ 會吸到隔壁房甚至屋外那道。
+   ⚠️ 與 _d 不可變方向 #11 不牴觸：#11 說「手的事用螢幕距離」，
+      而這個上限管的是【房子的事】—— 不可能貼到三公尺外的牆。 */
+const SNAP_MAX_CM = 50;
+/* 🔴 v0.12_i 需求 42：thickness 為 NULL 時的預設牆厚（公分）。
+   依據（v0.13_i 修八 F-16 實查）：匯入的 33 道裡 29 道是 12 公分，
+   其餘 11.5／14.5／26／39 各一道（🔴 五種，不是四種）。
+   🔴 不可以用 0 —— 那會讓整道牆消失。 */
+const DEFAULT_WALL_CM = 12;
 
-/* 需求 8：房間色盤（系統自動配，本輪不讓使用者選）。色盤用完循環使用。 */
-const ROOM_PALETTE = ['#3a6ea5','#4a8f5e','#c98a2e','#8e5ba6','#2f8f8f','#b0553f'];
+/* 需求 8：房間色盤（系統自動配，本輪不讓使用者選）。色盤用完循環使用。
+   🔴 需求 48（v0.12_i）＋ v0.14_i 補六：6 色 → 20 色。
+      6 色時第 7~10 間與第 1~4 間同色，而房間色是「哪幾筆是同一間」的唯一線索（§9-1d-1）。
+   🔴 前 6 個 ＝ 現況的色盤，一個字不改 ⇒【前六個名次】的房間顏色不變；
+      名次 ≥6 的一定會變，那正是本需求的目的。
+   🔴 位置 6／7／8 已依 v0.14_i 補六換成洋紅／青／黃綠（原本的鋼藍、霧紫、暗橄欖金
+      與前 6 個太近，12% 填色下分不出來）。
+   🔴 全部避開 --warnB(#cf4444 紅) 與 --warnA(#e08b2a 橘) 的色相
+      —— 那兩個在這個 App 裡是「撞到／警示」的語意。 */
+const ROOM_PALETTE = [
+  '#3a6ea5','#4a8f5e','#c98a2e','#8e5ba6','#2f8f8f','#b0553f',   /* 0~5：與現況相同 */
+  '#c0508f','#3f9ec9','#7aa02f',                                  /* 6~8：洋紅／青／黃綠 */
+  '#6b5b95','#4f8a6b','#a05a7a','#2f6f5f','#7a6aa0','#8f7a3a',
+  '#4a7fa5','#6f8a4a','#9a5f5f','#3a8f7a','#7f5fa0'
+];
 
 /* 🔴 需求 39：gesture／mode 兩個欄位已移除（A1／A2 收斂成單一路徑＝原本的 A2）。
    拖曳＝先點選再拖；沒選中時拖背景＝平移畫面。不要再加回來。 */
@@ -757,7 +840,17 @@ const S = { snap:true, gridAll:false,
                expandCause：'chip'（點〔已擺〕而 room=null 進來）／'manual'（點 ▾ 進來）
                —— 兩者對「選未指定」的處理不同，見 itemCard()。 */
             expandId:null, expandCause:null,
-            dataErr:'' };          // 需求 15：pull 失敗時的錯誤（不可用種子蓋掉）
+            /* 🔴 v0.12_i 需求 44-b2 ＋ v0.13_i 修九：設定頁按〔預覽〕時，哪一根樑亮著。
+               清除時機＝setTab()【預設就清】，只有帶 {keepFocus:true} 才保留
+               （v0.14_i 補四：v0.13_i 那句「setTab 本身不清」寫反了，
+                 全檔切分頁只有 setTab 一條路 ⇒ 那樣等於沒有任何地方會清）。 */
+            beamFocus:null,
+            dataErr:'',            // 需求 15：pull 失敗時的錯誤（不可用種子蓋掉）
+            /* 🔴 v0.13_i 修七 F-29：資料【格式】錯誤不可以放在「這次同步的錯誤」那個容器裡。
+               S.dataErr 每次同步成功（cloudSync）與 boot 成功都會被清空
+               ⇒ 分區 poly 壞掉的訊息會自己消失（又一個安靜）。
+               ⇒ 用這個【不會被同步清掉】的欄位；它只在 reloadObjects() 重算。 */
+            geomErr:'' };
 
 const svg = document.getElementById('plan');
 const NS  = 'http://www.w3.org/2000/svg';
@@ -776,8 +869,54 @@ const wallById = id => WALLS.find(w=>w.id===id);
 function wallAngle(w){ return Math.atan2(w.y2-w.y1, w.x2-w.x1); }
 function wallLen(w){ return Math.hypot(w.x2-w.x1, w.y2-w.y1); }
 
-/* 需求 9：房間不一定有牆（開放式廚房／打通）→ 沒有牆就回 null，不回 NaN */
+/* 🔴 v0.12_i 需求 41｜分區幾何（poly）的三個 helper。
+   poly ＝ 有序閉合多邊形（頭尾重合點已去除），記憶體側【公分】、資料庫側【公釐整數】。
+   ⚠️ 換算共【六處】（v0.13_i 修五更正了 v0.12_i 那句「四處」）：
+        ① fromRow('rooms') ② toRow('rooms') ③ toDb('rooms') ④ fromDb('rooms')
+        ⑤ projects.floorH ⑥ items.zBase
+      漏一處房子就差 10 倍，而且【不報錯】。 */
+function validPoly(p){
+  if(!Array.isArray(p) || p.length<3) return false;
+  for(const q of p){
+    if(!Array.isArray(q) || q.length<2 || !isFinite(q[0]) || !isFinite(q[1])) return false;
+  }
+  return true;
+}
+/* ⚠️ 格式壞掉時【原樣保留】，不要靜靜換成 null —— 那樣 S.geomErr 就再也偵測不到它。 */
+function polyToMM(p){
+  if(p==null) return null;
+  if(!Array.isArray(p)) return p;
+  try{ return p.map(q=>[Math.round(Number(q&&q[0])*10), Math.round(Number(q&&q[1])*10)]); }
+  catch(e){ return p; }
+}
+function polyFromMM(p){
+  if(p==null) return null;
+  if(!Array.isArray(p)) return p;
+  try{ return p.map(q=>[Number(q&&q[0])/10, Number(q&&q[1])/10]); }
+  catch(e){ return p; }
+}
+/* 🔴 形心用【面積加權】（鞋帶公式），不可以用「所有點的平均」——
+   房子是歪的、點分布不均，平均會偏。退化情況（面積為 0）才回退成點平均。 */
+function polyCentroid(p){
+  let a=0, cx=0, cy=0;
+  for(let i=0;i<p.length;i++){
+    const q1=p[i], q2=p[(i+1)%p.length];
+    const f=q1[0]*q2[1]-q2[0]*q1[1];
+    a+=f; cx+=(q1[0]+q2[0])*f; cy+=(q1[1]+q2[1])*f;
+  }
+  a*=0.5;
+  if(!isFinite(a) || Math.abs(a)<1e-9){
+    let sx=0, sy=0; p.forEach(q=>{ sx+=q[0]; sy+=q[1]; });
+    return {x:sx/p.length, y:sy/p.length};
+  }
+  const c={x:cx/(6*a), y:cy/(6*a)};
+  return (isFinite(c.x)&&isFinite(c.y)) ? c : null;
+}
+/* 需求 9：房間不一定有牆（開放式廚房／打通）→ 沒有牆就回 null，不回 NaN
+   🔴 需求 41：有 poly 就用 poly 的【形心】；沒有才回退舊算法（靠牆）。 */
 function roomCenter(rid){
+  const r=ROOMS.find(x=>x.id===rid);
+  if(r && validPoly(r.poly)) return polyCentroid(r.poly);
   const ws=WALLS.filter(w=>w.room===rid);
   if(!ws.length) return null;
   let sx=0,sy=0; ws.forEach(w=>{sx+=w.x1;sy+=w.y1;});
@@ -789,6 +928,9 @@ function roomCenter(rid){
       ⇒ 直接連起點會畫出【自交】的多邊形（畫面上是幾塊白色三角）。
    做法：從任一道牆出發，用端點配對往下接。接不完就畫接到的那一段（>=3 點才畫）。 */
 function roomRing(rid){
+  /* 🔴 需求 41：poly 本來就是有序閉合點列，不必再排。 */
+  const r=ROOMS.find(x=>x.id===rid);
+  if(r && validPoly(r.poly)) return r.poly.map(p=>({x:p[0], y:p[1]}));
   const ws=WALLS.filter(w=>w.room===rid);
   if(ws.length<3) return null;
   const k=(x,y)=>Math.round(x*10)+','+Math.round(y*10);
@@ -804,13 +946,46 @@ function roomRing(rid){
   if(pts.length>3 && k(pts[0].x,pts[0].y)===k(pts[pts.length-1].x,pts[pts.length-1].y)) pts.pop();
   return pts.length>=3 ? pts : null;
 }
-// 牆的內側法線：指向房間中心那一側
-function wallNormal(w){
-  const a=wallAngle(w), nx=Math.sin(a), ny=-Math.cos(a);
-  const c=roomCenter(w.room);
-  if(!c) return {x:nx,y:ny};                   // 需求 9：沒有中心可比 → 取任一側，不 NaN
+/* ══ 🔴 v0.12_i 需求 45-b ＋ v0.13_i 修四 ＋ v0.14_i 補二／補三｜牆的內側方向 ══
+   side 有【寫入端】與【讀取端】兩組，不是同一個函式：
+     sideFromPoint  ＝ 從一個點【算出】side（寫入端，只在吸附成立那一次用）
+     wallNormalFor  ＝ 從 anchor【讀出】方向（讀取端，三個地方：place／nudge／預示）
+   ⚠️ 舊的 wallNormal(w) 已被這兩個取代。它原本靠 roomCenter(w.room) 判內側，
+      而匯入的 33 道牆 room_id 全 NULL ⇒ 一律走進「取任一側」的防呆
+      ⇒ 家具有一半機率貼到牆的另一面，而且【不報錯】（obs O-20 抽毯子）。 */
+function wallBaseNormal(w){
+  const a=wallAngle(w);
+  return {x: Math.sin(a), y: -Math.cos(a)};
+}
+/* side ＝ +1 表示「往基準法線的方向」，-1 表示反向。
+   🔴 參考點用【拖曳當下家具的中心】，不是牆上的投影點 ——
+      她把床拖到牆的哪一側，那就是她的表態（obs O-8）。 */
+function sideFromPoint(w, px, py){
+  const n=wallBaseNormal(w);
   const mx=(w.x1+w.x2)/2, my=(w.y1+w.y2)/2;
-  return ((c.x-mx)*nx+(c.y-my)*ny) >= 0 ? {x:nx,y:ny} : {x:-nx,y:-ny};
+  return ((px-mx)*n.x + (py-my)*n.y) >= 0 ? 1 : -1;
+}
+function wallNormalFor(w, anchor){
+  const n=wallBaseNormal(w);
+  /* 第一順位：使用者表態過的 side（新資料） */
+  if(anchor && (anchor.side===1 || anchor.side===-1))
+    return {x:n.x*anchor.side, y:n.y*anchor.side};
+  /* 🔴 第二順位（v0.14_i 補三）：舊路徑 —— 這道牆屬於某個房間就朝房間中心。
+     ⚠️ 【不可以刪掉】。種子房間的四道牆 room 有值，是今天線上唯一能成立的擺放情境；
+        刪了會讓貼在種子牆上、已經擺好的家具【翻面跑到屋外】。 */
+  const c=roomCenter(w.room);
+  if(c){
+    const mx=(w.x1+w.x2)/2, my=(w.y1+w.y2)/2;
+    return ((c.x-mx)*n.x + (c.y-my)*n.y) >= 0 ? n : {x:-n.x, y:-n.y};
+  }
+  /* 第三順位：都沒有 ⇒ 基準法線（維持現況的防呆，不 NaN） */
+  return n;
+}
+/* 🔴 v0.12_i 需求 42-a：牆的實際厚度（公分）。
+   🔴 兩處（畫牆、貼牆位置）都必須用【同一個函式】，不可以一處用 12 一處用 0。 */
+function wallThick(w){
+  const t=+((w&&w.thickness));
+  return (isFinite(t) && t>0) ? t : DEFAULT_WALL_CM;
 }
 /* 🔴 貼牆家具「離牆多遠」不能寫死用 深/2 —— 自訂旋轉 90° 後，貼著牆的那一邊變成【寬】。
    正解＝旋轉後的實際垂直半徑：|寬/2·sin| + |深/2·cos|
@@ -829,10 +1004,15 @@ function place(f){
   /* 🔴 需求 9：牆不見了也不炸。⚠️ 這是防呆不是正解——
      正解是需求 6 的 anchor 重設（刪房間時就地轉絕對座標）。兩層都要。 */
   if(!w) return {x:a0.x??0, y:a0.y??0, ang:(f.rot||0)*Math.PI/180, wall:null};
-  const a=wallAngle(w), n=wallNormal(w);
+  /* 🔴 需求 45-b：方向由 anchor.side 讀出（讀取點 ①／三），不再即時判斷。 */
+  const a=wallAngle(w), n=wallNormalFor(w, a0);
   const ux=Math.cos(a), uy=Math.sin(a);
   const bx=w.x1+ux*(a0.along||0), by=w.y1+uy*(a0.along||0);
-  const dep=perpHalf(f) + (a0.off||0);
+  /* 🔴 需求 42-b：貼牆位置改成【內側面】，不吃牆（§13-21 已定：分區邊界＝牆的內側面）。
+     現況只有 perpHalf(f) ⇒ 家具中心離【牆的中心線】＝家具半深 ⇒ 壓進牆體 thickness/2。
+     ⚠️ 既有存檔的 off 值【不動】：off 的語意不變（額外偏移），
+        只是基準從中心線移到內側面 ⇒ 已貼牆的家具會整批往外跳 thickness/2（那是修正）。 */
+  const dep=perpHalf(f) + wallThick(w)/2 + (a0.off||0);
   return {x:bx+n.x*dep, y:by+n.y*dep, ang:a+(f.rot||0)*Math.PI/180, wall:w};
 }
 /* 旋轉矩形的四角 */
@@ -894,7 +1074,8 @@ function distSeg(px,py,w){
 /* 螢幕↔世界 */
 const w2s = (x,y)=>({x:x*S.zoom+S.panX, y:y*S.zoom+S.panY});
 const s2w = (x,y)=>({x:(x-S.panX)/S.zoom, y:(y-S.panY)/S.zoom});
-const snapCm  = ()=> SNAP_PX/S.zoom;
+/* 🔴 需求 45-c：吸附距離要加世界座標上限（見 SNAP_MAX_CM 的註解） */
+const snapCm  = ()=> Math.min(SNAP_PX/S.zoom, SNAP_MAX_CM);
 const nudgeCm = ()=> Math.max(NUDGE_MIN, Math.round(NUDGE_PX/S.zoom));
 
 /* ══════════════════════════════════════════════════════════════
@@ -926,8 +1107,17 @@ function fsScale(){
   const v=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs'));
   return (isFinite(v)&&v>0)?v:1;
 }
+/* 🔴 v0.13_i 修七 F-12：房間名改畫在形心之後【不可以】套那段螢幕座標夾限——
+   夾限是為了「單一房間的名字不要跑出畫面」寫的；10 間房一起夾，會全部疊成一坨
+   堆在畫面邊緣。⇒ 傳 {clamp:false}：畫面外就不畫。
+   ⚠️ v0.14_i 補七 N-8c：本批【只改房間名】的夾限，家具名維持現有夾限，下一手不必重想。 */
 function uiText(sx, sy, txt, opt){
   const o=opt||{};
+  if(o.clamp===false){
+    const {w,h}=svgSize();
+    if(!isFinite(sx) || !isFinite(sy)) return null;
+    if(sx < -SVG_PAD || sx > w+SVG_PAD || sy < -SVG_PAD || sy > h+SVG_PAD) return null;
+  }
   const px=(o.size||13)*fsScale();
   const anchor=o.anchor||'start';
   const t=el('text',{x:sx, y:sy, 'text-anchor':anchor,
@@ -937,6 +1127,7 @@ function uiText(sx, sy, txt, opt){
   if(o.opacity!=null) t.setAttribute('opacity',o.opacity);
   t.textContent=txt;
   _uiLayer.appendChild(t);
+  if(o.clamp===false) return t;      // 🔴 F-12：房間名不夾限（畫面外就不畫，上面已擋）
   try{
     const {w,h}=svgSize();
     const b=t.getBBox();
@@ -973,6 +1164,16 @@ function uiText(sx, sy, txt, opt){
 let ROOMS_ALL = [];        // 含墓碑，只給 roomOrder() 用
 function roomOrder(){
   return ROOMS_ALL.slice().sort((a,b)=>{
+    const c=String(a.createdAt||'').localeCompare(String(b.createdAt||''));
+    return c!==0 ? c : String(a.id).localeCompare(String(b.id));
+  });
+}
+/* 🔴 需求 43 ＋ v0.13_i 修十 F-21：樑的【穩定】排序。
+   平面圖上的「樑 3」與設定頁的「樑 3」必須是同一根，重新載入後編號也不可以變。
+   ⚠️ createdAt 相同（同一次 SQL 插入，六根幾乎必然相同）→ 用 id 字串比大小當第二鍵
+      ⇒ 穩定且跨裝置一致。 */
+function beamOrder(){
+  return BEAMS.slice().sort((a,b)=>{
     const c=String(a.createdAt||'').localeCompare(String(b.createdAt||''));
     return c!==0 ? c : String(a.id).localeCompare(String(b.id));
   });
@@ -1021,10 +1222,21 @@ function niceScaleCm(zoom){             // zoom = 每公分幾個螢幕 px
   _scaleCm=best;
   return best;
 }
-function dataLeft(){ let x=null; WALLS.forEach(w=>{
-    x = x==null ? Math.min(w.x1,w.x2) : Math.min(x,w.x1,w.x2); }); return x==null?0:x; }
-function dataBottom(){ let y=null; WALLS.forEach(w=>{
-    y = y==null ? Math.max(w.y1,w.y2) : Math.max(y,w.y1,w.y2); }); return y==null?300:y; }
+/* 🔴 v0.13_i 修七 F-24：dataLeft／dataBottom 與 planBounds 必須【一起】納入 poly，
+   否則兩者不同步 ⇒ 示意帶／比例尺的位置會跟畫面範圍對不上。 */
+function polyPoints(){
+  const out=[];
+  ROOMS.forEach(r=>{ if(validPoly(r.poly)) r.poly.forEach(q=>out.push(q)); });
+  return out;
+}
+function dataLeft(){ let x=null;
+  WALLS.forEach(w=>{ x = x==null ? Math.min(w.x1,w.x2) : Math.min(x,w.x1,w.x2); });
+  polyPoints().forEach(q=>{ x = x==null ? q[0] : Math.min(x,q[0]); });
+  return x==null?0:x; }
+function dataBottom(){ let y=null;
+  WALLS.forEach(w=>{ y = y==null ? Math.max(w.y1,w.y2) : Math.max(y,w.y1,w.y2); });
+  polyPoints().forEach(q=>{ y = y==null ? q[1] : Math.max(y,q[1]); });
+  return y==null?300:y; }
 const barY = ()=> dataBottom()+80;      // 示意帶（上）
 const scaleY = ()=> barY()+58;          // 長度比例尺（下）
 
@@ -1096,37 +1308,89 @@ function render(){
   svg.appendChild(_uiLayer);
   const sel = FURN.find(f=>f.id===S.selId);
 
-  // 房間底
+  /* ══ 疊圖順序（🔴 v0.13_i 修一補齊，一層都不可調換）══
+     分區底 → 牆 → 樑 → 吸附預示（幽靈＋目標牆）→ 走道網格
+          → 示意帶／比例尺 → 家具 → 照片標記 → UI 文字
+     ⚠️ 樑【不可以】放在 render() 的末端 —— 那會蓋住家具與照片標記。
+     🧊 Ali 2026-09-13 裁決「樑壓在牆上面」指的是【樑 vs 牆】這一對，
+        不是「樑壓在所有東西上面」。 */
+
+  // 分區底（🔴 需求 41：用房間自己的 poly 畫，不再靠牆算）
   ROOMS.forEach(r=>{
-    const c=roomCenter(r.id);
-    /* 需求 9：roomCenter 回 null（沒有牆）→ polygon 與房間名都不畫，不是畫在 NaN */
-    if(!c) return;
     const ring=roomRing(r.id);
+    const c=roomCenter(r.id);
+    /* 需求 9／41 邊界：沒有 poly 也沒有牆 → 不畫分區（名字仍在清單分組），不是畫在 NaN */
+    if(!ring && !c) return;
+    const col=roomColor(r.id);
     if(ring){
-      g.appendChild(el('polygon',{points:ring.map(p=>`${p.x},${p.y}`).join(' '),
-        fill:'var(--panel)',stroke:'none',opacity:.85}));
+      const pts=ring.map(p=>`${p.x},${p.y}`).join(' ');
+      /* 三個通道沿用 §9-1d-1：填色＝房間色 12%；外框＝同一個房間色、實線、2 公分（世界座標）。
+         ⚠️ 不可以用紅／橘（--warnB／--warnA）當分區色 —— 那兩個是「撞到／警示」的語意。 */
+      g.appendChild(el('polygon',{points:pts,
+        fill:col,'fill-opacity':0.12,stroke:col,'stroke-width':2,'stroke-linejoin':'round'}));
     }
-    /* 🔴 需求 20：房間名是「給人讀的文字」。
-       Ali 截圖裡被切成只剩右半的「（可刪）」就是這一句。
-       位置仍由世界座標決定（要貼著那個房間），但夾回可見範圍內。 */
-    const ps=w2s(c.x, c.y-140);
-    uiText(ps.x, ps.y, r.name||'未命名', {size:15, anchor:'middle',
-      fill:'var(--sub)', opacity:.75});
+    /* 🔴 需求 41：房間名畫在【形心正中】（歪斜的房間往上偏 140 公分會跑到別間去）。
+       🔴 F-12：不套螢幕夾限（10 間房會疊成一坨）⇒ clamp:false，畫面外就不畫。 */
+    if(c){
+      const ps=w2s(c.x, c.y);
+      uiText(ps.x, ps.y, r.name||'未命名',
+        {size:15, anchor:'middle', fill:col, opacity:.95, clamp:false});
+    }
   });
   // 牆（選中家具所依附的那道要高亮）
   const litWall = sel ? place(sel).wall : null;
   WALLS.forEach(w=>{
     const on = litWall && litWall.id===w.id;
+    /* 🔴 需求 42-a：粗細＝真實牆厚（公分）。牆畫在帶 scale(zoom) 的 g 裡 ⇒ 不要自己乘 zoom。
+       🔴 高亮改走【顏色】通道，不再改粗細（粗細讓給厚度了）。
+       🔴 linecap 從 square 改成 butt：square 會讓兩端各多出半個線寬
+          ⇒ 39 公分的管道間兩端各爆出 19.5 公分，轉角會凸出來。
+          ⚠️ 代價是牆角會看到小缺口 —— 那是 butt 的必然，不是畫錯（交付必講 ⑥）。 */
     g.appendChild(el('line',{x1:w.x1,y1:w.y1,x2:w.x2,y2:w.y2,
       stroke: on?'var(--accent)':'var(--wall)',
-      'stroke-width': on?11:7,'stroke-linecap':'square',
+      'stroke-width': wallThick(w),'stroke-linecap':'butt',
       'stroke-dasharray': w.state==='proposed' ? '18 10' : 'none'}));
+  });
+  /* ── 🔴 需求 43：樑（畫在【牆之後】＝壓在牆上面，Ali 2026-09-13 裁決）──
+     配套：只畫【兩邊的虛線】、中間不填 ⇒ 壓在牆上也看得到牆。
+     🔴 編號必須穩定（v0.13_i 修十 F-21）：六根樑是同一次 SQL 插入，createdAt 幾乎必然相同
+        ⇒ 先用 beamOrder() 排成陣列，再用那個陣列的 index，
+          不可以直接用 BEAMS.forEach 的 index（BEAMS 的順序來自 IndexedDB，不保證）。 */
+  beamOrder().forEach((b,i)=>{
+    const filled = (b.drop != null);
+    const focus  = (S.beamFocus === b.id);
+    const col = focus ? 'var(--accent)' : (filled ? 'var(--warnA)' : 'var(--dim)');
+    const dx=b.x2-b.x1, dy=b.y2-b.y1, L=Math.hypot(dx,dy)||1;
+    const hw=(b.width||20)/2;
+    const nx=-dy/L*hw, ny=dx/L*hw;
+    [1,-1].forEach(sgn=>{
+      g.appendChild(el('line',{x1:b.x1+nx*sgn, y1:b.y1+ny*sgn,
+        x2:b.x2+nx*sgn, y2:b.y2+ny*sgn,
+        stroke:col, 'stroke-width': focus?6:3, opacity:0.85,
+        'stroke-dasharray':'24 14'}));
+    });
+    /* 🔴 v0.13_i 修一（F-1）：文字要先用 w2s 轉成【畫面座標】，而且中點要自己宣告。
+       ⚠️ 照 v0.12_i 的 pseudocode 抄（直接用未宣告的 cx/cy）＝ "use strict" 下
+          ReferenceError ⇒ render() 在 boot() 的 try 之外 ⇒ 🔴 啟動就白畫面。
+       顯示規則（Ali 2026-09-13）：沒填高度 → 常駐顯示「樑N（未填高度）」（obs O-13：
+       未處理的狀態不可以長得像處理過的）；填完高度 → 不顯示，只有從設定頁按〔預覽〕
+       進來的那一根才亮起來並顯示編號。 */
+    if(!filled || focus){
+      const mcx=(b.x1+b.x2)/2, mcy=(b.y1+b.y2)/2;
+      const ps=w2s(mcx, mcy);
+      uiText(ps.x, ps.y, '樑'+(i+1)+(filled?'':'（未填高度）'),
+        {size:11, anchor:'middle', fill:col});
+    }
   });
   // 吸附預示：目標牆 ＋ 虛線幽靈
   if(S.snapCand){
     const c=S.snapCand;
+    /* 🔴 v0.13_i 修八 F-10：目標牆的高亮原本寫死 13 ⇒ 42-a 之後 39cm 那道會完全蓋住它，
+       而這是本批唯一能讓 Ali 當場看出「貼對邊」的回饋。
+       ⇒ 改成比牆粗一圈（wallThick+8），linecap 也要一起改 butt（v0.14_i 補七 N-8b）。 */
     g.appendChild(el('line',{x1:c.wall.x1,y1:c.wall.y1,x2:c.wall.x2,y2:c.wall.y2,
-      stroke:'var(--ghost)','stroke-width':13,opacity:.85,'stroke-linecap':'square'}));
+      stroke:'var(--ghost)','stroke-width':wallThick(c.wall)+8,opacity:.85,
+      'stroke-linecap':'butt'}));
     const gp=corners(c.gx,c.gy,c.f.w,c.f.d,c.gang,0);
     g.appendChild(el('polygon',{points:gp.map(p=>`${p.x},${p.y}`).join(' '),
       fill:'none',stroke:'var(--ghost)','stroke-width':3,
@@ -1190,17 +1454,25 @@ function render(){
 
   /* 需求 5：種子提示。依 _d §10-0b 這句是【功能說明】
      ⇒ 只留到使用者建了第一件東西為止，之後不再顯示。 */
+  /* 🔴 左上角逐行堆疊（種子提示 → pull 錯誤 → 幾何格式錯誤），行高 18。 */
+  let _ty = SVG_PAD+16;
   if(isSeedPristine()){
     /* 🔴 需求 20：提示句固定在平面圖【左上】（畫面座標），完全不隨 zoom／pan 跑。
        Ali 截圖裡被切成「單〕重來，或直接改它」的就是這一句。 */
-    uiText(SVG_PAD+2, SVG_PAD+16, '這是範例。到 ⚙️ 按〔清清單〕重來，或直接改它',
+    uiText(SVG_PAD+2, _ty, '這是範例。到 ⚙️ 按〔清清單〕重來，或直接改它',
       {size:12, fill:'var(--sub)', opacity:.9});
+    _ty += 18;
   }
   /* 需求 15：pull 失敗必須看得到（不可被「本機全空」蓋成一個空專案）
      🔴 需求 20：這也是給人讀的文字 ⇒ 畫面座標，固定在左上第二行。 */
   if(S.dataErr){
-    uiText(SVG_PAD+2, SVG_PAD+(isSeedPristine()?34:16), '⚠️ '+S.dataErr,
-      {size:12, fill:'var(--warnB)', weight:600});
+    uiText(SVG_PAD+2, _ty, '⚠️ '+S.dataErr, {size:12, fill:'var(--warnB)', weight:600});
+    _ty += 18;
+  }
+  /* 🔴 v0.13_i 修七 F-29 ＋ v0.14_i 補七 N-9：分區幾何格式錯誤畫在第三行。
+     它放在【不會被同步清掉】的 S.geomErr 裡（S.dataErr 的清除點是 cloudSync 成功與 boot 成功）。 */
+  if(S.geomErr){
+    uiText(SVG_PAD+2, _ty, '⚠️ '+S.geomErr, {size:12, fill:'var(--warnB)', weight:600});
   }
 }
 
@@ -1326,26 +1598,43 @@ function previewMove(){
   if(!hasSize(f)) return;
   let best=null;
   const ph=perpHalf(f);
-  WALLS.filter(w=>w.room===f.room).forEach(w=>{
+  /* 🔴 需求 45-a：不再過濾房間。匯入的 33 道牆 room 全 NULL
+     ⇒ 舊的 WALLS.filter(w=>w.room===f.room) 永遠沒有候選 ⇒ 根本吸不到。
+     ⚠️ 配套是 SNAP_MAX_CM（需求 45-c），否則全屋 fit 時會吸到屋外那道。 */
+  WALLS.forEach(w=>{
     const {d,t}=distSeg(gx,gy,w);
     const gap=d-ph;
     if(gap<snapCm() && (!best||gap<best.gap))
       best={w,t,gap};
   });
   if(!best) return;
-  const w=best.w, a=wallAngle(w), n=wallNormal(w);
+  const w=best.w, a=wallAngle(w);
+  /* 🔴 v0.14_i 補二：這裡是【寫入端】（1336 那格是 previewMove，每幀都跑，不是放手當下）。
+     算出 side 放進 S.snapCand；真正寫進 f.anchor 的是 commitMove（放手當下）。 */
+  const side=sideFromPoint(w, gx, gy);
+  const n=wallNormalFor(w, {side});
+  /* 🔴 需求 42-b 的連帶（claude 裁決，A 類歧義：_i 沒寫幽靈要不要跟著往外移）：
+     幽靈必須與 place() 算出來的最終位置一致，否則放手後家具會跳 thickness/2，
+     而幽靈正是「看得出貼哪一邊」的唯一回饋。⇒ 同樣加 wallThick/2。
+     ⚠️ gx/gy 只用來畫幽靈（commitMove 用的是 along/side），不進任何資料。 */
+  const dep=ph + wallThick(w)/2;
   const along=Math.max(f.w/2, Math.min(wallLen(w)-f.w/2, best.t*wallLen(w)));
   const bx=w.x1+Math.cos(a)*along, by=w.y1+Math.sin(a)*along;
   const nr=snapRot(S.dragging.ang, a, f.rot);
-  S.snapCand={f, wall:w, along,
-    gx:bx+n.x*ph, gy:by+n.y*ph, gang:a+nr*Math.PI/180};
+  S.snapCand={f, wall:w, along, side,
+    gx:bx+n.x*dep, gy:by+n.y*dep, gang:a+nr*Math.PI/180};
 }
 function commitMove(){
   const {f,gx,gy,ang}=S.dragging;
   if(S.snapCand && S.snapCand.f.id===f.id){
     /* 🔴 吸附【不可以順手把家具轉正】（O-8）。以目前的絕對朝向為準反算 rot。 */
     f.rot = snapRot(ang, wallAngle(S.snapCand.wall), f.rot);
-    f.anchor={type:'wall', wall:S.snapCand.wall.id, along:S.snapCand.along, off:0};
+    /* 🔴 v0.14_i 補二：commitMove 會【整個重建 anchor】
+       ⇒ side 必須在這裡從 S.snapCand 寫進去，不可以指望 previewMove 寫的值還在。
+       ⚠️ side 是【使用者的決定】（她把家具拖到哪一側就是表態），不是每次重算的衍生值
+          —— 與 _memory_「名次與順序是資料不是衍生值」同一個形狀。 */
+    f.anchor={type:'wall', wall:S.snapCand.wall.id, along:S.snapCand.along, off:0,
+              side:S.snapCand.side};
   }else{
     f.anchor={type:'free', x:gx, y:gy};      // 錨點切換＝依附身分改變（_d §5-2）
     f.rot=((ang*180/Math.PI)%360+360)%360;   // 脫離牆面時同樣保持絕對朝向
@@ -1492,7 +1781,10 @@ function nudge(dir){
   if(f.anchor.type==='wall'){
     const w=wallById(f.anchor.wall);
     if(w){
-      const n2=wallNormal(w);
+      /* 🔴 v0.13_i 修四 4-c：這是 side 的【第三個讀取點】（v0.12_i 完全沒提到）。
+         漏掉的話 place() 用 side、nudge() 用舊的「取任一側」
+         ⇒ 有一半的牆，按微調鍵家具會往反方向跑 —— 而那是已驗收過的既有功能。 */
+      const n2=wallNormalFor(w, f.anchor);
       f.anchor.along += dx*ux + dy*uy;
       f.anchor.off    = (f.anchor.off||0) + (dx*n2.x + dy*n2.y);
     }
@@ -1572,7 +1864,9 @@ $('btnDel').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(f) confirmDel
    🔴 DB_VER 升到 2：加 rooms / walls / beams / items 四個 store。
    🔴 R-6：onblocked 沒掛 → Promise 永不 resolve 也永不 reject → 畫面停在「讀取中…」
    ══════════════════════════════════════════════════════════════ */
-const DB_NAME='deco_probe', DB_VER=2;
+/* 🔴 v0.13_i 修三：DB_VER 2 → 3（新增 projects store，keyPath 用 code）。
+   ⚠️ 升級後第一次打開若另一個分頁還開著舊版本 ⇒ onblocked 會說話（只發生一次）。 */
+const DB_NAME='deco_probe', DB_VER=3;
 let _db=null;
 function openDB(){
   return new Promise((res,rej)=>{
@@ -1582,6 +1876,10 @@ function openDB(){
       ['photos','markers','rooms','walls','beams','items'].forEach(st=>{
         if(!d.objectStoreNames.contains(st)) d.createObjectStore(st,{keyPath:'id'});
       });
+      /* 🔴 v0.13_i 修三：projects 的 keyPath 是 code（它沒有 id，也沒有 deleted_at
+         ⇒ 不可以套 stampObj／softDelete，走一條專屬的小函式）。 */
+      if(!d.objectStoreNames.contains('projects'))
+        d.createObjectStore('projects',{keyPath:'code'});
     };
     r.onsuccess=e=>{
       _db=e.target.result;
@@ -1640,18 +1938,24 @@ const LEN_FIELDS = {
   rooms:['slabH'],
   walls:['x1','y1','x2','y2','thickness','height'],
   beams:['x1','y1','x2','y2','width','drop'],
-  items:['w','d','h']
+  /* 🔴 需求 46：zBase（離地高度）＝ 六處換算的第六處。記憶體欄位名沿用 slabH 的 camelCase。 */
+  items:['w','d','h','zBase'],
+  /* 🔴 v0.13_i 修三：第五處。floorH 記憶體是公分、雲端 floor_h 是公釐。 */
+  projects:['floorH']
 };
 function anchorToMM(a){
   if(!a) return null;
+  /* 🔴 v0.13_i 修四 4-a：這兩個函式不是 Object.assign，是【重建物件】
+     ⇒ 沒有列出來的欄位會被安靜吃掉（side 存進記憶體 → 第一次 saveItem → 欄位消失）。
+     🔴 side 不是長度，【不可以乘 10】。 */
   if(a.type==='wall') return {type:'wall', wall:a.wall,
-    along:toMM(a.along), off:toMM(a.off||0)};
+    along:toMM(a.along), off:toMM(a.off||0), side:(a.side ?? null)};
   return {type:'free', x:toMM(a.x), y:toMM(a.y)};
 }
 function anchorFromMM(a){
   if(!a) return {type:'free', x:0, y:0};
   if(a.type==='wall') return {type:'wall', wall:a.wall,
-    along:fromMM(a.along)||0, off:fromMM(a.off)||0};
+    along:fromMM(a.along)||0, off:fromMM(a.off)||0, side:(a.side ?? null)};
   return {type:'free', x:fromMM(a.x)||0, y:fromMM(a.y)||0};
 }
 /* 記憶體物件（公分） → IndexedDB 紀錄（公釐整數） */
@@ -1659,6 +1963,9 @@ function toDb(store,obj){
   const o=Object.assign({},obj);
   (LEN_FIELDS[store]||[]).forEach(k=>{ o[k]=toMM(obj[k]); });
   if(store==='items') o.anchor=anchorToMM(obj.anchor);
+  /* 🔴 六處換算之三（v0.13_i 修五）：LEN_FIELDS 是【逐欄位純量】換算，吃不下陣列
+     ⇒ poly 必須比照 anchorToMM 另外寫一對。 */
+  if(store==='rooms') o.poly=polyToMM(obj.poly);
   return o;
 }
 /* IndexedDB 紀錄（公釐整數） → 記憶體物件（公分浮點） */
@@ -1666,6 +1973,9 @@ function fromDb(store,rec){
   const o=Object.assign({},rec);
   (LEN_FIELDS[store]||[]).forEach(k=>{ o[k]=fromMM(rec[k]); });
   if(store==='items') o.anchor=anchorFromMM(rec.anchor);
+  /* 🔴 六處換算之四 —— v0.13_i 修五明寫這是【最容易漏的一格】。
+     漏了它，cloudJoin 的認領迴圈（lAllObj → lPutObj 原地來回）每跑一次就差 10 倍。 */
+  if(store==='rooms') o.poly=polyFromMM(rec.poly);
   return o;
 }
 /* 🔴 需求 4｜時區：一律存 ISO（UTC），顯示時才轉本地。
@@ -1729,6 +2039,42 @@ async function saveBeam(b){ stampObj(b); await lPutObj('beams',b);
 async function saveItem(i){ stampObj(i); await lPutObj('items',i);
   if(CLOUD.on) cloudPushObj('items',i.id).catch(e=>cloudErr(e)); return i.id; }
 
+/* ══════════════════════════════════════════════════════════════
+   🔴 v0.12_i 需求 44 ＋ v0.13_i 修三｜projects 的資料層（專屬小函式）
+   ⚠️ projects 沒有 id、沒有 deleted_at、沒有 pending/synced
+      ⇒ 【不要】套 stampObj／softDelete／cloudPushObj，那三個都假設有 id 與墓碑。
+   🔴 本批明確【不含】pull —— cloudPullObjects 的 store 清單一個字不改。
+      ⇒ 代價：兩台之間樓高與專案名字不會自動同步。這是刻意的取捨（形狀套不進既有迴圈），
+        已列進交付必講清單 ⑧。
+   ══════════════════════════════════════════════════════════════ */
+/* 未連線時也要存得住 ⇒ 用一個不會與任何真實代碼衝突的本機鍵。
+   ⚠️ A 類歧義：_i 沒有寫「還沒連線時這一列的 key 是什麼」，這裡取保守解（只存這台）。 */
+const LOCAL_PROJ_KEY='_local';
+const projKey = ()=> CLOUD.code || LOCAL_PROJ_KEY;
+async function lGetProject(code){
+  const rec=await tx('projects','readonly',s=>s.get(code));
+  return rec ? fromDb('projects',rec) : null;
+}
+async function lPutProject(p){
+  await tx('projects','readwrite',s=>s.put(toDb('projects',p)));
+}
+async function cloudPushProject(){
+  if(!CLOUD.on || !CLOUD.code) return;
+  const row={ code:CLOUD.code, name:PROJECT.name||null,
+              floor_h:toMM(PROJECT.floorH), updated_at:nowISO() };
+  const r=await sbFetch('/rest/v1/projects?on_conflict=code',{method:'POST',
+    headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify(row)});
+  if(!r.ok) throw new Error('寫入雲端 projects 失敗：'+(await r.text()).slice(0,200));
+}
+async function loadProject(){
+  try{
+    const p=await lGetProject(projKey());
+    PROJECT = p ? {code:p.code, name:p.name||'', floorH:(p.floorH==null?null:p.floorH)}
+                : {code:projKey(), name:'', floorH:null};
+  }catch(e){ PROJECT={code:projKey(), name:'', floorH:null}; }
+}
+
 /* delete*：🔴 軟刪除（進垃圾桶），不是 lDel */
 async function softDelete(store, arr, id, saver){
   const o=arr.find(x=>x.id===id) || await lGetObj(store,id);
@@ -1752,6 +2098,17 @@ async function reloadObjects(){
   WALLS = await lAllLive('walls');
   BEAMS = await lAllLive('beams');
   FURN  = await lAllLive('items');
+  /* 🔴 需求 41 邊界 ＋ v0.13_i 修七 F-29：poly 少於 3 點或格式壞掉 → 不畫，但【不可靜默】。
+     ⚠️ 放在這裡重算（而不是畫的時候寫），是為了讓它跟著資料走、
+        而且不會被「同步成功就清空」那條路清掉（那是 S.dataErr 的行為）。
+     邊界：poly 為 null ＝ 正常情況（種子／手建的房間），不是錯誤，不報。 */
+  const bad=ROOMS.filter(r=>r.poly!=null && !validPoly(r.poly)).map(r=>r.name||'未命名');
+  S.geomErr = bad.length
+    ? `有 ${bad.length} 間房的分區形狀讀不出來（${bad.slice(0,3).join('、')}${bad.length>3?'…':''}），那幾塊不會畫出來。`
+    : '';
+  /* 🔴 修九邊界：beamFocus 指到的樑被刪掉 ⇒ 清掉，不炸。 */
+  if(S.beamFocus && !BEAMS.some(b=>b.id===S.beamFocus)) S.beamFocus=null;
+  await loadProject();
 }
 async function loadAll(){
   await reloadObjects();
@@ -1816,12 +2173,28 @@ async function clearPlacement(){
   for(const f of FURN.slice()){ f.isPlaced=false; await saveItem(f); }
   await reloadObjects();
 }
-/* 乙｜清清單：Room / Wall / Beam / Item 的【全部】列 → deletedAt = nowISO()
+/* ══ 🔴 v0.12_i 需求 47 ＋ v0.13_i 修六｜清清單不准動【房子本身】══
+   判準是「這一筆是不是房子本身（＝匯入來的）」，🔴【不是 state】。
+   ⚠️ 用 state 的後果：匯入的 33 道裡有 5 道是 proposed（她 SVG 裡的隔間牆）
+      ⇒ 不會被跳過 ⇒ 被軟刪 ⇒ 而 RLS 允許改 proposed ⇒【沒有任何錯誤訊息】
+      ⇒ 而舊的 N-198 只檢查「28 道 existing 還在」⇒ 綠燈通過，五分之一的房子已經不見了。
+   🔴 這條依賴「poly 有補進本機」（v0.13_i 修二）：若 poly 沒下來，isHouseRoom 全 false
+      ⇒ 10 間真實房間會被全部軟刪，而 rooms 的 RLS 不會擋。兩條要一起看。
+      ⇒ 防線＝確認框先把「保留 X 間房」講出來（v0.14_i 補七 N-10b，obs O-18 規則①）。 */
+/* 牆：匯入的 room_id 一律 NULL。
+   ⚠️ v0.14_i 補七 N-10a：加一層便宜保險 `|| state==='existing'`，成本一個 ||，
+      同時擋住 D1-8 的原始 42501 路徑（對 existing 牆送 UPDATE 會被 RLS 拒 28 次）。 */
+const isHouse     = w => (w && (w.room == null || w.state === 'existing'));
+/* 房間：有 poly ＝ 從 SVG 匯入的真實分區，不是她擺的東西。 */
+const isHouseRoom = r => (r && validPoly(r.poly));
+/* 樑：全部都是匯入的 ⇒ clearAll 一律跳過。 */
+
+/* 乙｜清清單：只清【她擺的東西】；房子（既有牆、樑、有 poly 的分區）留著。
    🔴 留什麼：photos / markers 【完全不動】（照片不屬於清單）。 */
 async function clearAll(){
-  for(const r of ROOMS.slice()){ r.deletedAt=nowISO(); await saveRoom(r); }
-  for(const w of WALLS.slice()){ w.deletedAt=nowISO(); await saveWall(w); }
-  for(const b of BEAMS.slice()){ b.deletedAt=nowISO(); await saveBeam(b); }
+  for(const r of ROOMS.slice()){ if(isHouseRoom(r)) continue; r.deletedAt=nowISO(); await saveRoom(r); }
+  for(const w of WALLS.slice()){ if(isHouse(w))     continue; w.deletedAt=nowISO(); await saveWall(w); }
+  /* 🔴 樑跟既有牆同性質（房子本身）⇒ 一根都不刪。 */
   for(const f of FURN.slice()) { f.deletedAt=nowISO(); await saveItem(f); }
   await reloadObjects();
   /* 🔴 v0.09_i 需求 29：立刻重生種子，不要等下一次重新載入。
@@ -1915,6 +2288,8 @@ async function addItem(init){
   const it=Object.assign({
     id:uid(), room:null, name:'', w:null, d:null, h:null,
     note:'', price:null, color:null, rot:0,
+    /* 🔴 需求 46：只預留結構，本批不做任何邏輯（沒有分類 UI、沒有用到 zBase 的判定）。 */
+    category:null, zBase:null,
     anchor:{type:'free', x:0, y:0},
     isPlaced:false, isBudgeted:false, log:[],
     projectCode:CLOUD.code||null, synced:false, pending:false,
@@ -2147,13 +2522,25 @@ function toRow(store,o){
         送 null 會被拒；而 omit 掉就由資料庫自己蓋（那是真的時間，不是假造的）。
         這正好就是「不要補寫一個假的 createdAt」（obs O-13）的另一半。 */
   if(o.createdAt) base.created_at=o.createdAt;
-  if(store==='rooms') return Object.assign(base,{
-    name:o.name??null, slab_h:toMM(o.slabH), note:o.note??null });
+  if(store==='rooms'){
+    const row=Object.assign(base,{
+      name:o.name??null, slab_h:toMM(o.slabH), note:o.note??null });
+    /* 🔴🔴 v0.13_i 修二-a：poly【有值才送】，比照上面 created_at 的寫法。
+       ⚠️ 若無條件送，polyToMM(undefined) 會是 null
+          ⇒ 舊裝置存一次檔就把雲端那一列的 poly 明確覆寫成 null ⇒ 另一台也跟著死。
+       ⭐ 這個寫法不論 PostgREST 的 upsert 對「payload 沒帶的欄位」是保留還是覆寫成預設，
+          都不會洗掉資料 ⇒ 我們不必先解那個【仍未實測】的問題。
+       ⚠️ 與 obs O-19 同一個形狀：存檔不可以順便把一個欄位變成 null。 */
+    if(validPoly(o.poly)) row.poly=polyToMM(o.poly);
+    return row;
+  }
   if(store==='walls') return Object.assign(base,{
     room_id:o.room||null, x1:toMM(o.x1), y1:toMM(o.y1), x2:toMM(o.x2), y2:toMM(o.y2),
     thickness:toMM(o.thickness), height:toMM(o.height),
     /* 🔴 v0.05_i §1（修一）：前台是唯一的 insert 來源，它只能寫 proposed
        ⇒ 這裡的後備值也必須是 'proposed'，否則一道沒有 state 的牆會被 42501 拒掉。 */
+    /* 🔴 v0.13_i 修十一 F-14：本批 z_min／z_max【只讀不寫】—— 這裡一個字都不加。
+       （它們要等門窗那一批才用得到；順手加進來會把匯入的高度區間洗掉。） */
     is_boundary:o.isBoundary!==false, state:o.state||'proposed',
     total:o.total??null, note:o.note??null,
     is_placed:o.isPlaced!==false, is_budgeted:!!o.isBudgeted });
@@ -2166,6 +2553,11 @@ function toRow(store,o){
     w:toMM(o.w), d:toMM(o.d), h:toMM(o.h),
     note:o.note??null, price:o.price??null, color:o.color??null, rot:o.rot||0,
     anchor:anchorToMM(o.anchor),
+    /* 🔴 需求 46：只加兩個欄位，【不做任何邏輯】（分類的篩選／分組／icon 差異／
+       任何用到 z_base 的判定都不在本批）。
+       category 存英文代碼（space／furniture／appliance／hidden／opening），前台顯示中文
+       ⇒ 之後改中文顯示名不用動資料。 */
+    category:o.category??null, z_base:toMM(o.zBase),
     is_placed:!!o.isPlaced, is_budgeted:!!o.isBudgeted, log:o.log||[] });
 }
 function fromRow(store,row){
@@ -2175,8 +2567,10 @@ function fromRow(store,row){
        雲端沒有（舊列）→ null，不偽造。 */
     createdAt:row.created_at||null,
     appVer:APP_VER };
+  /* 🔴 六處換算之一：雲端 mm → 記憶體 cm。 */
   if(store==='rooms') return Object.assign(base,{
-    name:row.name||'', slabH:fromMM(row.slab_h), note:row.note||'' });
+    name:row.name||'', slabH:fromMM(row.slab_h), note:row.note||'',
+    poly:polyFromMM(row.poly) });
   if(store==='walls') return Object.assign(base,{
     room:row.room_id||null,
     x1:fromMM(row.x1), y1:fromMM(row.y1), x2:fromMM(row.x2), y2:fromMM(row.y2),
@@ -2194,6 +2588,7 @@ function fromRow(store,row){
     w:fromMM(row.w), d:fromMM(row.d), h:fromMM(row.h),
     note:row.note||'', price:row.price??null, color:row.color||null, rot:row.rot||0,
     anchor:anchorFromMM(row.anchor),
+    category:row.category||null, zBase:fromMM(row.z_base),     // 🔴 需求 46
     isPlaced:!!row.is_placed, isBudgeted:!!row.is_budgeted, log:row.log||[] });
 }
 /* 推：本機 → 雲端（單筆） */
@@ -2266,6 +2661,10 @@ async function cloudDelMarker(m){
       · 「本機已有就跳過」—— 房間/家具會改，抄了就永遠拉不到修改
       · 「雲端沒這個 id ⇒ 刪本機」—— 四張表有 deletedAt，刪除是寫得出來的事實
    ══════════════════════════════════════════════════════════════ */
+/* 🔴 v0.14_i 補一：無視時間戳回填的【白名單】。
+   判準：這個欄位使用者【有沒有辦法把它清空】？有 → 不可以進；沒有 → 可以進。
+   🔴 不要寫成「所有 null 的欄位」。 */
+const BACKFILL = { rooms:['poly'] };
 async function cloudPullObjects(){
   const q = '&project_code=eq.' + encodeURIComponent(CLOUD.code);
   syncStep('房間／牆／樑／家具…');               // 🔴 需求 18 ①（第 4 階段）
@@ -2298,6 +2697,26 @@ async function cloudPullObjects(){
             本機 pending 且【較舊】→ 覆蓋，並清掉 pending／設 synced=true
                                      （那筆舊修改被判定為已被取代）
          ⚠️ 時間戳相同 → 不動本機（用 > 不用 >=，沿用 v0.04_i）。 */
+      /* ══ 🔴🔴 v0.13_i 修二-b ＋ v0.14_i 補一｜新欄位的回填（放在「晚的贏」之前）══
+         情境：Ali 兩台都已經 pull 過那 10 筆 room，本機有它們但【沒有 poly】
+               （v0.1.4.5 的 fromRow 不認識這個欄位），而 updatedAt 與雲端【完全相等】
+               ⇒ 走 `>` 這條比較 ⇒ 不覆蓋 ⇒ 🔴 poly 永遠下不來，10 個分區一個都不畫。
+         ⚠️ 乾淨的開發機走的是 `!cur` 分支 ⇒ 一切正常 ⇒ 測試會【全綠】，只有她的機器會壞
+            （obs O-13「本機儲存比程式活得久」＋ O-17「量具說謊」的合體）。
+         ⇒ 規則：雲端有值、本機是 null／undefined 的欄位，無視時間戳補下來。
+         🔴 但只限【白名單】（v0.14_i 補一）：判準是「使用者有沒有辦法把這個欄位清空」。
+            有辦法清空 ⇒ 不可以進白名單 —— 這個 App 明訂「清空 ＝ null」，
+            寫成通則會把【使用者清掉的價錢】當成版本落差長回來，並推回雲端。
+            poly 目前沒有任何 UI 可以清空它 ⇒ 符合條件。
+            ⚠️ 之後若做了「編輯分區形狀」，這一格要重新檢視；
+               下一個新欄位（z_min／z_max／category／z_base）要【逐一判斷】，不可以自動加。 */
+      for(const k of (BACKFILL[store] || [])){
+        if(cur && cur[k]==null && inc[k]!=null){
+          /* 🔴 不改 updatedAt、不動 pending／synced ——
+             這不是一次「雲端比較新」的衝突，是【本機根本不知道有這個欄位】。 */
+          await lPutObj(store, Object.assign({}, cur, {[k]: inc[k]}));
+        }
+      }
       if(!inc.updatedAt) continue;            // ③ 雲端沒時間戳 → 當最舊，不覆蓋
       if(new Date(inc.updatedAt) > new Date(cur.updatedAt||0))
         await lPutObj(store, Object.assign({}, inc, {synced:true, pending:false,
@@ -2742,10 +3161,19 @@ $('btnClearPlace').onclick = async ()=>{
   render(); buildList(); syncSel(); await refreshProj();
 };
 $('btnClearAll').onclick = async ()=>{
-  /* 需求 5：要先看到「共 N 個房間、M 件家具」才可按 */
+  /* 🔴 v0.14_i 補七 N-10b（obs O-18 規則①的落地）：
+     按下刪除之前就要看見「保留幾間房」——若補二（poly 回填）失敗，X 會是 0，
+     她在按下去之前就看得到。這是本批最便宜的一道防線（一行字串）。 */
+  const keepRooms=ROOMS.filter(isHouseRoom).length;
+  const keepWalls=WALLS.filter(isHouse).length;
+  const keepBeams=BEAMS.length;
+  const killRooms=ROOMS.length-keepRooms, killWalls=WALLS.length-keepWalls;
   const ok=await askDialog({title:'清清單',
-    body:`即將清掉 <b>共 ${ROOMS.length} 個房間、${FURN.length} 件家具</b>（含牆與樑）。<br>`+
-         `它們會進垃圾桶。<b>照片與標記完全不受影響。</b>`,
+    body:`將清掉 <b>${FURN.length}</b> 件家具`+
+         (killRooms||killWalls? `，以及你自己建的 ${killRooms} 間房、${killWalls} 道牆`:'')+
+         `；<br>保留 <b>${keepRooms}</b> 間房、<b>${keepWalls}</b> 道牆、<b>${keepBeams}</b> 根樑。<br>`+
+         `<b>房子（牆、樑、分區）留著，只清掉你擺的東西。</b><br>`+
+         `清掉的會進垃圾桶。<b>照片與標記完全不受影響。</b>`,
     okText:'清清單'});
   if(!ok) return;
   await clearAll();
@@ -2755,8 +3183,172 @@ $('btnClearAll').onclick = async ()=>{
 async function refreshProj(){
   try{ $('trashCount').textContent='垃圾桶 '+(await trashSize())+' 筆'; }
   catch(e){ $('trashCount').textContent='垃圾桶 — 筆'; }
+  refreshSettings();
+  buildBeamRows();
   refreshDiag();
 }
+
+/* ══════════════════════════════════════════════════════════════
+   🔴 v0.12_i 需求 44-b／44-c｜設定頁：專案名字／全域樓高／逐根樑的下垂量
+   存檔顆粒度沿用需求 7：即時改記憶體、blur／Enter 才存；無效值加紅框、失焦還原。
+   🔴 44-c：存檔【成功與失敗都要】在欄位旁邊看得到（v0.13_i 修十一 F-17）——
+      不可以只寫在同步對話框裡（她不會為了確認一個欄位去開同步對話框）。
+   ══════════════════════════════════════════════════════════════ */
+function setSaveNote(id, txt, cls){
+  const b=$(id); if(!b) return;
+  b.className='savenote'+(cls?' '+cls:'');
+  b.textContent=txt||'';
+}
+function refreshSettings(){
+  const n=$('pjName'), h=$('pjFloorH');
+  if(n && document.activeElement!==n) n.value = PROJECT.name||'';
+  if(h && document.activeElement!==h){
+    h.value = PROJECT.floorH==null ? '' : String(Math.round(PROJECT.floorH*10)/10);
+    h.classList.remove('bad');
+  }
+}
+/* 存這一列（本機必存；已連線就順便推雲端）。回饋一律落在欄位旁邊。 */
+async function saveProject(){
+  PROJECT.code = projKey();
+  try{ await lPutProject(PROJECT); }
+  catch(e){ setSaveNote('pjSaveNote','⚠️ 這台存不進去：'+((e&&e.message)||e),'er'); return; }
+  if(CLOUD.on && CLOUD.code){
+    try{
+      await cloudPushProject();
+      setSaveNote('pjSaveNote',`✅ 已存（這台＋雲端）　${hhmm()}`,'ok');
+    }catch(e){
+      /* 🔴 需求 44-c：失敗是【安靜的】(cloudErr 只寫進 CLOUD.msg) ⇒ 這裡一定要講出來。 */
+      cloudErr(e);
+      setSaveNote('pjSaveNote','⚠️ 還沒存上去（只存在這台）：'+((e&&e.message)||e),'er');
+    }
+  }else{
+    setSaveNote('pjSaveNote',`✅ 已存這台　${hhmm()}　（未連線，不會上雲端）`,'ok');
+  }
+}
+if($('pjName')){
+  $('pjName').addEventListener('input',()=>{ PROJECT.name=$('pjName').value; });
+  $('pjName').addEventListener('blur',()=>saveProject());
+  $('pjName').addEventListener('keydown',e=>{ if(e.key==='Enter') $('pjName').blur(); });
+}
+if($('pjFloorH')){
+  $('pjFloorH').addEventListener('input',()=>{
+    const raw=$('pjFloorH').value.trim();
+    if(raw===''){ PROJECT.floorH=null; $('pjFloorH').classList.remove('bad'); return; }
+    const v=parseFloat(raw);
+    /* 需求 7：打字中不阻止、不還原、不寫入，但無效就加紅框 */
+    if(!isFinite(v)||v<=0){ $('pjFloorH').classList.add('bad'); return; }
+    $('pjFloorH').classList.remove('bad');
+    PROJECT.floorH=v;
+  });
+  $('pjFloorH').addEventListener('blur',()=>{
+    const raw=$('pjFloorH').value.trim();
+    const v=raw===''? null : parseFloat(raw);
+    if(raw!=='' && (!isFinite(v)||v<=0)){
+      // 無效 → 還原成上一個有效值，移除紅框，不存
+      $('pjFloorH').value = PROJECT.floorH==null ? '' : String(Math.round(PROJECT.floorH*10)/10);
+      $('pjFloorH').classList.remove('bad');
+      return;
+    }
+    $('pjFloorH').classList.remove('bad');
+    PROJECT.floorH = v;                 // 🔴 留空存 null，不是 0
+    saveProject();
+  });
+  $('pjFloorH').addEventListener('keydown',e=>{ if(e.key==='Enter') $('pjFloorH').blur(); });
+}
+
+/* 🔴 需求 44-b：樑的下垂量，一根一列，【編號與平面圖一致】（共用 beamOrder()）。 */
+function beamLabel(b,i){
+  const L=Math.hypot(b.x2-b.x1, b.y2-b.y1);
+  return `樑${i+1}（長 ${Math.round(L)}cm × 寬 ${Math.round(b.width||20)}cm）`;
+}
+/* ⚠️ 宣告要在 buildBeamRows 之前：let 沒有 hoist 到可用狀態（TDZ），
+   放在下面會讓「先跑到 buildBeamRows」的路徑丟 ReferenceError。 */
+let _beamReturnId=null;
+function buildBeamRows(){
+  const box=$('beamRows'); if(!box) return;
+  box.innerHTML='';
+  const list=beamOrder();
+  if(!list.length){
+    const d=document.createElement('div'); d.className='savenote';
+    d.textContent='目前沒有樑。';
+    box.appendChild(d); return;
+  }
+  list.forEach((b,i)=>{
+    const row=document.createElement('div'); row.className='setrow';
+    row.dataset.beam=b.id;
+    const k=document.createElement('div'); k.className='k'; k.textContent=beamLabel(b,i);
+    const ip=document.createElement('input');
+    ip.setAttribute('inputmode','decimal');
+    ip.placeholder='（未填）';
+    ip.value = b.drop==null ? '' : String(Math.round(b.drop*10)/10);
+    ip.addEventListener('input',()=>{
+      const raw=ip.value.trim();
+      if(raw===''){ ip.classList.remove('bad'); return; }
+      const v=parseFloat(raw);
+      ip.classList.toggle('bad', !isFinite(v)||v<=0);
+    });
+    ip.addEventListener('blur',async()=>{
+      const raw=ip.value.trim();
+      const v=raw===''? null : parseFloat(raw);
+      if(raw!=='' && (!isFinite(v)||v<=0)){
+        ip.value = b.drop==null ? '' : String(Math.round(b.drop*10)/10);
+        ip.classList.remove('bad'); return;
+      }
+      ip.classList.remove('bad');
+      if(b.drop===v) return;
+      b.drop=v;                        // 🔴 留空存 null ⇒ 平面圖那根變回灰色虛線
+      try{
+        await saveBeam(b);
+        setSaveNote('beamSaveNote',`✅ ${beamLabel(b,i)} 已存　${hhmm()}`,'ok');
+      }catch(e){
+        cloudErr(e);
+        setSaveNote('beamSaveNote',`⚠️ ${beamLabel(b,i)} 還沒存上去：`+((e&&e.message)||e),'er');
+      }
+      await reloadObjects();
+      render(); buildBeamRows();
+    });
+    ip.addEventListener('keydown',e=>{ if(e.key==='Enter') ip.blur(); });
+    const pv=document.createElement('button'); pv.className='btn'; pv.textContent='預覽';
+    /* 🔴 v0.13_i 修九 ＋ v0.14_i 補四／補五：
+         ① 先設 S.beamFocus，【再】setTab('plan',{keepFocus:true})（否則剛設的立刻被清掉）
+         ② 一併 select(null)：這次進平面圖是【來看樑的】，
+            否則選中家具面板（.sel）會跟返回列（.pinning）搶同一個 bottom:56px
+         ③ 把鏡頭帶到那根樑，否則亮了也看不到 */
+    pv.onclick=()=>{
+      select(null);
+      S.beamFocus=b.id;
+      setTab('plan',{keepFocus:true});
+      centerOnBeam(b);
+      refreshBeamBar();
+      render(); syncSel();
+    };
+    row.appendChild(k); row.appendChild(ip); row.appendChild(pv);
+    box.appendChild(row);
+  });
+  /* 從平面圖按〔返回設定〕回來時，捲回原本那一列 */
+  if(_beamReturnId){
+    const el2=box.querySelector(`[data-beam="${_beamReturnId}"]`);
+    _beamReturnId=null;
+    if(el2) try{ el2.scrollIntoView({block:'center'}); }catch(e){}
+  }
+}
+/* 🔴 修九：樑在畫面外時要把鏡頭帶過去（只平移、不動 zoom，沿用 ensureVisible 的原則：
+   zoom 是使用者剛剛自己調的，而長度比例尺由 zoom 實算）。 */
+function centerOnBeam(b){
+  const {w,h}=svgSize();
+  if(!(w>0&&h>0)) return;
+  const cx=(b.x1+b.x2)/2, cy=(b.y1+b.y2)/2;
+  const s=w2s(cx,cy);
+  if(s.x>=SVG_PAD && s.y>=SVG_PAD && s.x<=w-SVG_PAD && s.y<=h-SVG_PAD) return;  // 看得到就不動
+  S.panX = w/2 - cx*S.zoom;
+  S.panY = h/2 - cy*S.zoom;
+}
+if($('beamBack')) $('beamBack').onclick=()=>{
+  _beamReturnId = S.beamFocus;          // 記住要捲回哪一列
+  S.beamFocus = null;                   // 離開平面圖 ⇒ 樑不再亮
+  setTab('proj');                       // setTab 內會呼叫 refreshProj → buildBeamRows
+  refreshBeamBar();
+};
 /* 🔴 v0.07_i 需求 25：診斷列。
    ⚠️ 畫面尺寸是 window.innerWidth×innerHeight（【CSS 像素】），不是螢幕解析度——
       Ali 要判斷的是「版面在她那台上有多少空間」，不是硬體規格。
@@ -3347,9 +3939,19 @@ function itemCard(f){
 }
 /* is_placed false → true 的兩條邊界（需求 8） */
 function inRoomBBox(rid,x,y){
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  /* 🔴 v0.13_i 修七 F-9：這個函式 v0.12_i 整個漏列了。
+     它靠牆算「在不在房間裡」，而匯入的牆 room 全 NULL ⇒ 需求 41 之後
+     按〔已擺〕會判成「不在房間裡」⇒ 把家具丟回形心。
+     ⇒ 有 poly 就用 poly 的外接矩形；沒有才回退舊算法。 */
+  const r=ROOMS.find(z=>z.id===rid);
+  if(r && validPoly(r.poly)){
+    r.poly.forEach(q=>{ x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]);
+                        y0=Math.min(y0,q[1]); y1=Math.max(y1,q[1]); });
+    return x>x0 && x<x1 && y>y0 && y<y1;
+  }
   const ws=WALLS.filter(w=>w.room===rid);
   if(!ws.length) return false;
-  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
   ws.forEach(w=>{x0=Math.min(x0,w.x1,w.x2);x1=Math.max(x1,w.x1,w.x2);
                  y0=Math.min(y0,w.y1,w.y2);y1=Math.max(y1,w.y1,w.y2);});
   /* ⚠️ 用【嚴格內部】而不是含邊界：新建項目的 anchor 是 (0,0)，
@@ -3503,7 +4105,15 @@ function centerOn(f){
 /* ══════════════════════════════════════════════════════════════
    需求 13｜分頁（_d §10-0c：最多 5 格，前 4 格永遠不動）
    ══════════════════════════════════════════════════════════════ */
-function setTab(t){
+/* 🔴 v0.13_i 修九 ＋ v0.14_i 補四｜setTab 多一個 opt。
+   🔴 opt【一定要有預設值】：現有 8 個呼叫點全部是單參數，
+      有預設值就完全不受影響；沒有預設值則每一個都會 TypeError。
+   🔴 清除規則是「預設清 beamFocus，帶旗標才不清」——
+      v0.13_i 修九那句「setTab 本身不清」寫反了：全檔切分頁只有 setTab 一條路，
+      那樣寫等於【沒有任何地方會清】⇒ 樑會永遠亮著（obs O-12 宣告≠生效）。 */
+function setTab(t, opt){
+  opt = opt || {};
+  if(!opt.keepFocus) S.beamFocus = null;
   if(S.tab==='list' && t!=='list'){ commitNameEdits(); }
   S.tab=t;
   $('listPage').hidden  = (t!=='list');
@@ -3527,7 +4137,14 @@ function setTab(t){
   if(t==='list') buildList();
   try{ if(t==='plan'||t==='list'||t==='photo') localStorage.setItem('deco.tab',t); }catch(e){}
   refreshTop();
+  refreshBeamBar();          // 🔴 修九：返回列跟著 beamFocus 與分頁走
   render(); syncSel();
+}
+/* 🔴 v0.13_i 修九：〔‹ 返回設定〕只在「平面圖 ＋ 有樑亮著」時出現。
+   落點沿用 .pinning，不新造版位。 */
+function refreshBeamBar(){
+  const b=$('beamBack'); if(!b) return;
+  b.hidden = !(S.tab==='plan' && S.beamFocus);
 }
 $('tabPlan').onclick  =()=>setTab('plan');
 $('tabList').onclick  =()=>setTab('list');
@@ -3565,10 +4182,15 @@ $('gridAll').onchange=e=>{S.gridAll=e.target.checked; render();};
 /* 資料變了（種子只有 400×300，不再是舊假資料的 900×400）⇒ fit() 改成依實際資料算範圍。
    ⚠️ 這不是 _i 指定的改動，是換掉假資料後 fit() 的必要適配（見交付報告）。 */
 function planBounds(){
-  if(!WALLS.length) return {x0:0, y0:0, x1:400, y1:barY()+80};
+  /* 🔴 需求 41：現況只看 WALLS ⇒ 凸出牆線的分區（例如「大門外」）會被切掉
+     ⇒ 把 poly 的點一起納入（與 dataLeft／dataBottom 同步，v0.13_i 修七 F-24）。 */
+  const pp=polyPoints();
+  if(!WALLS.length && !pp.length) return {x0:0, y0:0, x1:400, y1:barY()+80};
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
   WALLS.forEach(w=>{x0=Math.min(x0,w.x1,w.x2);x1=Math.max(x1,w.x1,w.x2);
                     y0=Math.min(y0,w.y1,w.y2);y1=Math.max(y1,w.y1,w.y2);});
+  pp.forEach(q=>{x0=Math.min(x0,q[0]); x1=Math.max(x1,q[0]);
+                 y0=Math.min(y0,q[1]); y1=Math.max(y1,q[1]);});
   y1=Math.max(y1, barY()+80);                 // 含下方的示意帶與比例尺
   x1=Math.max(x1, x0+340);
   return {x0,y0,x1,y1};
