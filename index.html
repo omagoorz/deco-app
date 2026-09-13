@@ -2,10 +2,45 @@
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>裝修估價 App 互動預覽 v0.1.5</title>
+<title>裝修估價 App 互動預覽 v0.1.5.1</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.5（進版）── 第一批
+  裝修估價 App — 手機互動預覽　版次：v0.1.5.1（補釘）
   作者：claude / 2026-09-13 / 對應 _d v0.19
+  規格：../修正需求/裝修估價App_修正需求表_v0.15_i_claude_20260913.md
+        （指名鏈 v0.12_i → v0.13_i → v0.14_i → v0.15_i；衝突時以版次較新者為準）
+  來源：Ali 2026-09-13 電腦＋手機真機測試（M-20~M-31）
+
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║ 🔴 本輪待辦（做完一條就在前面標 ✅）                                  ║
+  ║                                                                      ║
+  ║ 理由：v0.1.5 那一輪被額度中斷過一次，碼沒丟，丟的是「我還打算改哪裡」——║
+  ║      因為那個意圖【只活在對話的上下文裡】。寫進檔案，它就跟碼一起活著。║
+  ║      中斷後不論誰接手，看這一段就知道停在哪。                          ║
+  ║                                                                      ║
+  ║ ✅ 修一-a  commitFieldEdits() 最前面加 if(!S.sizeOpen) return;        ║
+  ║ 🛑 修一-b  dirty 改成「真的變了才算」→【停做，整條不動】B 類，已回報   ║
+  ║           照做會靜默掉資料（實測：記憶體 88／IndexedDB 還是 150）      ║
+  ║           理由與證據寫在 commitFieldEdits() 內（搜「修一-b」）         ║
+  ║ ✅ 修一-c  syncSel() 填 fw/fd/fh 那段移出 if(sizeOn){}，無條件執行     ║
+  ║           （🔴 activeElement 守衛保留；🔴 a 與 c 兩層都要做）         ║
+  ║ ✅ 修一-查 commitNameEdits()／commitCardEdits() 有沒有同一個病         ║
+  ║           → 結論：【沒有】。理由寫在該函式上方的註解裡（搜「修一-查」）║
+  ║ ✅ 修二    body 加 user-select:none；input/textarea/.codetxt 加回 text ║
+  ║           （🔴 不用 preventDefault；🔴 第 527 行那條不准刪）          ║
+  ║ ✅ 修三    .inputline[hidden]{display:none!important}                  ║
+  ║           （🔴 askInput 的 Enter 綁定不要動）                         ║
+  ║ ✅ 修四    樑的 focus 那一根改成填滿 polygon，其餘五根一行不改         ║
+  ║           （🔴 四角順序 1→2→2'→1'；🔴 底下 w2s/uiText 一行不改）      ║
+  ║                                                                      ║
+  ║ 本批【不做】（v0.15_i §0，先講免得被當成漏掉）：                      ║
+  ║   · 床貼牆的可調自由度（_d §13-58）                                   ║
+  ║   · 家具換房間後清單仍顯示原房間（_d §13-57）                         ║
+  ║   · 樓高跨裝置同步（_d §13-59，新需求不是回歸）                       ║
+  ║   · 「房間1廁所」窄畫面被切（Ali 裁決維持）／儲藏室與樑的文字重疊      ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+
+  ── 以下為 v0.1.5（進版）的說明，保留備查 ──
+  上一版：v0.1.5（進版）── 第一批／claude / 2026-09-13 / 對應 _d v0.19
   規格（三份都是驗收條件，衝突時以版次較新者為準）：
     ../修正需求/裝修估價App_修正需求表_v0.12_i_claude_20260913.md（需求 41~48 全文）
     ../修正需求/裝修估價App_修正需求表_v0.13_i_claude_20260913.md（前·規格刀 30 條回修）
@@ -160,7 +195,18 @@ body{margin:0;background:var(--bg);color:var(--ink);
   /* ⚠️ 上一行的 font 是【簡寫】，會把 font-size 設成 14px ⇒ 要在它【之後】覆蓋，
      否則整個 app 的繼承基準不會跟著 --fs 走（font:inherit 的輸入框全靠它）。 */
   font-size:calc(14px * var(--fs));
-  overscroll-behavior:none;}
+  overscroll-behavior:none;
+  /* 🔴 v0.15_i 修二：電腦上按住拖平面圖（或拖家具貼牆）時，
+     瀏覽器判定成「拖曳選字」⇒ 面板、清單、按鈕的文字整片反白。
+     #plan 的 touch-action:none 只管【觸控】，管不到滑鼠 ⇒ 只有電腦會撞到。
+     🔴 為什麼走 CSS 而不是在 pointerdown 上 preventDefault：
+        preventDefault 會一併吃掉 focus／blur，而修一那條路徑正是靠 blur 在運作
+        ⇒ 兩者會互相打架。CSS 不動事件流。 */
+  -webkit-user-select:none; user-select:none;}
+/* 🔴 修二的另一半：要打字／要複製的地方把選取【加回來】。
+   ⚠️ 診斷列（.diagrow）那條 user-select:text 是刻意的（讓 Ali 複製診斷資訊給 claude），
+      它本來就在、優先序也比 body 高 ⇒ 一個字都沒動。 */
+input, textarea, .codetxt{ -webkit-user-select:text; user-select:text; }
 /* 🔴 需求 21：手機上平面圖下方一大片空白。
    ① 用 100dvh 不用 100vh（手機瀏覽器網址列會吃掉高度，100vh 會算成比可見區更高）
       ⚠️ 100dvh 不支援時要有退路 ⇒ 先寫 100vh 再用 100dvh 覆蓋（支援的瀏覽器取後者）
@@ -437,6 +483,15 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .dlg h4{margin:0 0 9px;font-size:calc(14px * var(--fs))}
 .dlg.blocked{border-color:var(--warnB)}
 .inputline{display:flex;gap:6px;align-items:stretch}
+/* 🔴 v0.15_i 修三：class 的 display:flex 蓋掉瀏覽器 UA 樣式表的 [hidden]{display:none}
+   （UA 樣式優先序最低，任何作者寫的 class 都蓋得過它）
+   ⇒ 不需要輸入的確認框（例如〔清清單〕）底下會冒出一個空白輸入框，
+     而 Ali 會停下來問「這是要我做什麼」——功能沒壞，但那就是真的成本。
+   ⭐ 本檔其餘 13 處（.ov[hidden]／.sel[hidden]／.fields[hidden]…）都記得補這條守衛，
+      只有 .inputline 漏掉。
+   ⚠️ askInput 的 Enter 綁定【不要動】：需要輸入的對話框還靠它，
+      而「在不該出現的框裡按 Enter＝直接按下確定」這個風險，在框不再出現之後自然消失。 */
+.inputline[hidden]{display:none!important}
 .inputline input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
   border-radius:8px;padding:8px;color:var(--ink);font:inherit;font-size:calc(14px * var(--fs));min-height:40px;
   text-transform:uppercase}
@@ -774,7 +829,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.5';
+const APP_VER = 'v0.1.5.1';   /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它） */
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
@@ -1363,12 +1418,27 @@ function render(){
     const dx=b.x2-b.x1, dy=b.y2-b.y1, L=Math.hypot(dx,dy)||1;
     const hw=(b.width||20)/2;
     const nx=-dy/L*hw, ny=dx/L*hw;
-    [1,-1].forEach(sgn=>{
-      g.appendChild(el('line',{x1:b.x1+nx*sgn, y1:b.y1+ny*sgn,
-        x2:b.x2+nx*sgn, y2:b.y2+ny*sgn,
-        stroke:col, 'stroke-width': focus?6:3, opacity:0.85,
-        'stroke-dasharray':'24 14'}));
-    });
+    /* 🔴 v0.15_i 修四（M-27，Ali：「樑的高亮好難看，把他從虛線改成填滿某個顏色吧」）：
+       【只有被高亮的那一根】改成填滿。
+       ⚠️ 範圍嚴格限定：「只畫兩邊虛線、中間不填」是 Ali 自己 2026-09-13 的裁決，
+          理由是【壓在牆上也要看得到牆】⇒ 沒被高亮的五根，畫法一行不改。
+          被高亮的那一根本來就是「我要你現在看它」，遮住底下的牆是可以接受的。
+       🔴 四個角就是兩條側線的端點，順序要【繞一圈】1→2→2'→1'；
+          寫成 1→2→1'→2' 會變成蝴蝶結（自交的沙漏形）。
+       ⚠️ focus?6:3 的加粗一起被吃掉是對的：填滿之後不需要再加粗。 */
+    if(focus){
+      const pts=[[b.x1+nx,b.y1+ny],[b.x2+nx,b.y2+ny],
+                 [b.x2-nx,b.y2-ny],[b.x1-nx,b.y1-ny]];
+      g.appendChild(el('polygon',{points:pts.map(p=>p[0]+','+p[1]).join(' '),
+        fill:col,'fill-opacity':.55,stroke:col,'stroke-width':2.5,'stroke-linejoin':'miter'}));
+    }else{
+      [1,-1].forEach(sgn=>{
+        g.appendChild(el('line',{x1:b.x1+nx*sgn, y1:b.y1+ny*sgn,
+          x2:b.x2+nx*sgn, y2:b.y2+ny*sgn,
+          stroke:col, 'stroke-width':3, opacity:0.85,
+          'stroke-dasharray':'24 14'}));
+      });
+    }
     /* 🔴 v0.13_i 修一（F-1）：文字要先用 w2s 轉成【畫面座標】，而且中點要自己宣告。
        ⚠️ 照 v0.12_i 的 pseudocode 抄（直接用未宣告的 cx/cy）＝ "use strict" 下
           ReferenceError ⇒ render() 在 boot() 的 try 之外 ⇒ 🔴 啟動就白畫面。
@@ -1691,14 +1761,24 @@ function syncSel(){
   $('selFields').hidden = !sizeOn;
   box.classList.toggle('szopen', sizeOn);
   $('btnSize').textContent = sizeOn ? '▴ 收' : '📏 改尺寸';
-  if(sizeOn){
-    [['fw','w'],['fd','d'],['fh','h']].forEach(([id,k])=>{
-      if(document.activeElement!==$(id)){
-        $(id).value = f[k]==null ? '' : Math.round(f[k]*10)/10;
-        $(id).classList.remove('bad');
-      }
-    });
-  }
+  /* ╔═ 🔴 v0.15_i 修一-c｜欄位【無條件】跟著選中的那一件走 ═══════════════════╗
+     Ali 的原話就是正解：「如果這個版面要用來改尺寸，那本來的尺寸就要被讀進去」。
+     原本這一段包在 if(sizeOn){…} 裡面
+       ⇒ 面板沒開時三個 input 停在【上一件家具】的數字
+       ⇒ 換選一件再按〔完成〕就被繼承（跨物件汙染）。
+     填一個看不見的欄位成本是零；讓它停在別人的值，代價是資料被汙染。⇒ 拿掉 if。
+     🔴 與修一-a 是【兩層正交】的防線，不可以只做一層：
+        只有 a（守衛）⇒ DOM 仍是一具殘留的軀殼，將來任何人再寫一條「讀那三個欄位」
+                       的碼就會再中一次；
+        只有 c（無條件填）⇒ 讀到的永遠是自己的值，但守衛一旦被繞過（例如有人加了
+                       第三個 commit 入口）就又破了。
+     ⚠️ activeElement 那道守衛【不可以拿掉】：正在打字時不能被覆寫回去（N-234d）。╚═╝ */
+  [['fw','w'],['fd','d'],['fh','h']].forEach(([id,k])=>{
+    if(document.activeElement!==$(id)){
+      $(id).value = f[k]==null ? '' : Math.round(f[k]*10)/10;
+      $(id).classList.remove('bad');
+    }
+  });
 
   /* 需求 12 邊界：
      · 未貼牆時「脫離牆面」disabled，不隱藏（否則按鈕會跳位）
@@ -1821,6 +1901,20 @@ SZ.forEach(([id,key])=>{
   $(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ $(id).blur(); } });
 });
 function commitFieldEdits(){
+  /* ╔═ 🔴🔴 v0.15_i 修一-a｜資料損毀級 ═════════════════════════════════════╗
+     面板沒開時，fw/fd/fh 的內容【不代表這一件的資料】——
+     syncSel() 原本只在 sizeOpen 時才填它們（見修一-c，那一層也修了），
+     而 select() 每次選取都會把 sizeOpen 關掉、卻【不動 input 的 value】。
+     ⇒ 兩種症狀：
+        ① 空字串 → v=null → f.w/d/h 被清成 null 並上傳（Ali：「按完成尺寸被吃掉」）
+        ② 上一件的數字還留在 DOM → 換選一件再按〔完成〕⇒【繼承別人的尺寸】
+           🔴 ② 比 ① 危險：清空看得出來，繼承看不出來。
+     🔴 守衛必須在【最前面】：btnDone、blur、Enter、visibilitychange 四條入口都走這裡，
+        其中 visibilitychange（手機鎖屏／切 App）是會【靜默】發生的那一條。
+     ⚠️ 回歸：正常改尺寸時面板必然是開的（只有 btnSize 會把 sizeOpen 打開）⇒ 存得到；
+        「改到一半鎖屏」時 sizeOpen 是 true ⇒ 守衛不擋，那條救援仍然有效。 ╚══════╝ */
+  if(!S.sizeOpen) return;
+
   const f=FURN.find(x=>x.id===S.selId); if(!f) return;
   let dirty=false;
   SZ.forEach(([id,key])=>{
@@ -1834,6 +1928,21 @@ function commitFieldEdits(){
       return;
     }
     inp.classList.remove('bad');
+    /* ╔═ 🛑 v0.15_i 修一-b【本輪停做，整條不動】── B 類歧義，已回報 ════════════╗
+       規格要求把這裡改成 `if(f[key]!==v){ f[key]=v; dirty=true; }`（真的變了才算）。
+       🔴 照做會造成【靜默掉資料】，實測證據（IndexedDB 讀回來的值）：
+          改成 88 →〔完成〕⇒ 記憶體 88、**IndexedDB 還是 150** ⇒ 下一次 reloadObjects()
+          會把記憶體抹回 150，而畫面在被抹掉之前一直顯示 88。
+       原因：上面那個 input handler 為了「即時重算＋同屏看後果」已經把值
+             【先寫進記憶體】了（f[key]=v，見 SZ.forEach）
+             ⇒ commit 時 f[key] 早就等於 v ⇒ 永遠判成「沒變」⇒ 永遠不存。
+       ⚠️ 這【正是】v0.1.4.2 建造者在清單卡片那條路實測抓到、並已裁決過的同一個缺陷：
+          「⇒ 改成【有效就一律存】。多一次寫入的成本遠低於靜默掉資料。」
+          （那段裁決的全文還在本檔 commitCardEdits() 的 w/d/h 分支裡。）
+       ⇒ 依互動協定：這個選擇會改變【使用者的資料】⇒ B 類 ⇒ 這一條整條不動，其餘照做。
+       📌 若要同時滿足 修一-b 的本意（沒改就不要打雲端），可行的做法是比照清單卡片：
+          用一個 dirty 旗標（input handler 寫入時登記），而不是比對已經被改過的記憶體值。
+          🔴 那是新機制，需要 Ali 決定，本批不自行實作。 ╚══════════════════════════╝ */
     if(f[key]!==v){ f[key]=v; }
     dirty=true;
   });
@@ -3712,6 +3821,16 @@ $('viewer').addEventListener('click', e=>{ if(e.target.id!=='vImg') closeViewer(
       inp 不存在時【只寫值、跳過畫面還原】（清單等下會被重建，本來就會重畫）。 */
 let _cardDirty=new Map();
 const cardKey=(id,fld)=>id+'::'+fld;
+/* ╔═ 🔬 v0.15_i 修一-查｜commitNameEdits()／commitCardEdits() 有沒有同一個病？ ═╗
+   結論：【沒有】。三個理由，缺一都會變成同一個病：
+     ① 它不是「掃過所有欄位讀 DOM」，而是【只處理使用者真的打過字的那幾格】——
+        來源是 _cardDirty（只有 input 事件會寫進去），不是 querySelectorAll。
+     ② 值取自 Map 的 rawVal（v0.07_i 需求 26 改的），【不是】 inp.value
+        ⇒ 就算卡片被 buildList() 重建、input 已經不在，也不會讀到別人的殘留值。
+     ③ key 是 `id::欄位` ⇒ 永遠寫回【當初被編輯的那一筆】，不可能跨物件汙染。
+   ＋ 第一行 `if(!_cardDirty.size) return;` 本身就等同於修一-a 的守衛
+     （沒編輯過就什麼都不做）。
+   ⚠️ 給下一手：若哪天有人把 ② 改回「commit 時回頭去 DOM 撈」，這個病會立刻長回來。╚═╝ */
 function commitCardEdits(){
   if(!_cardDirty.size) return;
   const entries=[..._cardDirty.entries()]; _cardDirty.clear();
