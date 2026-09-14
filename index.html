@@ -12,6 +12,10 @@
 
   ╔══════════════════════════════════════════════════════════════════════╗
   ║ 🔴 本輪待辦（做完一條就在前面標 ✅）                                  ║
+  ║ ── v0.1.5.2（本輪）──────────────────────────────────────────────── ║
+  ║ ✅ 修一　　body 的白名單整段拿掉，改成只在 #plan 關閉選取            ║
+  ║ 　　　　　（🔴 不要退回白名單；.diagrow 原有那條留著不動）           ║
+  ║ ── v0.1.5.1（上一輪，保留備查）────────────────────────────────── ║
   ║                                                                      ║
   ║ 理由：v0.1.5 那一輪被額度中斷過一次，碼沒丟，丟的是「我還打算改哪裡」——║
   ║      因為那個意圖【只活在對話的上下文裡】。寫進檔案，它就跟碼一起活著。║
@@ -195,18 +199,20 @@ body{margin:0;background:var(--bg);color:var(--ink);
   /* ⚠️ 上一行的 font 是【簡寫】，會把 font-size 設成 14px ⇒ 要在它【之後】覆蓋，
      否則整個 app 的繼承基準不會跟著 --fs 走（font:inherit 的輸入框全靠它）。 */
   font-size:calc(14px * var(--fs));
-  overscroll-behavior:none;
-  /* 🔴 v0.15_i 修二：電腦上按住拖平面圖（或拖家具貼牆）時，
-     瀏覽器判定成「拖曳選字」⇒ 面板、清單、按鈕的文字整片反白。
-     #plan 的 touch-action:none 只管【觸控】，管不到滑鼠 ⇒ 只有電腦會撞到。
-     🔴 為什麼走 CSS 而不是在 pointerdown 上 preventDefault：
-        preventDefault 會一併吃掉 focus／blur，而修一那條路徑正是靠 blur 在運作
-        ⇒ 兩者會互相打架。CSS 不動事件流。 */
-  -webkit-user-select:none; user-select:none;}
-/* 🔴 修二的另一半：要打字／要複製的地方把選取【加回來】。
-   ⚠️ 診斷列（.diagrow）那條 user-select:text 是刻意的（讓 Ali 複製診斷資訊給 claude），
-      它本來就在、優先序也比 body 高 ⇒ 一個字都沒動。 */
-input, textarea, .codetxt{ -webkit-user-select:text; user-select:text; }
+  overscroll-behavior:none;}
+/* ╔═ 🔴 v0.16_i 修一｜M-38 回歸：反白的守備位置在【拖曳的起點】，不是整頁 ═══════╗
+   v0.15_i 修二用的是【白名單】：body 整頁 user-select:none，
+   再把 input／textarea／.codetxt 一個一個加回來。
+   🔴 它的失敗模式是結構性的：漏掉誰，誰就不能複製 ——
+      而漏掉的必然是「沒想到使用者會複製它」的那些。
+      實際漏掉的是 .cstat（同步面板的狀態文字：已連線／身分／上次同步／安全等級），
+      那正是 Ali 回報問題時最需要貼給 claude 的一段。
+      （⚠️ claude 第一次查證時測的是 .diagrow —— 它在白名單裡，所以「測起來通過」。
+        量具是準的，量的不是這件事。obs O-23／O-26。）
+   ⇒ 改成只關掉【真的會被拖曳的那一塊】＝ #plan 那張 svg（見下方 #plan 規則）。
+     選取是否開始，取決於 mousedown 的【落點】；落點在 none 上就根本不會開始選，
+     別處自然不反白，而頁面其餘文字全部維持可複製。
+   🔴 不要退回白名單做法。 ╚════════════════════════════════════════════════════╝ */
 /* 🔴 需求 21：手機上平面圖下方一大片空白。
    ① 用 100dvh 不用 100vh（手機瀏覽器網址列會吃掉高度，100vh 會算成比可見區更高）
       ⚠️ 100dvh 不支援時要有退路 ⇒ 先寫 100vh 再用 100dvh 覆蓋（支援的瀏覽器取後者）
@@ -244,7 +250,11 @@ input, textarea, .codetxt{ -webkit-user-select:text; user-select:text; }
 
 /* ── 舞台（§22：flex 子項要捲動/收縮必須 min-height:0）── */
 .stage{flex:1;min-height:0;position:relative;overflow:hidden}
-#plan{width:100%;height:100%;display:block;touch-action:none;background:var(--bg)}
+#plan{width:100%;height:100%;display:block;touch-action:none;background:var(--bg);
+  /* 🔴 v0.16_i 修一：平移與拖家具都綁在這張 svg（第 910 行 const svg=getElementById('plan')）
+     ⇒ 兩種拖曳的起點都在這裡，關掉選取就涵蓋得到。
+     ⚠️ 連帶：svg 裡的文字（房間名、樑編號）也不可選 —— 那是想要的，它們是畫面元素。 */
+  -webkit-user-select:none; user-select:none}
 
 .zoombtns{position:absolute;right:8px;top:8px;z-index:10;
   display:flex;flex-direction:column;gap:5px;align-items:center}
@@ -829,7 +839,7 @@ input, textarea, .codetxt{ -webkit-user-select:text; user-select:text; }
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.5.1';   /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它） */
+const APP_VER = 'v0.1.5.2';   /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它） */
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
