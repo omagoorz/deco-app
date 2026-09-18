@@ -2,11 +2,35 @@
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>裝修估價 App 互動預覽 v0.1.5.1</title>
+<title>裝修估價 App 互動預覽 v0.1.6</title>
 <!--
-  裝修估價 App — 手機互動預覽　版次：v0.1.5.1（補釘）
-  作者：claude / 2026-09-13 / 對應 _d v0.19
-  規格：../修正需求/裝修估價App_修正需求表_v0.15_i_claude_20260913.md
+  裝修估價 App — 手機互動預覽　版次：v0.1.6（進版）
+  作者：claude / 2026-09-18 / 對應 _d v0.25
+  規格：修正需求/裝修估價App_修正需求表_v0.17_i_claude_20260914.md
+        🔴 節內優先序（衝突時一律以號碼大的為準）：
+           §0-8（🛑 整節不做，只留檔）＞ §0-7 ＞ §0-6 ＞ §0-5 ＞ §0-4 ＞ 修一~修十五 內文
+  來源：Ali 2026-09-13~18 的裁決（含 09-18 的三輪：甲／乙／丙）
+
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║ v0.1.6（本版）做了什麼——四批                                        ║
+  ║ 第一批 版面骨架　修十（分組只看房間）→ 修四（乙-0 動作鈕＋色條＋展開列四列表）║
+  ║ 　　　　　　　　 → 修十四（拿掉 ▾、點卡片本體展開）→ 修一（展開列的 🗑）║
+  ║ 第二批 清單行為　修三（「還沒填尺寸」可點）／修九（沒尺寸擋住）／修十三（小數）║
+  ║ 第三批 面板　　　修五（🗑→〔↩ 收回〕＋雙態貼牆鈕）／修十二＋十二-b／修十五（0.5cm）║
+  ║ 第四批 平面圖與同步　修七（碰到牆才吸）／修六（自動判房間）／修十一／修八（樓高同步）║
+  ║                                                                      ║
+  ║ 🛑 本版【不做】（Ali 2026-09-18 裁決，不是漏掉）：                    ║
+  ║   · §0-8 換牆之後角度回不去 —— 走【乙】治本、列下一版。              ║
+  ║     🔴 一行都不碰 snapRot／btnRot／btnUnsnap 的角度邏輯。            ║
+  ║   · 短牆凍結（用微調解）／電腦版版面／比例尺釘住／微調角度／門窗實作  ║
+  ║   · 卡片的 icon 欄仍然留空：§0-7-戊 明列第一批的 itemCard 只改兩件    ║
+  ║     （動作鈕、色條），而修四⑤「把 icon 放進去」沒有任何 icon 來源規格 ║
+  ║     ⇒ 依優先序以 §0-7 為準，本批不做，已在測試待辦回報。            ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+
+  ── 以下為 v0.1.5.2／v0.1.5.1 的說明，保留備查 ──
+  上一版：v0.1.5.2（補釘）／claude / 2026-09-13 / 對應 _d v0.19
+  規格：../v0.1.5_探索/修正需求/裝修估價App_修正需求表_v0.15_i_claude_20260913.md
         （指名鏈 v0.12_i → v0.13_i → v0.14_i → v0.15_i；衝突時以版次較新者為準）
   來源：Ali 2026-09-13 電腦＋手機真機測試（M-20~M-31）
 
@@ -284,7 +308,14 @@ body{margin:0;background:var(--bg);color:var(--ink);
   min-height:26px}
 .icard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   margin-bottom:7px;display:flex;overflow:hidden}
+/* 🔴 v0.17_i 乙-0：色條【只有已擺才上色】。待擺＝無色、孤兒（房間已被刪）＝無色。
+   兩種狀態共用同一個兩行版面，差別只有這條色條與那顆動作鈕的字。 */
 .icard .stripe{width:4px;flex:none}
+/* 🔴 v0.17_i 修四 ⑩ ＋ §0-5 D-2：stripe 以外的全部包成 .body，
+   展開列才能是【整張卡片寬】（掛在 .body，不掛在 .col）。 */
+.icard .body{flex:1;min-width:0;display:flex;flex-direction:column}
+/* 🔴 修十四：展開時卡片底色微變（少了 ▾ 之後的狀態指示，配 .cedit .opmark 的小 ▴） */
+.icard.open{background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
 .icard .in{flex:1;min-width:0;display:flex;gap:10px;padding:9px 11px 9px 9px;align-items:center}
 /* 🔴 需求 8 §3-3（Ali 2026-09-11 定案）：icon 欄【留空】。
    留空 ≠ 留一個看得見的空框 —— 不畫邊框、不畫底色、不放佔位圖示，就是內距。
@@ -306,6 +337,39 @@ body{margin:0;background:var(--bg);color:var(--ink);
   min-height:26px}
 .chip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:transparent;
   color:var(--accent);font-weight:600}
+/* ╔═ 🔴 v0.17_i 乙-0／乙-6｜【一顆會換臉的動作鈕】，取代舊的〔已擺〕chip ═══════╗
+   待擺 →〔擺上圖〕　已擺 →〔↩ 收回清單〕　—— 同一個位置、同一顆按鈕。
+   🔴 刻意【不用】chip 的膠囊樣式，也不用兩段切換條（_d §13-36 已結案）：
+      · chip 的「點亮＝有」是【狀態】語意（_d §10-0e），而這顆是【動作】
+      · 兩段切換條裡永遠只有一段可按 ⇒ 看起來像「另一個選項壞掉了」
+   ⇒ 用一般按鈕的外觀（方角、不點亮）。 ╚═════════════════════════════════════╝ */
+.icard .act{font-size:calc(11px * var(--fs));border:1px solid var(--line);border-radius:8px;
+  padding:3px 9px;color:var(--ink);background:var(--bg);white-space:nowrap;
+  font-family:inherit;cursor:pointer;min-height:26px;flex:none}
+.icard .act:active{background:var(--accent);color:#fff;border-color:transparent}
+/* 🔴 修九：缺寬或缺深時，〔擺上圖〕是【鎖住】的。
+   🔴 刻意【不用】disabled：按下去要有反應（卡片閃一下＋把游標送進缺的欄位），
+      disabled 的按鈕連 click 都不會發 ⇒ 又變成「點了沒反應」（O-18）。
+   ⇒ 用虛線框＋灰字表示「它現在按不出結果」，與保留格（.btn.hold）同一個語彙。 */
+.icard .act.locked{color:var(--sub);border-style:dashed}
+/* 🔴 修九：卡片閃一下 —— 一次、短（0.45s），不是持續動畫。
+   ⚠️ 尊重系統的「減少動態效果」設定：關掉動畫時至少留一個靜態的底色變化。 */
+@keyframes cardflash{
+  0%{background:var(--panel)}
+  35%{background:color-mix(in srgb,var(--warnA) 26%,var(--panel))}
+  100%{background:var(--panel)}
+}
+.icard.flash{animation:cardflash .45s ease-out 1}
+@media (prefers-reduced-motion:reduce){
+  .icard.flash{animation:none;background:color-mix(in srgb,var(--warnA) 20%,var(--panel))}
+}
+/* 🔴 修三：「還沒填尺寸」整塊字＝可點區域（手機上 ▾ 那顆 30px 的鈕太難按）。
+   ⚠️ O-4：手機沒有 hover ⇒ 可點的線索必須是【常駐】的，不可以只有 hover 態。
+      ⇒ 用虛線底線＋內距把它做成一塊「看得出可以按」的東西，並放大觸控面積。 */
+.icard .dim.missbtn{cursor:pointer;padding:4px 7px;border-radius:7px;
+  border:1px dashed color-mix(in srgb,var(--warnA) 55%,var(--line));
+  background:color-mix(in srgb,var(--warnA) 10%,transparent)}
+.icard .dim.missbtn:active{background:color-mix(in srgb,var(--warnA) 22%,transparent)}
 .money{font-size:calc(11.5px * var(--fs));color:var(--sub);font-variant-numeric:tabular-nums;margin-left:auto}
 .miss{font-size:calc(11px * var(--fs));color:var(--warnA);margin-left:auto}
 /* 🔴 v0.05_i §4（修四）：price 就地編輯。放清單卡片，【不放】選中面板
@@ -321,26 +385,60 @@ body{margin:0;background:var(--bg);color:var(--ink);
 /* 「缺價錢」＝ 空值時的 placeholder，用 warnA（與 .miss 同色） */
 .icard .price::placeholder{color:var(--warnA);opacity:1}
 .icard .price.bad{border-color:var(--warnB);border-width:1.5px}
-/* 🔴 需求 22：展開列變成 [房間下拉][寬][深][高][備註]。
-   Ali 原話：「目前是在清單點選新增桌子，卻要在平面圖設定桌子的長寬高，這格跳躍的感覺好奇怪喔」
-   ⇒ 手機上允許該列【橫向捲動】；不要換行把卡片撐高（沿用 N-99 的結論）。 */
-.roomrow{display:flex;gap:6px;align-items:center;margin-top:6px;
-  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
-  padding-bottom:2px}
-.roomrow select{flex:0 0 96px;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));min-height:34px}
-/* 寬／深／高：三個小欄，沿用需求 7 的輸入規則（紅框、失焦還原、清空＝null） */
-.roomrow .szbox{flex:0 0 62px;display:flex;flex-direction:column;gap:1px}
-.roomrow .szbox label{font-size:calc(9.5px * var(--fs));color:var(--sub);padding-left:2px}
-.roomrow input.sz{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:5px 4px;color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));
+/* ╔═ 🔴 v0.17_i 修四 ⑩｜展開列改成【整張卡片寬的四列表】（Ali 2026-09-18 定案）═══╗
+   舊版：`.roomrow` 一列橫排、掛在 .col 裡（左邊縮 46px 給 icon、右邊被 ▾／› 切掉），
+         而且 overflow-x:auto 允許橫捲（N-99 的結論）。
+   🔴 本批兩件一起改，只改 CSS 沒有用（v0.17_i §0-5 D-2）：
+      ① DOM 重組：.icard 底下多一層 .body（stripe 之外的全部），展開列掛在 .body，
+         不再掛在 .col ⇒ 它才會是【整張卡片寬、不縮排】
+      ② N-99 在【展開列】這個範圍內由本批取代：不橫捲、改成四列
+         第一行 [房間▾] 離地 寬 深 高 cm／第二行 備註／第三行 照片／最後 🗑
+   🔴 不橫捲是靠【結構】保證的，不是靠量出來的：第一行每個控制項都 flex:1 1 0 ＋
+      min-width:0 ⇒ 空間不夠時一起縮，不會產生 scrollWidth > clientWidth。
+      （縮減優先序照 ⑨：cm 只寫一次 → 縮標籤間距 → 🔴 標籤絕不可以改回 placeholder）
+   ⚠️ 舊的 .roomrow 規則整段由本區取代；class 名（szbox／sz／note）沿用，只換容器。╚═╝ */
+.cedit{border-top:1px solid var(--line);padding:8px 9px 9px;
+  display:flex;flex-direction:column;gap:7px;position:relative}
+/* 🔴 修十四 ④：少了 ▾ 之後，「這張卡片是展開的」要看得出來。
+   建造者選的是【兩個一起】：卡片底色微變（.icard.open）＋ 展開列右上一個小 ▴。 */
+.cedit .opmark{position:absolute;right:8px;top:2px;font-size:calc(10px * var(--fs));
+  color:var(--sub);line-height:1;pointer-events:none}
+.crow{display:flex;gap:6px;align-items:center;min-width:0}
+.crow > label{font-size:calc(10px * var(--fs));color:var(--sub);flex:none}
+.crow1{display:flex;gap:4px;align-items:flex-end;min-width:0}
+/* 🔴 flex 的權重不是均分：房間名是【字】（她有 11 間，名稱長），數字欄只要放得下 3~5 位數。
+   實測 375：select 91px／每個數字欄 51px，兩者都不橫捲（見測試待辦的量測表）。 */
+.crow1 select{flex:1.8 1 0;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:5px 3px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));min-height:34px}
+/* 離地／寬／深／高：四個小欄，沿用需求 7 的輸入規則（紅框、失焦還原、清空＝null）
+   🔴 ⑨ 欄位標籤【常駐】，不可以改回 placeholder（填完就看不出這欄是什麼）。 */
+.crow1 .szbox{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:1px}
+.crow1 .szbox label{font-size:calc(9.5px * var(--fs));color:var(--sub);padding-left:2px;
+  white-space:nowrap;overflow:hidden}
+.crow1 input.sz{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:5px 2px;color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));
   min-height:30px;text-align:center;font-variant-numeric:tabular-nums}
-.roomrow input.sz.bad{border-color:var(--warnB);border-width:1.5px}
-/* 🔴 v0.05_i §4：note 併進【同一個展開列】。單行 input ⇒ 長備註橫向捲，
-   卡片高度不會被它撐開（input 本身不會換行、不會長高）。 */
-.roomrow input.note{flex:0 0 120px;min-width:0;background:var(--bg);border:1px solid var(--line);
-  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));min-height:34px;
-  text-overflow:ellipsis}
+.crow1 input.sz.bad{border-color:var(--warnB);border-width:1.5px}
+/* 🔴 ⑩：cm【只出現一次】，放在第一行最後（不要每個欄位都寫 cm）。
+   🔴 它同時是 🗑 那一列的右緣基準（D-1：垃圾桶與第一行的 cm 右側貼齊）。 */
+.crow1 .unit{flex:none;font-size:calc(10px * var(--fs));color:var(--sub);padding-bottom:7px}
+/* 🔴 備註要能換行（Ali 問，claude 查碼確認舊版的單行 input 不行）
+   ⇒ 只有 note 這個欄位走 <textarea>，其餘欄位（name/price/w/d/h/zBase）仍是 <input>。 */
+.crow textarea.note{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));
+  min-height:34px;resize:vertical;line-height:1.5}
+/* 照片位：以後版本。沿用 .btn.hold 的「保留格」語彙（虛線框＋灰字＋不可按），
+   依 _d §10-0b 不寫用途說明。 */
+.crow .holdbtn{flex:none;min-width:44px;min-height:30px;border:1px dashed var(--line);
+  border-radius:7px;background:transparent;color:var(--dim);font:inherit;
+  font-size:calc(12px * var(--fs));cursor:default}
+/* 🔴 v0.17_i 修一：清單卡片的刪除入口（在此之前全檔只有選中面板那顆 🗑 叫得到
+   confirmDeleteItem ⇒ 修五把那顆改掉之後，家具會變成刪不掉而且不報錯）。
+   🔴 位置＝最後一列、靠右（D-1：⑦「展開列的最右邊」那句作廢，橫捲列的最右邊會看不見）。 */
+.crow.trashrow{justify-content:flex-end}
+.crow .delbtn{flex:none;min-width:36px;min-height:30px;border:1px solid
+  color-mix(in srgb,var(--warnB) 40%,var(--line));border-radius:7px;background:var(--bg);
+  color:var(--warnB);font:inherit;font-size:calc(13px * var(--fs));cursor:pointer}
 .empty{text-align:center;color:var(--sub);padding:48px 12px;font-size:calc(13px * var(--fs));line-height:2}
 .empty .ic{font-size:calc(34px * var(--fs));display:block;opacity:.5}
 
@@ -359,10 +457,19 @@ body{margin:0;background:var(--bg);color:var(--ink);
   max-height:42vh;overflow-y:auto}
 .sel[hidden]{display:none!important}
 .selhead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-.selname{font-weight:600;font-size:calc(13px * var(--fs));flex:none;max-width:52%;overflow:hidden;
+/* 🔴 v0.17_i 丙-10：selPos 拿掉之後，撐開空間的責任改由 selname 接手（flex:1），
+   否則〔↩ 收回〕會緊貼在家具名字後面，不在右邊。 */
+.selname{font-weight:600;font-size:calc(13px * var(--fs));flex:1;min-width:0;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
-.selpos{font-size:calc(11px * var(--fs));color:var(--sub);flex:1;min-width:0;
-  font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 🔴 v0.17_i 修五：〔↩ 收回〕。
+   · 要有【文字】（Ali 2026-09-18：旁邊就是 ▾，兩顆純圖示並排看不懂）
+   · 🔴 不再用 .dgr（紅／危險色）——收回是【可逆】的，不是刪除。
+     顏色若留著紅的，使用者仍然會以為按下去東西會不見。
+   · 丙-11：高度不設固定數字（舊 _i 的「標題列 32px」是假精確，.btn 是 34、.ib 是 30）。 */
+.selback{flex:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:8px;padding:5px 10px;font:inherit;font-size:calc(11.5px * var(--fs));
+  cursor:pointer;white-space:nowrap;min-height:30px}
+.selback:active{background:var(--accent);color:#fff;border-color:transparent}
 .ib{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);
   background:var(--bg);color:var(--ink);display:inline-flex;align-items:center;
   justify-content:center;font-size:calc(13px * var(--fs));flex:none;cursor:pointer;padding:0;font-family:inherit}
@@ -394,10 +501,18 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .btn.pri{background:var(--accent);color:#fff;border-color:transparent}
 .btn.ok{background:var(--ok);color:#fff;border-color:transparent;font-weight:600}
 .btn:disabled{opacity:.42;cursor:default}
+/* 🔴 修十二：第三格靠 hidden 換內容 ⇒ 要補這條守衛（本檔其餘 13 處都有，見 .inputline 的教訓） */
+.btn[hidden]{display:none!important}
+/* 🔴 修五：雙態貼牆鈕的兩個狀態【必須看得出差別】——不能只換字（Ali 定的規矩）。
+   已貼牆＝亮底（同 chip.on 的語彙）／未貼牆＝一般底。 */
+.btn.magon{background:color-mix(in srgb,var(--accent) 16%,transparent);
+  border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--accent);font-weight:600}
 /* 保留格：虛線框 ＋ 灰字，不可按。⚠️ 依 _d §10-0b 不寫用途說明 */
 .btn.hold{color:var(--dim);border-style:dashed;background:transparent}
 
-/* 🔴 需求 12：尺寸按需展開。cm 在【標籤列】、右對齊於「高」⇒ 三格等寬 */
+/* 🔴 需求 12：尺寸按需展開。cm 在【標籤列】、右對齊。
+   🔴 v0.17_i 十二-b：三格 → 四格（寬／深／高／離地），四格平均（.frow 各 flex:1），
+      cm 移到【最後一格（離地）】的 label 右側。 */
 .fields{display:flex;gap:5px;align-items:flex-end;margin-bottom:7px}
 .fields[hidden]{display:none!important}
 .frow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -769,20 +884,31 @@ body{margin:0;background:var(--bg);color:var(--ink);
 
   <!-- 需求 12：選中面板 -->
   <div class="sel" id="sel" hidden>
+    <!-- 🔴 v0.17_i 修五：selPos（「貼牆／未貼牆」那行狀態文字）【拿掉】——
+         狀態改成長在下面那顆雙態鈕上（_d §13-46 甲案，Ali 2026-09-12 已裁決）。
+         🔴 丙-10：selPos 是 .selhead 裡【唯一】有 flex:1 的元素 ⇒ 拿掉之後沒有人撐開空間，
+            〔↩ 收回〕會緊貼在家具名字後面 ⇒ selname 改成 flex:1（見 CSS）。
+         🔴 btnDel【本來就在這一排】，修五不需要搬位置，只換文字／圖示／行為／顏色。
+            ✅ Ali 2026-09-18 定案：要有【文字】，不可以只有圖示
+               （旁邊就是 ▾，兩顆純圖示並排「很難懂這是什麼意思」）。 -->
     <div class="selhead">
       <span class="selname" id="selName">—</span>
-      <span class="selpos" id="selPos">—</span>
-      <button class="ib dgr" id="btnDel" title="刪除">🗑</button>
+      <button class="selback" id="btnDel" title="從平面圖收回清單">↩ 收回</button>
       <span class="ibgap"></span>
       <button class="ib" id="btnFold" title="收合">▾</button>
     </div>
+    <!-- 🔴 v0.17_i 十二-b：尺寸欄從三格變【四格】，多一格「離地」（Ali 2026-09-18）。
+         🔴 cm 移到【最後一格（離地）】的 label 右側——它是對齊那一格輸入框的右緣，
+            不是浮在旁邊的一個字（.frow 是 flex-direction:column ＋ label 兩端對齊）。 -->
     <div class="fields" id="selFields" hidden>
       <div class="frow"><label><span>寬</span></label>
         <input id="fw" type="text" inputmode="decimal"></div>
       <div class="frow"><label><span>深</span></label>
         <input id="fd" type="text" inputmode="decimal"></div>
-      <div class="frow"><label><span>高</span><span>cm</span></label>
+      <div class="frow"><label><span>高</span></label>
         <input id="fh" type="text" inputmode="decimal"></div>
+      <div class="frow"><label><span>離地</span><span>cm</span></label>
+        <input id="fz" type="text" inputmode="decimal"></div>
     </div>
     <div class="selrow">
       <div class="padwrap">
@@ -795,10 +921,18 @@ body{margin:0;background:var(--bg);color:var(--ink);
         <div class="padc" id="padc">1 cm</div>
       </div>
       <div class="grid2">
+        <!-- 🔴 v0.17_i 修五：〔↻ 轉 90°〕改名為〔↻ 旋轉〕（Ali 2026-09-14 定案用詞）。
+             ⚠️ 本批【只改名字與入口形狀】；自訂角度與「汲取牆角」（_d §13-63）不做，
+                它們之後長在 .g2 那兩個保留位裡 —— 那是 Ali 指定的落腳處。
+             🔴 §0-8：角度邏輯（snapRot／btnRot 的 rot+=90／btnUnsnap 的角度處理）
+                本批【一行不碰】，Ali 裁決走治本、列下一版。
+             🔴 修十二：第三格【依狀態換內容】，不新增格子——
+                尺寸面板關著＝雙態貼牆鈕／開著＝〔🔍 檢視〕。 -->
         <div class="g3">
-          <button class="btn" id="btnRot">↻ 轉90</button>
+          <button class="btn" id="btnRot">↻ 旋轉</button>
           <button class="btn" id="btnSize">📏 改尺寸</button>
-          <button class="btn" id="btnUnsnap">脫離牆面</button>
+          <button class="btn" id="btnUnsnap">🧲 已貼牆</button>
+          <button class="btn" id="btnView" hidden>🔍 檢視</button>
         </div>
         <div class="g2">
           <span class="btn hold">（保留）</span>
@@ -839,7 +973,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.5.2';   /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它） */
+const APP_VER = 'v0.1.6';   /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它） */
 
 /* ── 需求 1／需求 4：三種物件不再是 const 字面值，改成執行時載入 ──
    🔴 記憶體側單位＝【公分、浮點】；資料庫側（IndexedDB ＋ 雲端）＝【公釐、整數】。
@@ -849,7 +983,12 @@ let WALLS = [];
 let BEAMS = [];        // 需求 43：樑。v0.1.5 起【畫得出來】＋設定頁可填下垂量
 /* 🔴 v0.12_i 需求 44 ＋ v0.13_i 修三：專案設定（一列）。
    單位：floorH 是【公分】（與 UI 一致），雲端 floor_h 是公釐。 */
-let PROJECT = { code:null, name:'', floorH:null };
+/* 🔴 v0.17_i 修八 ＋ §0-6 A-2 ①：PROJECT 多一個 updatedAt。
+   本機從來沒有留下過「我這台上次改是什麼時候」（cloudPushProject 是送出那一刻現造的）
+   ⇒ 照字面寫 `if(new Date(PROJECT.updatedAt) <= ...) return;` 會是 Invalid Date
+   ⇒ 任何比較都是 false ⇒ 【永遠都推】或【永遠都不推】二選一，而兩者在畫面上長得一模一樣。
+   🔴 四個寫入點（缺一就白做）：① 這行宣告 ② saveProject ③ lPutProject ④ loadProject。 */
+let PROJECT = { code:null, name:'', floorH:null, updatedAt:null };
 let FURN  = [];
 
 /* ── 常數 ───────────────────────────────────────────────
@@ -857,7 +996,11 @@ let FURN  = [];
    ⚠️ 需求 4：這幾個全部不換算——它們是記憶體側的常數。 */
 const SNAP_PX   = 30;   // 吸附觸發：螢幕距離（不是公分！）
 const NUDGE_PX  = 3;    // 微調步進：螢幕距離
-const NUDGE_MIN = 1;    // 步進下限 1 公分（Ali：1 公分是極限）
+/* 🔴 v0.17_i 甲-2（修十五）：步進下限 1 → 0.5 公分（Ali 2026-09-18 改判：
+   「0.5 是【取代】『1 公分是極限』那條裁決。我需要準確度 單位是 0.5。」）
+   🔴 舊註解「（Ali：1 公分是極限）」必須一起改掉 —— 留著它，下一個人讀註解會以為
+      下限還是 1（O-25 的預備役：函式／常數在，但內容已經不是那個意思了）。 */
+const NUDGE_MIN = 0.5;  // 步進下限 0.5 公分（Ali 2026-09-18 改判：0.5）
 const DRAG_PX   = 4;    // 點/拖判定門檻（技法筆記 §2）
 const CLEAR_CM  = 60;   // 走道淨空預設值（_d §5-6，必須顯示在畫面上）
 const GRAB_PAD_PX = 14; // 選中家具的命中緩衝（螢幕距離）
@@ -898,6 +1041,11 @@ const S = { snap:true, gridAll:false,
             prevTab:'plan',        // 🔴 需求 16：進專案頁之前停在哪一個分頁
             /* 🔴 v0.09_i 需求 30：守衛訊息。selNote 跟著選中狀態走、listNote 跟著清單頁走。 */
             selNote:'', listNote:'',
+            /* 🔴 v0.17_i §0-5 A-6：selNote 每一幀被重算 ⇒ 想在面板上「說一句話」必須
+               有一個【存得住的旗標】，由動作寫入、由 select() 與下一個動作清掉。
+               selMsg    ＝ 一次性的動作結果（修五：附近沒有牆）
+               roomGuessFailed ＝ 修六判不出房間的那一件的 id（第四批用） */
+            selMsg:'', roomGuessFailed:null,
             sizeOpen:false,        // 需求 12：尺寸欄展開中？
             warnOpen:false,        // 需求 12：警示展開全部？
             /* 需求 8 §3-2 ＋ v0.05_i §4（修四）：卡片內的展開列在哪一筆。
@@ -976,6 +1124,59 @@ function polyCentroid(p){
   }
   const c={x:cx/(6*a), y:cy/(6*a)};
   return (isFinite(c.x)&&isFinite(c.y)) ? c : null;
+}
+/* ╔═ 🔴 v0.17_i 六-c｜point-in-polygon（本批新增的底層，全檔原本 0 處）═══════════╗
+   ⚠️ inRoomBBox 是【外接矩形】，不能代打（她的房子是歪的，矩形會嚴重高估）；
+      overlap() 寫死四個角，吃不下 11 個房間的多邊形。
+   單位：poly 在記憶體是【公分浮點】（fromDb 已換算），🔴 這裡不可以再換一次。
+   🔴 邊界情況：點正好落在邊上 ⇒ 明確定義成【屬於】，不要讓它隨浮點誤差跳。
+   ⚠️ 門窗（opening，_d §13-55）之後會用同一支【兩側各推一次】得到它連接的兩間；
+      本批只做幾何底層，不做門窗 UI。 ╚═══════════════════════════════════════════╝ */
+const _ON_EDGE_EPS = 1e-6;
+function pointInPoly(poly, x, y){
+  if(!validPoly(poly)) return false;
+  let inside=false;
+  for(let i=0, j=poly.length-1; i<poly.length; j=i++){
+    const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+    /* 落在這條邊上 ⇒ 直接判「屬於」（先做，才不會被下面的射線奇偶性翻掉） */
+    const cross=(xj-xi)*(y-yi)-(yj-yi)*(x-xi);
+    if(Math.abs(cross)<=_ON_EDGE_EPS &&
+       Math.min(xi,xj)-_ON_EDGE_EPS<=x && x<=Math.max(xi,xj)+_ON_EDGE_EPS &&
+       Math.min(yi,yj)-_ON_EDGE_EPS<=y && y<=Math.max(yi,yj)+_ON_EDGE_EPS) return true;
+    if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+/* ╔═ 🔴 v0.17_i 六-a｜家具現在屬於哪一間？（_d §13-61，已裁決）══════════════════╗
+   anchor.type==='free' ⇒ 家具中心點落在哪個 poly
+   anchor.type==='wall' ⇒ 🔴 用 side 指向的那一側（side 已經是使用者的表態，比中心點準：
+                            貼牆家具的中心點很可能落在牆的另一側）
+   🔴 丙-4：【不可以】直接讀 anchor.side —— 舊資料的 side 是 null
+      （anchorFromMM 寫 side:(a.side ?? null)）
+      · 寫成 n.x*null ⇒ 0 ⇒ 探針落在牆上 ⇒ 永遠「判不出來」⇒ 畫面完全安靜
+      · 寫成 side||1 ⇒ 所有舊資料一律往基準法線正向探 ⇒ 一半的牆會判到隔壁房間，不報錯
+      ⇒ 一律走 wallNormalFor(w, anchor)，它的三層 fallback【一行不改】。
+        修六是它的【第四個讀取點】（前三個：place／nudge／previewMove）。
+   🔴 §0-5 C-5：探針要沿法線往外走 δ = wallThick(w)/2 + 2 公分
+      （先跨過牆體的一半到內側面，再多 2 公分容差吸收浮點縫與匯入誤差；
+        上限 wallThick/2 + 8，再多會穿進薄隔間牆的另一間）。
+   回傳：房間 id ／ null ＝【判不出來】（🔴 呼叫端必須把它與「沒有房間」分開處理）。╚═╝ */
+function roomAtPoint(x,y){
+  for(const r of ROOMS){ if(validPoly(r.poly) && pointInPoly(r.poly,x,y)) return r.id; }
+  return null;
+}
+function roomOfAnchor(f, anchor){
+  const a=anchor||f.anchor||{type:'free',x:0,y:0};
+  if(a.type==='wall'){
+    const w=wallById(a.wall);
+    if(!w) return null;
+    const n=wallNormalFor(w, a);                 // 🔴 不要直接讀 a.side
+    const ang=wallAngle(w);
+    const bx=w.x1+Math.cos(ang)*(a.along||0), by=w.y1+Math.sin(ang)*(a.along||0);
+    const d=wallThick(w)/2 + 2;
+    return roomAtPoint(bx+n.x*d, by+n.y*d);
+  }
+  return roomAtPoint(a.x||0, a.y||0);
 }
 /* 需求 9：房間不一定有牆（開放式廚房／打通）→ 沒有牆就回 null，不回 NaN
    🔴 需求 41：有 poly 就用 poly 的【形心】；沒有才回退舊算法（靠牆）。 */
@@ -1122,7 +1323,20 @@ function collisions(f){
   const hit=[], near=[];
   if(!hasSize(f)) return {hit,near};
   const A=boxOf(f,0), Ac=boxOf(f,CLEAR_CM/2);
-  FURN.forEach(g=>{ if(g.id===f.id||g.room!==f.room) return;
+  /* ╔═ 🔴 v0.17_i 六-e（Ali 2026-09-14 裁決走【甲】）｜碰撞不再過濾房間 ═════════════╗
+     舊的 `g.room!==f.room` 成立的前提是「f.room 是穩定標籤」，而修六讓它【每次放手都可能變】
+     ⇒ 你把椅子從客廳推到餐廳，一放手，沙發被濾掉 ⇒ 警示列從紅變綠，而兩件東西還疊在一起。
+     為什麼是甲（理由要留著，不然下一手會想改回去）：
+       乙（維持過濾、改房間後強制重算）錯的地方剛好是她家最常用的【開放式客餐廳】——
+       那裡兩件東西之間沒有牆卻分屬兩個分區 ⇒ 乙會在那裡【漏報】，而且無聲無息。
+       甲錯的地方是「隔著牆的兩件會被算成走道不足」⇒ 那是【看得見的多報】。
+       依不可變方向 #9「算給你看，不替你判斷」：🔴 一個沉默的漏報，比一個吵的多報危險。
+     ⚠️ 已知代價（交付必講，不是 bug）：隔著一道 12cm 牆的兩個櫃子會顯示「走道不足」。
+        完整解是【甲 ＋ 擋牆判定】（需要線段與矩形相交），本批不做，記在 _d §13-65。
+     ⚠️ 效能：原本只比同房間 ⇒ 實際比對量小；改成全部比 ⇒ render() 對每一件算 collisions，
+        而 collisions 又掃每一件 ⇒ O(N²) 且每次 render 都算。
+        🔴 家具數上到數十件而畫面開始卡時，【第一個要看的就是這裡】。 ╚═══════════════╝ */
+  FURN.forEach(g=>{ if(g.id===f.id) return;
     if(!onPlan(g)) return;
     if(overlap(A,boxOf(g,0))) hit.push(g);
     else if(overlap(Ac,boxOf(g,CLEAR_CM/2))) near.push(g);
@@ -1139,9 +1353,20 @@ function distSeg(px,py,w){
 /* 螢幕↔世界 */
 const w2s = (x,y)=>({x:x*S.zoom+S.panX, y:y*S.zoom+S.panY});
 const s2w = (x,y)=>({x:(x-S.panX)/S.zoom, y:(y-S.panY)/S.zoom});
-/* 🔴 需求 45-c：吸附距離要加世界座標上限（見 SNAP_MAX_CM 的註解） */
+/* 🔴 需求 45-c：吸附距離要加世界座標上限（見 SNAP_MAX_CM 的註解）
+   🔴 v0.17_i §0-5 C-7：本函式自 v0.1.6 起【不再用於吸附觸發】——
+      觸發門檻改成 wallThick(w)/2（修七-a／甲-1）。保留它以備回退。
+      ⚠️ 下面那段「為什麼需要 50cm 上限」的長註解講的是【舊的觸發路徑】，
+         不要照著它去推現在的行為（SNAP_MAX_CM 本身仍在用：修五的〔貼到牆〕靠它當上限）。 */
 const snapCm  = ()=> Math.min(SNAP_PX/S.zoom, SNAP_MAX_CM);
-const nudgeCm = ()=> Math.max(NUDGE_MIN, Math.round(NUDGE_PX/S.zoom));
+/* ╔═ 🔴 v0.17_i 甲-2（修十五）｜只把 NUDGE_MIN 改成 0.5 是【沒有效果】的 ══════════╗
+   zoom 被 zoomAt 夾在 0.2–6 ⇒ Math.round(3/6)=Math.round(0.5)=1
+   ⇒ 舊寫法 Math.round(...) 的輸出【恆 ≥ 1】⇒ Math.max(0.5, ≥1) 永遠等於後者
+   ⇒ 症狀：常數改了、node --check 過、.padc 仍顯示「1 cm」、按鈕仍走 1 公分 —— 一句話都沒有。
+   ⇒ 取整必須改成【半公分粒度】。
+   📌 0.5 是【下限】不是固定值：步進仍隨縮放變動，全屋檢視下 .padc 仍會寫 3 cm／6 cm。
+      （與 _d §10-1b「微調仍屬不可變方向 #11」一致；若要「一律 0.5」那是另一件事。）╚═╝ */
+const nudgeCm = ()=> Math.max(NUDGE_MIN, Math.round(NUDGE_PX/S.zoom*2)/2);
 
 /* ══════════════════════════════════════════════════════════════
    🔴 需求 20｜「給人讀的文字」一律畫在【畫面座標】，不隨 zoom／pan 跑出畫面
@@ -1380,6 +1605,30 @@ function render(){
      🧊 Ali 2026-09-13 裁決「樑壓在牆上面」指的是【樑 vs 牆】這一對，
         不是「樑壓在所有東西上面」。 */
 
+  /* ╔═ 🔴 v0.17_i 六-d／六-d-2（Ali 2026-09-14 兩次更正後的定案）═══════════════════╗
+     拖曳中 → 預判落點的那一間【poly 比較深】；放開 → 就是它，配色退回原本的樣子；
+     沒有跨界 → 什麼都不亮，畫面保持安靜。
+     ⭐ 理由（Ali 給的，比做法本身重要）：**手指在哪裡，回饋就要在哪裡。**
+        拖曳的當下她在看平面圖，不會去看下面的面板 ⇒ 不做面板文字、不做撤銷鈕、不做遲滯值。
+     🔴 §0-5 C-4：預判【不可以用手指的位置】，要用【放手後的真實落點】——
+        有 snapCand 就用 snapCand 的 anchor（commitMove 真正會寫進去的那一組），
+        否則才用手指。用手指的話：貼牆時亮的是【手指那一間】，放手後家具落在【牆另一側那一間】。
+        一句話：預判要問 commitMove 會寫什麼，不要問手指在哪裡。
+     🔴 §0-4-d ②：只動 polygon 這一個元素 —— 房間【名稱】是另一個獨立的 appendChild，
+        不可以為了亮起來而把兩者綁在一起（她之後要讓名稱變成可打勾、不常駐）。
+     ⚠️ 效能：每幀一次 pointInPoly × 房間數（11）。若之後變卡，這裡改成「移動超過 N 像素才重算」。╚═╝ */
+  const predRoom = (()=>{
+    if(!S.dragging) return null;
+    const df=S.dragging.f;
+    let rid;
+    if(S.snapCand && S.snapCand.f.id===df.id){
+      const c=S.snapCand;
+      rid=roomOfAnchor(df, {type:'wall', wall:c.wall.id, along:c.along, off:0, side:c.side});
+    }else{
+      rid=roomAtPoint(S.dragging.gx, S.dragging.gy);
+    }
+    return (rid && rid!==df.room) ? rid : null;   // 沒有跨界 ⇒ 不亮
+  })();
   // 分區底（🔴 需求 41：用房間自己的 poly 畫，不再靠牆算）
   ROOMS.forEach(r=>{
     const ring=roomRing(r.id);
@@ -1391,8 +1640,10 @@ function render(){
       const pts=ring.map(p=>`${p.x},${p.y}`).join(' ');
       /* 三個通道沿用 §9-1d-1：填色＝房間色 12%；外框＝同一個房間色、實線、2 公分（世界座標）。
          ⚠️ 不可以用紅／橘（--warnB／--warnA）當分區色 —— 那兩個是「撞到／警示」的語意。 */
+      const lit = (predRoom===r.id);     // 🔴 修六：預判落點的那一間【比較深】
       g.appendChild(el('polygon',{points:pts,
-        fill:col,'fill-opacity':0.12,stroke:col,'stroke-width':2,'stroke-linejoin':'round'}));
+        fill:col,'fill-opacity': lit?0.34:0.12, stroke:col,
+        'stroke-width': lit?4:2,'stroke-linejoin':'round'}));
     }
     /* 🔴 需求 41：房間名畫在【形心正中】（歪斜的房間往上偏 140 公分會跑到別間去）。
        🔴 F-12：不套螢幕夾限（10 間房會疊成一坨）⇒ clamp:false，畫面外就不畫。 */
@@ -1468,8 +1719,21 @@ function render(){
     /* 🔴 v0.13_i 修八 F-10：目標牆的高亮原本寫死 13 ⇒ 42-a 之後 39cm 那道會完全蓋住它，
        而這是本批唯一能讓 Ali 當場看出「貼對邊」的回饋。
        ⇒ 改成比牆粗一圈（wallThick+8），linecap 也要一起改 butt（v0.14_i 補七 N-8b）。 */
-    g.appendChild(el('line',{x1:c.wall.x1,y1:c.wall.y1,x2:c.wall.x2,y2:c.wall.y2,
-      stroke:'var(--ghost)','stroke-width':wallThick(c.wall)+8,opacity:.85,
+    /* ╔═ 🔴 v0.17_i 修七-b｜只亮【side 那一側的那一個面】，不再蓋住整道牆 ═════════╗
+       Ali：「除非之後可以寫 只亮＋一側＋」
+       做法：沿 wallBaseNormal × side 位移 wallThick/2（＝走到那一側的牆面），
+             在那裡畫一條沿牆的亮線。
+       ✅ 粗細定案 11（第一版 3.5 太細，Ali 2026-09-14 定「至少兩倍」）
+       🔴 顏色與透明度【不變】（var(--ghost) ＋ opacity .85）——
+          改的只有「蓋整道牆」→「只蓋一面」＋粗細。
+       🔴 為什麼一定要改（不是美化）：觸發時家具已經壓在牆上 ⇒ 幽靈與手上那件只差 6cm
+          ⇒ 手機 fit 時是 2 像素 ⇒ 靠比對兩個外框的回饋【失效】，
+            而「哪一側」正好是唯一看不出來的那件事。 ╚═══════════════════════════╝ */
+    const nb=wallBaseNormal(c.wall);
+    const sd=(c.side===1||c.side===-1)? c.side : 1;
+    const ox=nb.x*sd*wallThick(c.wall)/2, oy=nb.y*sd*wallThick(c.wall)/2;
+    g.appendChild(el('line',{x1:c.wall.x1+ox,y1:c.wall.y1+oy,x2:c.wall.x2+ox,y2:c.wall.y2+oy,
+      stroke:'var(--ghost)','stroke-width':11,opacity:.85,
       'stroke-linecap':'butt'}));
     const gp=corners(c.gx,c.gy,c.f.w,c.f.d,c.gang,0);
     g.appendChild(el('polygon',{points:gp.map(p=>`${p.x},${p.y}`).join(' '),
@@ -1516,10 +1780,15 @@ function render(){
       g.appendChild(el('polygon',{points:pts.map(q=>`${q.x},${q.y}`).join(' '),
         fill:'none',stroke:'var(--furnSel)','stroke-width':6,opacity:.45}));
     }
-    /* 🔴 需求 20：家具名稱【仍然跟世界座標】（必須貼在物件上才有意義），
-       但算出來的位置若超出可見範圍 → 夾回邊界內（uiText 會做）。 */
+    /* 🔴 v0.17_i 修十一：家具名稱【畫面外就不畫】，不要被夾在畫面邊緣。
+       Ali：「畫面外的物品名稱不用跟著顯示範圍的位置跑，顯示名稱的資訊會影響判讀。」
+       ⇒ 與房間名走同一條規則（F-12 那一行的註解早就寫過理由：會疊成一坨）。
+       🔴 就這樣，一個參數。【不要】順手改 uiText 的預設值——
+          它還有房間名、樑編號、走道數字、比例尺、三行左上提示共 8 個呼叫點，
+          改預設值會一次影響全部。 */
     const ps=w2s(p.x, p.y);
-    uiText(ps.x, ps.y+4, f.name||'未命名', {size:12, anchor:'middle', fill:'var(--ink)'});
+    uiText(ps.x, ps.y+4, f.name||'未命名',
+      {size:12, anchor:'middle', fill:'var(--ink)', clamp:false});
   });
   // 照片標記（_d §8-1 Marker）
   MARKERS.forEach(m=>{
@@ -1681,10 +1950,19 @@ function previewMove(){
   /* 🔴 需求 45-a：不再過濾房間。匯入的 33 道牆 room 全 NULL
      ⇒ 舊的 WALLS.filter(w=>w.room===f.room) 永遠沒有候選 ⇒ 根本吸不到。
      ⚠️ 配套是 SNAP_MAX_CM（需求 45-c），否則全屋 fit 時會吸到屋外那道。 */
+  /* ╔═ 🔴 v0.17_i 修七-a ＋ 甲-1｜吸附觸發改成「碰到牆的【本體】才吸」═════════════╗
+     Ali：「傢俱所占面積和牆面重疊的時候，才開啟吸附，設定成沒有觸碰牆，不存在吸附的意圖」
+     　　　「縮小看全屋時，也是碰到才吸。」（2026-09-18 裁決）
+     ⇒ 門檻 ＝ wallThick(w)/2，🔴 沒有螢幕像素下限（SNAP_MIN_PX 整條取消，不新增那個常數）。
+     🔴 gap 的定義不變（gap = d - perpHalf(f)），這一行不要動。
+     ⚠️ 已知代價（Ali 已被告知並接受，🔴 不是 bug）：
+        全屋檢視下 wallThick/2 換算成螢幕距離只有 2 像素上下
+        ⇒「縮小＝粗擺、容易吸」這個舊行為沒有了
+        ⇒ 要避開吸附，用的是【吸附開關】，不是放大。 ╚═══════════════════════════╝ */
   WALLS.forEach(w=>{
     const {d,t}=distSeg(gx,gy,w);
     const gap=d-ph;
-    if(gap<snapCm() && (!best||gap<best.gap))
+    if(gap <= wallThick(w)/2 && (!best||gap<best.gap))
       best={w,t,gap};
   });
   if(!best) return;
@@ -1719,8 +1997,24 @@ function commitMove(){
     f.anchor={type:'free', x:gx, y:gy};      // 錨點切換＝依附身分改變（_d §5-2）
     f.rot=((ang*180/Math.PI)%360+360)%360;   // 脫離牆面時同樣保持絕對朝向
   }
+  /* ╔═ 🔴 v0.17_i 修六｜放手之後，自動判定它現在在哪一間 ═══════════════════════╗
+     Ali：「我指定客廳，床出現在客廳，接著把它放到另一個空間，在清單中他仍然是在客廳。」
+     🔴 六-b：判不出來時【維持原本的 f.room 不變】，絕對不可以寫成 null
+        （寫 null ⇒ onPlan 失敗 ⇒ 它從畫面上消失），而且要說一句話
+        （靠 S.roomGuessFailed 這個旗標，不可以直接寫 S.selNote —— 下一幀就被蓋掉，§0-5 A-6）。
+     ⚠️ 三個判不出來的死角：沒有 poly 的房間（種子／舊資料）／貼在外牆外側／
+        poly 的邊與牆體之間的浮點縫。 ╚═══════════════════════════════════════════╝ */
+  const rid=roomOfAnchor(f, f.anchor);
+  if(rid){
+    f.room=rid;                       // 判得出來 ⇒ 跟著新房間走（外框與清單色條也會跟著換）
+    S.roomGuessFailed=null;
+  }else{
+    S.roomGuessFailed=f.id;           // 判不出來 ⇒ 保留原值，並在 selNote 說出來
+  }
   /* 🔴 需求 4：7 處「直接 in-place 改值」一律改成「改記憶體 → 呼叫 saveItem()」 */
   saveItem(f).catch(e=>cloudErr(e));
+  /* 清單的分組是依 f.room 分的 ⇒ 換房間之後清單要跟著重建（修十）。 */
+  buildList();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1730,6 +2024,8 @@ function select(id){
   S.selId=id;
   S.sizeOpen=false; S.warnOpen=false;
   S.selNote='';                      // 🔴 需求 30：訊息跟著選中狀態走
+  S.selMsg='';                       // 🔴 v0.17_i：一次性動作訊息也跟著選中狀態走
+  S.roomGuessFailed=null;            // 🔴 v0.17_i 六-b：換選別件 ⇒ 上一件的「判不出來」要清掉
   $('sel').classList.remove('szopen');
 }
 
@@ -1756,7 +2052,7 @@ function syncSel(){
   box.hidden=false;
   const p=place(f);
   $('selName').textContent = `${roomName(f.room)} · ${f.name||'未命名'}`;
-  $('selPos').textContent  = p.wall ? '貼牆' : '未貼牆';
+  /* 🔴 v0.17_i 修五：selPos 已拿掉 —— 「貼牆／未貼牆」這個狀態長在 btnUnsnap 上（見下方）。 */
 
   // 微調鍵整組跟著軸轉（_d §10-2b：箭頭跟「它依附誰」走）。🔴 這段行為一行不改。
   let axis;
@@ -1783,18 +2079,40 @@ function syncSel(){
         只有 c（無條件填）⇒ 讀到的永遠是自己的值，但守衛一旦被繞過（例如有人加了
                        第三個 commit 入口）就又破了。
      ⚠️ activeElement 那道守衛【不可以拿掉】：正在打字時不能被覆寫回去（N-234d）。╚═╝ */
-  [['fw','w'],['fd','d'],['fh','h']].forEach(([id,k])=>{
+  /* 🔴🔴 v0.17_i 十二-b ②｜這裡【必須】走 SZ 這個對照表，不可以再寫一份欄位清單。
+     建造者自驗抓到的真缺陷（2026-09-18，第三批）：
+       本函式原本內嵌 [['fw','w'],['fd','d'],['fh','h']]，與上方的 SZ 是【兩份清單】
+       ⇒ SZ 加了離地、這裡沒加 ⇒ #fz 永遠停在上一次的值
+       ⇒ 症狀：清單展開列把離地改成 12.5、記憶體與 IndexedDB 都是 12.5，
+         而面板那格【還顯示 50】；下一次按〔完成〕就把 50 寫回去（跨物件汙染復活）。
+       ⚠️ 只看畫面看不出來，是【記憶體 ＋ IndexedDB 一起讀】才抓到的（O-24）。
+     🔴 修一-c 的「無條件填」與修一-a 的守衛是兩層正交防線，這一層漏了就等下一個人踩。 */
+  SZ.forEach(([id,k])=>{
     if(document.activeElement!==$(id)){
       $(id).value = f[k]==null ? '' : Math.round(f[k]*10)/10;
       $(id).classList.remove('bad');
     }
   });
 
-  /* 需求 12 邊界：
-     · 未貼牆時「脫離牆面」disabled，不隱藏（否則按鈕會跳位）
-     · 尺寸未填時只有「📏 改尺寸」可按（沒有寬深算不出位置與碰撞） */
+  /* ╔═ 🔴 v0.17_i 修五｜貼牆狀態與〔脫離牆面〕合成【一顆雙態鈕】(_d §13-46 甲案) ══╗
+     已貼牆（亮底）⇄ 未貼牆（一般底）——🔴 兩態必須看得出視覺差，不能只換字。
+     🔴 丙-6 ⑦：守衛從 `!p.wall || noSize` 改成【只看 noSize】——
+        「未貼牆」必須是可按的狀態，否則雙態鈕的另一半永遠按不到（＝這一半等於沒做）。
+     🔴 丙-6 ⑥：S.snap（吸附開關）關著時這顆鈕 disabled，與那個開關的語意一致。 ╚═══╝ */
   const noSize=!hasSize(f);
-  $('btnUnsnap').disabled = !p.wall || noSize;
+  const onWall=!!p.wall;
+  const bu=$('btnUnsnap');
+  bu.textContent = onWall ? '🧲 已貼牆' : '🧲 未貼牆';
+  bu.classList.toggle('magon', onWall);
+  bu.title = onWall ? '脫離牆面' : (S.snap ? '貼到最近的牆' : '吸附關著時不能貼回去');
+  bu.disabled = noSize || (!onWall && !S.snap);
+  /* 🔴 修十二：第三格【依狀態換內容】——尺寸面板開著時換成〔🔍 檢視〕。
+     ⚠️ 既有 CSS 是 `.sel.szopen .padwrap,.sel.szopen .g2{display:none}`
+        ⇒ .g3 這三格本來就不會被藏 ⇒ 這個做法一行 CSS 都不用改，
+          也不必動用 .g2 的兩個保留位（自訂角度／汲取牆角的位置原封不動留著）。 */
+  $('btnView').hidden   = !sizeOn;
+  bu.hidden             = sizeOn;
+  $('btnView').disabled = false;
   $('btnRot').disabled    = noSize;
   [...$('pad').querySelectorAll('button')].forEach(b=>{ b.disabled=noSize; });
 
@@ -1825,8 +2143,19 @@ function syncSel(){
   let note='';
   /* 🔴 v0.09_i 需求 33：孤兒 room 走同一條訊息——
      使用者看到的效果一樣：它沒有房間可去。 */
-  if(!roomAlive(f.room)) note='這一件還沒指定房間。';
+  /* ╔═ 🔴 v0.17_i 乙-5 ＋ §0-5 A-6｜這是一個【互斥的 if 鏈】，不是「多說一句話」════╗
+     syncSel 每一個 pointermove 都會跑，而這一段【無條件重算】 note
+     ⇒ 直接寫 S.selNote 的話，下一幀就被清掉（畫面完全安靜，與成功長得一樣）。
+     ⇒ 要多講一件事，唯一正確的做法是【在這條鏈上加一個分支】，
+        而那個分支的條件要是一個【存得住的狀態旗標】。
+     🔴 一次只會出現一則 ⇒ 畫面上不會多出任何一行。 ╚═══════════════════════════╝ */
+  if(S.selMsg)           note=S.selMsg;          // 修五：剛剛按了〔貼到牆〕但附近沒有牆
+  else if(!roomAlive(f.room)) note='這一件還沒指定房間。';
   else if(!f.isPlaced)   note='這一件還沒擺進平面圖。';
+  /* 🔴 v0.17_i 六-b ＋ 乙-5：第三則（互斥）——「判不出來」不可以是一片安靜，
+     否則她無從分辨「判不出來」與「這個功能根本沒做」。 */
+  else if(S.roomGuessFailed===f.id)
+    note=`這一件的位置判不出屬於哪一間，房間維持原本的「${roomName(f.room)}」。`;
   S.selNote=note;
   nb.textContent=note; nb.hidden=!note;
 
@@ -1891,7 +2220,12 @@ function nudge(dir){
      打字中不阻止、不還原、不寫入，但該欄位加紅框
      三個存檔觸發點：值無效 → 還原成【上一個有效值】並移除紅框
    ══════════════════════════════════════════════════════════════ */
-const SZ=[['fw','w'],['fd','d'],['fh','h']];
+/* 🔴 v0.17_i 十二-b ①：SZ 這個對照表多一筆【離地】。
+   ⚠️ commitFieldEdits 與 syncSel 都跑這個表 ⇒ 兩邊會一起多一欄（那正是要的）。
+   🔴 判準與 w/d/h 不同：離地可以是 0 ⇒ 一律經過 badLen()（與清單展開列同一支）。
+   ✅ 資料層不必新增任何東西（建造者已實查）：
+      LEN_FIELDS.items 已含 zBase／toRow 已送 z_base／fromRow 已讀 z_base／addItem 已有初值。 */
+const SZ=[['fw','w'],['fd','d'],['fh','h'],['fz','zBase']];
 SZ.forEach(([id,key])=>{
   $(id).addEventListener('input',()=>{
     const f=FURN.find(x=>x.id===S.selId); if(!f) return;
@@ -1900,7 +2234,7 @@ SZ.forEach(([id,key])=>{
       f[key]=null; $(id).classList.remove('bad'); render(); syncSel(); return;
     }
     const v=parseFloat(raw);
-    if(!isFinite(v)||v<=0){              // 無效：不寫入，保留上一個有效值，但標紅框
+    if(badLen(key, raw, v)){             // 無效：不寫入，保留上一個有效值，但標紅框
       $(id).classList.add('bad'); return;
     }
     $(id).classList.remove('bad');
@@ -1931,7 +2265,7 @@ function commitFieldEdits(){
     const inp=$(id);
     const raw=inp.value.trim();
     const v=raw===''? null : parseFloat(raw);
-    if(raw!=='' && (!isFinite(v)||v<=0)){
+    if(badLen(key, raw, v)){             // 🔴 十二-b：離地的判準是 >=0，見 badLen
       // 🔴 無效 → 還原成上一個有效值（記憶體裡那個），移除紅框
       inp.value = f[key]==null ? '' : Math.round(f[key]*10)/10;
       inp.classList.remove('bad');
@@ -1969,14 +2303,84 @@ document.addEventListener('visibilitychange',()=>{
 $('btnRot').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(!f||!hasSize(f)) return;
   f.rot=((f.rot||0)+90)%360; saveItem(f).catch(e=>cloudErr(e)); render(); syncSel(); };
 $('btnSize').onclick=()=>{ S.sizeOpen=!S.sizeOpen; S.warnOpen=false; syncSel(); };
+/* ╔═ ⚠️ v0.17_i 丙-6｜「貼回最近的牆」是一整條【新功能】，不是改文字 ═════════════╗
+   舊的 btnUnsnap 是單向的（脫離得了、貼不回去）。七點規格（丙-6）全部寫死在這裡：
+   ① 「最近」怎麼量：用目前 place(f) 的中心 c 掃全部 WALLS，取 gap = d - perpHalf(f) 最小者
+      🔴 不可以沿用 previewMove 的算式 —— 它從 S.dragging 取 gx/gy，靜態按鈕沒有 S.dragging
+   ② 🔴 距離上限 SNAP_MAX_CM(50)：超過就【不動】並在 selNote 說一句
+      （沒有上限 ⇒ 在屋子中央按一下，家具會飛到三公尺外的牆上）
+   ③ side = sideFromPoint(w, c) 🔴 不可以用預設值（O-8：她放在哪一側是表態過的維度）
+   ④ rot = snapRot(目前絕對朝向, wallAngle(w), f.rot) 🔴 走既有那一支，不要自己寫
+      （自己寫就會替她轉正 ＝ O-8 的原始症狀）
+   ⑤ along 夾限比照 previewMove
+   ⑥ S.snap 關著時這顆鈕 disabled（見 syncSel）
+   ⑦ 守衛改成只看 noSize（見 syncSel） ╚═══════════════════════════════════════════╝ */
+function snapBackToWall(f){
+  const c=place(f);
+  let best=null;
+  WALLS.forEach(w=>{
+    const {d,t}=distSeg(c.x,c.y,w);
+    const gap=d-perpHalf(f);
+    if(!best || gap<best.gap) best={w,t,gap};
+  });
+  if(!best || best.gap > SNAP_MAX_CM) return false;
+  const w=best.w, a=wallAngle(w);
+  const side=sideFromPoint(w, c.x, c.y);
+  const along=Math.max(f.w/2, Math.min(wallLen(w)-f.w/2, best.t*wallLen(w)));
+  f.rot = snapRot(c.ang, a, f.rot);
+  f.anchor={type:'wall', wall:w.id, along, off:0, side};
+  return true;
+}
 $('btnUnsnap').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(!f) return;
-  const p=place(f); f.anchor={type:'free',x:p.x,y:p.y};   // 脫離牆面＝換錨點
+  const p=place(f);
+  if(p.wall){
+    f.anchor={type:'free',x:p.x,y:p.y};   // 脫離牆面＝換錨點（既有行為，一行不改）
+    S.selMsg='';
+  }else{
+    if(!snapBackToWall(f)){
+      /* 🔴 O-18：「什麼都沒發生」不可以是一種回答。說出為什麼。 */
+      S.selMsg=`附近沒有牆（${SNAP_MAX_CM} 公分內），沒有貼上去。`;
+      syncSel(); return;
+    }
+    S.selMsg='';
+  }
   saveItem(f).catch(e=>cloudErr(e)); render(); syncSel(); };
+/* 🔴 v0.17_i 修十二｜〔🔍 檢視〕＝ `›` 的反方向：平面圖 → 清單，捲到那一張卡片【並展開】。
+   🔴 她的意圖是「把這一件的細項攤開給我看（特別是備註）」——
+      只切分頁而不展開卡片＝沒有解決她的問題（同名家具一樣找很久）。
+   🔴 丙-7：捲動定位沿用 addItemFromList() 既有的做法（querySelector → scrollIntoView），
+      🔴 不是「沿用 › 那一側」—— › 那一側【沒有】捲動定位，方向相反。
+      🔴 選擇器用 .icard[data-id]（itemCard 已加），不要靠 .nm。
+   🔴 S.expandCause='manual'：若沿用上一次的值而剛好是 'chip'，她在展開列選一個房間
+      就會【被自動擺上去並跳分頁】—— 而她只是想看備註。 */
+$('btnView').onclick=()=>{
+  const f=FURN.find(x=>x.id===S.selId); if(!f) return;
+  commitFieldEdits();
+  S.expandId=f.id; S.expandCause='manual';
+  setTab('list');                       // setTab('list') 內部會 buildList()
+  buildList();
+  const c=document.querySelector(`.icard[data-id="${f.id}"]`);
+  if(c) try{ c.scrollIntoView({block:'center'}); }catch(e){}
+};
 $('btnDone').onclick=()=>{ commitFieldEdits(); select(null); render(); syncSel(); };
 $('btnFold').onclick=()=>{ const s=$('sel'); s.classList.toggle('mini');
   $('btnFold').textContent = s.classList.contains('mini')?'▴':'▾'; };
 $('warnLine').onclick=()=>{ S.warnOpen=!S.warnOpen; syncSel(); };
-$('btnDel').onclick=()=>{ const f=FURN.find(x=>x.id===S.selId); if(f) confirmDeleteItem(f.id); };
+/* ╔═ 🔴 v0.17_i 修五｜平面圖那顆從【刪除】改成【收回清單】 ═════════════════════╗
+   Ali：「只有哪裡可以把東西丟到垃圾桶吧。我選清單。」
+   🔴 前置＝修一（清單展開列已經有 🗑）。順序顛倒的話家具會變成【刪不掉而且不報錯】。
+   🔴 不需要確認框 —— 這是可逆的（清單按〔擺上圖〕就回來）。
+   🔴 §0-5 A-4：select(null) 要放在【重畫之前】。
+      放最後的症狀：家具從圖上消失、面板還開著、微調鍵按了完全沒反應（selId 已 null），
+      因為 syncSel 只在「找不到這筆」或「不在 plan 分頁」時才收面板。 ╚═══════════╝ */
+$('btnDel').onclick=async()=>{
+  const f=FURN.find(x=>x.id===S.selId); if(!f) return;
+  f.isPlaced=false;                       // 🔴 anchor 保留（它記得上次擺哪）
+  await saveItem(f).catch(e=>cloudErr(e));
+  await reloadObjects();
+  select(null);
+  render(); buildList(); syncSel();
+};
 
 /* ══════════════════════════════════════════════════════════════
    需求 2｜本機持久化（IndexedDB）
@@ -2177,21 +2581,81 @@ async function lGetProject(code){
 async function lPutProject(p){
   await tx('projects','readwrite',s=>s.put(toDb('projects',p)));
 }
+/* 雲端那一列（只有一列，key 是 code）。pull 與 push 的守衛都要讀它。 */
+async function cloudFetchProjectRow(){
+  const r=await sbFetch('/rest/v1/projects?select=*&code=eq.'+encodeURIComponent(CLOUD.code));
+  if(!r.ok) throw new Error('讀雲端 projects 失敗：'+(await r.text()).slice(0,200));
+  const rows=await r.json();
+  return (Array.isArray(rows) && rows[0]) ? rows[0] : null;
+}
+/* ╔═ 🔴 v0.17_i 修八 ②③｜送出前先【真的比對】，而且 null 不送 ════════════════════╗
+   舊版：整列 upsert，updated_at 只是【寫進去】，從來沒有拿來比對
+   ⇒ 手機沒有樓高 → 在手機只改專案名字 → 整列推上去、floor_h 寫成 null
+     → 把電腦填的樓高蓋掉，而畫面同時顯示「✅ 已存」。
+   🔴 ③ floor_h 為 null 時【不要送這個欄位】——與 v0.13_i 修二的 poly 是同一個形狀
+      （polyToMM(undefined) 回 null ⇒ 把雲端洗掉）。同一個坑，不要再踩第二次。 ╚═══════╝ */
 async function cloudPushProject(){
   if(!CLOUD.on || !CLOUD.code) return;
+  const cloudRow = await cloudFetchProjectRow();
+  const mine   = PROJECT.updatedAt ? new Date(PROJECT.updatedAt).getTime() : NaN;
+  const theirs = (cloudRow && cloudRow.updated_at) ? new Date(cloudRow.updated_at).getTime() : NaN;
+  /* 🔴 本機不比雲端新 ⇒ 不要推（相同也不推，沿用「晚的贏、相同不動」）。
+     ⚠️ mine 是 NaN 只可能發生在「這台從來沒存過」——那時本來就沒有東西好推，
+        但為了不把使用者剛按下的那次存檔吃掉，saveProject 一定會先寫 updatedAt（見下）。 */
+  if(cloudRow && isFinite(mine) && isFinite(theirs) && mine <= theirs) return;
   const row={ code:CLOUD.code, name:PROJECT.name||null,
-              floor_h:toMM(PROJECT.floorH), updated_at:nowISO() };
+              updated_at: PROJECT.updatedAt || nowISO() };
+  if(PROJECT.floorH != null) row.floor_h = toMM(PROJECT.floorH);   // 🔴 有值才送
   const r=await sbFetch('/rest/v1/projects?on_conflict=code',{method:'POST',
     headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
     body:JSON.stringify(row)});
   if(!r.ok) throw new Error('寫入雲端 projects 失敗：'+(await r.text()).slice(0,200));
 }
+/* ╔═ 🔴 v0.17_i 修八 ① ＋ §0-6 A-1｜projects 走【自己的一支】，不進 cloudPullObjects ══╗
+   🔴 為什麼不可以加進那個迴圈（前刀查碼、冷讀刀複驗）：
+     · fromRow 的結構是 rooms→walls→beams→【否則落到 items】（最後一個 return 沒有守衛）
+       ⇒ 傳 'projects' 進去，回來的是一個 items 形狀的物件，floor_h 沒有人讀
+     · lmap = new Map(local.map(x=>[x.id,x]))，而 projects 的 keyPath 是 code、每一列沒有 id
+       ⇒ 全部 key 是 undefined ⇒ 互相蓋掉
+     · lPutObj → lPut 第一行 rec.id = rec.id || uid() ⇒ 往 keyPath='code' 的 store
+       塞一個只有 id 沒有 code 的物件
+   ⇒ 症狀：按〔🔄 同步〕沒有任何錯誤訊息，專案那一列被寫成垃圾
+     ⇒ 下一次 loadProject() 讀回來 floorH 是 null ⇒ 設定頁變「（未填）」，
+       而畫面同時顯示「✅ 同步完成　雲端與這台一致」
+     ＝ **修八自己要修的那個症狀，被修八本身重新造出來一次**（O-20）。
+   🔴 所以這一支：自己打 API、自己做欄位對應、不走 fromRow、不用 lPutObj／stampObj／softDelete。╚═╝ */
+async function cloudPullProject(){
+  if(!CLOUD.on || !CLOUD.code) return;
+  syncStep('專案設定…');
+  const row=await cloudFetchProjectRow();
+  if(!row) return;                                  // 雲端還沒有這一列 ⇒ 沒事可拉
+  const local=await lGetProject(CLOUD.code);
+  const theirs = row.updated_at ? new Date(row.updated_at).getTime() : NaN;
+  const mine   = (local && local.updatedAt) ? new Date(local.updatedAt).getTime() : NaN;
+  if(isFinite(mine) && isFinite(theirs) && theirs <= mine) return;   // 晚的贏；相同不動
+  const merged={
+    code: CLOUD.code,
+    name: (row.name==null ? (local? local.name : '') : row.name),
+    /* 🔴 雲端 floor_h 是 null ＝【沒有人填過】（②③ 保證 null 不會被送上去）
+       ⇒ 不可以用它洗掉本機已經有值的那一格（與 BACKFILL 白名單同一個判準）。 */
+    floorH: (row.floor_h==null ? (local? local.floorH : null) : fromMM(row.floor_h)),
+    updatedAt: row.updated_at || nowISO()
+  };
+  await lPutProject(merged);
+  PROJECT = merged;                                 // 記憶體也要跟上（O-24：兩層都要看）
+}
 async function loadProject(){
   try{
     const p=await lGetProject(projKey());
-    PROJECT = p ? {code:p.code, name:p.name||'', floorH:(p.floorH==null?null:p.floorH)}
-                : {code:projKey(), name:'', floorH:null};
-  }catch(e){ PROJECT={code:projKey(), name:'', floorH:null}; }
+    /* 🔴 丙-5：這是【重建一個新的物件字面值】，不是 Object.assign
+       ⇒ 沒有列出來的欄位會被安靜吃掉。而 loadProject() 被 reloadObjects() 最後一行
+         無條件呼叫（boot／每次同步／每次擺上圖／每次刪房間都會跑）
+       ⇒ 漏了 updatedAt 的話它永遠是 undefined，A-2 修的那個坑原封不動回來。
+       🔴 兩個分支都要有 updatedAt。（同形前例：anchorToMM/anchorFromMM 的註解。） */
+    PROJECT = p ? {code:p.code, name:p.name||'', floorH:(p.floorH==null?null:p.floorH),
+                   updatedAt:(p.updatedAt||null)}
+                : {code:projKey(), name:'', floorH:null, updatedAt:null};
+  }catch(e){ PROJECT={code:projKey(), name:'', floorH:null, updatedAt:null}; }
 }
 
 /* delete*：🔴 軟刪除（進垃圾桶），不是 lDel */
@@ -2944,6 +3408,9 @@ async function cloudPull(){
 
   // ④ 🔴 需求 15：四張物件表（掛在照片與標記【之後】）
   await cloudPullObjects();
+  /* ⑤ 🔴 v0.17_i 修八 ①：專案設定（樓高／專案名字）。
+     🔴 排在四個 store 的迴圈【之外】，單獨呼叫一次（§0-6 A-1：它的形狀套不進那個迴圈）。 */
+  await cloudPullProject();
 }
 
 /* 🔴 需求 37：狀態式那一行要用的兩個計數。
@@ -3010,6 +3477,10 @@ async function cloudSync(){
   await loadMarkers();
   await reloadObjects();
   render(); buildList(); syncSel(); refreshTop(); renderPhotos();
+  /* 🔴 v0.17_i 修八：樓高／專案名字是【設定頁】上的欄位。她很可能就站在那一頁按同步，
+     而那一頁的欄位只有 refreshProj() 會重填 ⇒ 不補這一行的話，拉下來了但畫面沒變
+     ⇒ 又變成「看不出有沒有同步到」（O-18）。 */
+  if(S.tab==='proj') await refreshProj();
   /* 🔴 需求 19 ①：雲端這個代碼下【四張表 ＋ photos 全部 0 筆】＝ 這是一個新專案。
      ⚠️ 不阻擋，只提醒（她可能真的要開新專案）。
         邊界：雲端有照片但沒有物件 → 不算新專案（所以兩個計數要一起看）。
@@ -3329,6 +3800,10 @@ function refreshSettings(){
 /* 存這一列（本機必存；已連線就順便推雲端）。回饋一律落在欄位旁邊。 */
 async function saveProject(){
   PROJECT.code = projKey();
+  /* 🔴 v0.17_i §0-6 A-2 ①：這是【使用者改名字／改樓高】的那條路 ⇒ 在這裡蓋時間章。
+     ⚠️ lPutProject 走 toDb('projects',…)，LEN_FIELDS.projects 只換算 floorH，
+        字串欄位原樣帶過（建造者已實查：updatedAt 存得進 IndexedDB 也讀得回來）。 */
+  PROJECT.updatedAt = nowISO();
   try{ await lPutProject(PROJECT); }
   catch(e){ setSaveNote('pjSaveNote','⚠️ 這台存不進去：'+((e&&e.message)||e),'er'); return; }
   if(CLOUD.on && CLOUD.code){
@@ -3866,11 +4341,14 @@ function commitCardEdits(){
       if(f.price!==v){ f.price=v; touched=true; saveItem(f).catch(e=>cloudErr(e)); }
       continue;
     }
-    if(fld==='w'||fld==='d'||fld==='h'){
+    if(LEN_CARD_FIELDS.includes(fld)){
       /* 🔴 需求 22：清單展開列的寬／深／高，沿用需求 7 的輸入規則。
-         🔴 與選中面板改的是【同一個值】（同一個 FURN 物件、同一個 saveItem）。 */
+         🔴 與選中面板改的是【同一個值】（同一個 FURN 物件、同一個 saveItem）。
+         🔴 v0.17_i C-6：離地（zBase）走同一條路，但判準是 v>=0（見 badLen）。
+            照字面把它丟進「其餘一律當字串」那個分支的話，打成 "3o" 會讓
+            toMM 把 NaN 寫進 IndexedDB —— 沒有紅框、沒有還原、沒有錯誤。 */
       const v = raw==='' ? null : parseFloat(raw);
-      if(raw!=='' && (!isFinite(v)||v<=0)){
+      if(badLen(fld, raw, v)){
         // 🔴 需求 26：同上，畫面還原只在 inp 還在時做
         if(inp){ inp.value = f[fld]==null ? '' : String(Math.round(f[fld]*10)/10);
                  inp.classList.remove('bad'); }
@@ -3899,10 +4377,73 @@ function commitCardEdits(){
 }
 /* 舊名保留為別名：setTab／visibilitychange 兩個既有呼叫點不必改語意 */
 function commitNameEdits(){ commitCardEdits(); }
-/* 卡片上的就地編輯欄工廠 */
+/* 🔴 v0.17_i §0-5 C-6 ＋ 新引入-2｜離地（zBase）併進 w/d/h 的【浮點分支】，
+   但判準不同：w/d/h 必須 > 0，而【離地可以是 0】（放在地上）。
+   ⚠️ 兩處都要用這一支（cardInput 的 input handler／commitCardEdits），
+      只改一處＝半套：離地填 0 會被標紅框而且不寫入，或者打錯字時 NaN 進 IndexedDB。 */
+const LEN_CARD_FIELDS = ['w','d','h','zBase'];
+/* ╔═ 🔴 v0.17_i 丙-2 ＋ 丙-3｜卡片上那行尺寸字：【同兩行、四件事，一次改完】════╗
+   那行字（.dim）只在 itemCard() 建立一次，但它的 textContent 與 class 會被
+   cardInput() 的 w/d/h input handler【整個重寫】（3929-3934，而且是 className 賦值）。
+   四件事全部落在同兩行，不可分批：
+     ① 修三　　「還沒填尺寸」要有可點的外觀（class）
+     ② 修十三　小數不可以被 Math.round 吃掉（textContent）
+     ③ §0-6 B-4　className 賦值會洗掉 ① ⇒ 一律經過同一支，讓它【重算】而不是被清掉
+     ④ 修九　　沒尺寸時它是「你還缺這個」的常駐標記（O-13）
+   ⇒ 兩處（itemCard 建立時／cardInput 打字時）都只呼叫 applyDim()，不各自拼字串。
+   🔴 只改一處的症狀：她在展開列把寬改成 12.5 的【當下】，另一處立刻把卡片那行寫回 13
+      ⇒ 在「填完重新載入」的測法下會過，在「邊填邊看」的測法下會失敗 —— 而她是邊填邊看的。
+   ⚠️ 可點性綁在【元素本身】（建立時掛的 onclick），不是綁在 class 上
+      ⇒ class 被重算也不會掉。（B-4 的兩個候選做法，建造者選的是這一個。）╚═══════╝ */
+const dim1 = v => (v==null ? '' : String(Math.round(v*10)/10));   // 修十三：保留一位小數
+function dimText(f){
+  if(f.w==null || f.d==null) return '還沒填尺寸';
+  return `${dim1(f.w)} × ${dim1(f.d)}` + (f.h!=null ? ` × ${dim1(f.h)}` : '') + ' cm';
+}
+function dimClass(f){
+  /* missbtn ＝ 修三的「可點外觀」。只有缺尺寸那個狀態才給它，
+     填完之後它就是一行普通的資訊（卡片本體仍然點得開，見修十四）。 */
+  return (f.w==null || f.d==null) ? 'dim miss missbtn' : 'dim';
+}
+function applyDim(dm, f){
+  if(!dm) return;
+  dm.className = dimClass(f);
+  dm.textContent = dimText(f);
+}
+/* ╔═ 🔴 v0.17_i §0-5 D-4 ＋ 新引入-3｜展開這一列並把游標送進第一個缺的欄位 ══════╗
+   修三與修九【共用這一支】，不可以寫兩次。順序寫死（少一步就靜默失敗）：
+     ① commitCardEdits()
+     ② S.expandId / S.expandCause  ← 🔴 cause 由呼叫端給（D-3），不可沿用上一次的值
+        （展開列只有在 S.expandId===f.id 時才被建立 ⇒ 不設它，欄位根本不存在）
+     ③ buildList()                 ← 🔴 它第一行 box.innerHTML='' ⇒ 舊節點全丟
+     ④ 之後才 querySelector → focus（在 buildList 之前抓參照再 focus ＝ 打在已脫離
+        文件的節點上，不報錯、activeElement 仍是 body ⇒「展開了但游標不在裡面」）
+   ⚠️ price 在 r2、不在展開列 ⇒ 那一支不需要展開，但仍然走 ③④（buildList 會重建整張卡片）。╚═╝ */
+function focusFirstMissing(id, opts){
+  const o=opts||{};
+  commitCardEdits();
+  const f=FURN.find(x=>x.id===id); if(!f) return;
+  S.expandId=id; S.expandCause=o.cause||'manual';
+  buildList();
+  const fields=o.fields||['w','d','h','price'];
+  const miss=fields.find(k=>f[k]==null);
+  if(!miss) return;
+  const el=document.querySelector(`.cardedit[data-id="${id}"][data-fld="${miss}"]`);
+  if(!el) return;
+  try{ el.closest('.icard').scrollIntoView({block:'center'}); }catch(e){}
+  el.focus();
+}
+function badLen(fld, raw, v){
+  if(raw==='') return false;
+  const min = (fld==='zBase') ? 0 : Number.MIN_VALUE;   // 🔴 離地 >=0，其餘 >0
+  return !isFinite(v) || v < min;
+}
+/* 卡片上的就地編輯欄工廠
+   🔴 v0.17_i 修四 ⑩：只有 note 走 <textarea>（Ali 要備註能換行）。
+      ⚠️ cardInput 是共用函式 —— 不可以整個改成 textarea，那會弄壞價錢與尺寸欄。 */
 function cardInput(f, fld, opts){
   const o=opts||{};
-  const inp=document.createElement('input');
+  const inp=document.createElement(fld==='note' ? 'textarea' : 'input');
   inp.className='cardedit '+(o.cls||'');
   inp.dataset.id=f.id; inp.dataset.fld=fld;
   inp.value = o.value!=null ? o.value : (f[fld]==null ? '' : String(f[fld]));
@@ -3918,27 +4459,39 @@ function cardInput(f, fld, opts){
        讓「這個值沒被採用」看得出來（_d §10-0b 允許狀態提示）。 */
     if(fld==='price'){
       inp.classList.toggle('bad', raw!=='' && !/^\d+$/.test(raw));
-    }else if(fld==='w'||fld==='d'||fld==='h'){
+    }else if(LEN_CARD_FIELDS.includes(fld)){
       const v=parseFloat(raw);
-      inp.classList.toggle('bad', raw!=='' && (!isFinite(v)||v<=0));
+      const bad=badLen(fld, raw, v);
+      inp.classList.toggle('bad', bad);
       /* 🔴 需求 22 邊界：在清單填完尺寸 → 卡片上的「還沒填尺寸」要立刻消失。
          ⇒ 有效值當下就寫記憶體並重畫（與需求 7「即時算、失焦才存」一致：
             這裡只改記憶體與畫面，不存檔）。 */
-      if(raw==='' || (isFinite(v)&&v>0)){
+      if(!bad){
         f[fld] = raw==='' ? null : v;
-        const dm=inp.closest('.icard').querySelector('.dim');
-        if(dm){
-          if(f.w==null||f.d==null){ dm.className='dim miss'; dm.textContent='還沒填尺寸'; }
-          else { dm.className='dim'; dm.textContent=`${Math.round(f.w)} × ${Math.round(f.d)}`
-            +(f.h!=null?` × ${Math.round(f.h)}`:'')+' cm'; }
-        }
+        /* 🔴 丙-2／丙-3：這裡是【第二處】。與 itemCard 走同一支 applyDim，
+           不再各自拼字串（只改一處＝她邊填邊看時會被寫回整數）。 */
+        const card=inp.closest('.icard');
+        if(card) applyDim(card.querySelector('.dim'), f);
         render();
       }
     }
   });
   inp.addEventListener('blur',()=>commitCardEdits());
-  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); });
+  /* 🔴 備註改成 textarea 之後，Enter 是【換行】不是存檔 ——
+     沿用舊的 Enter→blur 會讓「能換行」這件事做了等於沒做。其餘欄位一行不改。 */
+  if(fld!=='note')
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') inp.blur(); });
   return inp;
+}
+/* 🔴 v0.17_i 修九：卡片【閃一下】（一次、短，不是持續動畫）。
+   ⚠️ 必須對「buildList() 重建之後的那一張」呼叫 —— 舊節點已經不在文件上。 */
+function flashCard(id){
+  const c=document.querySelector(`.icard[data-id="${id}"]`);
+  if(!c) return;
+  c.classList.remove('flash');
+  void c.offsetWidth;                      // 強制 reflow，動畫才會重新播一次
+  c.classList.add('flash');
+  c.addEventListener('animationend', ()=>c.classList.remove('flash'), {once:true});
 }
 function chipBtn(label,on,onClick){
   const b=document.createElement('button');
@@ -3947,11 +4500,103 @@ function chipBtn(label,on,onClick){
   b.onclick=e=>{ e.stopPropagation(); onClick(); };
   return b;
 }
+/* ╔═ 🔴 v0.17_i 修四 ⑩ ＋ 修一｜展開列（四列表，整張卡片寬）════════════════════╗
+     第一行　[房間 ▾] 離地[ ] 寬[ ] 深[ ] 高[ ] cm　（🔴 cm 只出現一次）
+     第二行　備註[textarea]
+     第三行　照片 [＋]（以後版本，保留格）
+     最後　　🗑（靠右，與第一行的 cm 右緣同一側）
+   🔴 它掛在 .body 不掛在 .col ⇒ 不縮排、不讓給 icon 欄（§0-5 D-2 的 DOM 重組）。
+   🔴 所有欄位一律走 cardInput ⇒ _cardDirty（key 是 `id::欄位`）那一套；
+      【不可以】新寫一套「commit 時回頭去 DOM 撈」（那會把 v0.1.5.1 修好的坑復活）。╚═╝ */
+function cardEditRow(f){
+  const ed=document.createElement('div'); ed.className='cedit';
+  /* 修十四 ④ 的狀態指示之二：小 ▴（只在展開時存在，純視覺） */
+  const mk=document.createElement('span'); mk.className='opmark'; mk.textContent='▴';
+  ed.appendChild(mk);
+
+  const r1=document.createElement('div'); r1.className='crow1';
+  const sl=document.createElement('select');
+  const o0=document.createElement('option'); o0.value=''; o0.textContent='未指定';
+  sl.appendChild(o0);
+  ROOMS.forEach(r=>{ const o=document.createElement('option');
+    o.value=r.id; o.textContent=r.name||'未命名'; sl.appendChild(o); });
+  sl.value = f.room || '';
+  sl.onclick=e=>e.stopPropagation();
+  sl.onchange=async e=>{
+    e.stopPropagation();
+    commitCardEdits();                     // 先把同一列的備註存掉，再改房間
+    const v=sl.value;
+    if(!v){
+      if(S.expandCause==='chip'){          // 選「未指定」→ 收起，動作鈕維持「擺上圖」
+        S.expandId=null; S.expandCause=null; buildList(); return;
+      }
+      f.room=null; f.isPlaced=false;       // 手動展開時，「未指定」＝真的把房間清掉
+      await saveItem(f);
+      await reloadObjects(); render(); buildList(); refreshTop(); return;
+    }
+    f.room=v;
+    /* 🔴 §0-5 E-4：S.listNote【會殘留】——setTab 不清它，只有 › 成功跳分頁那一次會清。
+       ⇒ 修二的新訊息要有清除點：選到房間＝那句話講的事情已經解決了。
+       ⚠️ 只加訊息不加清除點的後果：她選完房間回到清單，那句話還掛在上面。 */
+    S.listNote='';
+    if(S.expandCause==='chip') f.isPlaced=true;
+    if(f.isPlaced) placeIntoRoomIfOutside(f);
+    await saveItem(f);
+    if(S.expandCause==='chip'){ S.expandId=null; S.expandCause=null; }
+    await reloadObjects(); render(); buildList(); refreshTop();
+  };
+  r1.appendChild(sl);
+  /* 🔴 ⑨ 欄位標籤【常駐】。離地是本批新加的（需求 46 之後一直只有欄位、沒有 UI）。 */
+  [['zBase','離地'],['w','寬'],['d','深'],['h','高']].forEach(([k,lab])=>{
+    const box=document.createElement('div'); box.className='szbox';
+    const lb=document.createElement('label'); lb.textContent=lab;
+    const ip=cardInput(f,k,{cls:'sz', inputmode:'decimal',
+      value: f[k]==null ? '' : String(Math.round(f[k]*10)/10)});
+    box.appendChild(lb); box.appendChild(ip);
+    r1.appendChild(box);
+  });
+  const un=document.createElement('span'); un.className='unit'; un.textContent='cm';
+  r1.appendChild(un);
+  ed.appendChild(r1);
+
+  const r2=document.createElement('div'); r2.className='crow';
+  const lb2=document.createElement('label'); lb2.textContent='備註';
+  r2.appendChild(lb2);
+  r2.appendChild(cardInput(f,'note',{cls:'note'}));
+  ed.appendChild(r2);
+
+  const r3=document.createElement('div'); r3.className='crow';
+  const lb3=document.createElement('label'); lb3.textContent='照片';
+  const ph=document.createElement('button'); ph.className='holdbtn';
+  ph.textContent='＋'; ph.disabled=true;
+  r3.appendChild(lb3); r3.appendChild(ph);
+  ed.appendChild(r3);
+
+  /* 🔴 修一：刪除入口。confirmDeleteItem 的邏輯【一行不改】，只是多一個呼叫點。
+     🔴 丙-12：它是展開列裡【新增的】元素 ⇒ 要自己 stopPropagation，
+        否則點它會連帶被修十四的「點卡片＝展開／收合」吃掉。 */
+  const r4=document.createElement('div'); r4.className='crow trashrow';
+  const del=document.createElement('button'); del.className='delbtn';
+  del.textContent='🗑'; del.title='刪除這一件';
+  del.onclick=e=>{ e.stopPropagation(); confirmDeleteItem(f.id); };
+  r4.appendChild(del);
+  ed.appendChild(r4);
+  return ed;
+}
 function itemCard(f){
-  const card=document.createElement('div'); card.className='icard';
+  const placed=!!f.isPlaced;
+  const card=document.createElement('div');
+  /* 🔴 修十四 ④：展開狀態要看得出來（底色微變，配 .cedit 的小 ▴） */
+  card.className='icard'+(S.expandId===f.id ? ' open' : '');
+  /* 🔴 丙-7：修十二〔檢視〕要靠 .icard[data-id] 捲動定位，不可以靠 .nm。 */
+  card.dataset.id=f.id;
   const st=document.createElement('div'); st.className='stripe';
-  st.style.background=roomColor(f.room);
+  /* 🔴 v0.17_i 乙-0 ②：已擺 → 房間色；待擺 → 無色；
+     孤兒（isPlaced 但那間房已被另一台刪掉）→ 也是無色（沒有活著的房間可以取色，
+     而且它會被分到「未指定房間」組）。 */
+  st.style.background = (placed && roomAlive(f.room)) ? roomColor(f.room) : 'transparent';
   card.appendChild(st);
+  const body=document.createElement('div'); body.className='body';
   const inb=document.createElement('div'); inb.className='in';
   /* 🔴 icon 欄【留空】：不畫邊框、不畫底色、不放佔位圖示 —— 就是內距（46px） */
   const ic=document.createElement('div'); ic.className='icon';
@@ -3960,11 +4605,17 @@ function itemCard(f){
   const col=document.createElement('div'); col.className='col';
   const r1=document.createElement('div'); r1.className='r1';
   const nm=cardInput(f,'name',{cls:'nm'+(f.name?'':' ph'), placeholder:'未命名'});
-  const dm=document.createElement('span'); dm.className='dim';
-  /* 缺什麼直接寫在卡片上（_d §9-1b 允許不完整，§9-2 結算前要抓） */
-  if(f.w==null||f.d==null){ dm.className='dim miss'; dm.textContent='還沒填尺寸'; }
-  else dm.textContent=`${Math.round(f.w)} × ${Math.round(f.d)}`
-      +(f.h!=null?` × ${Math.round(f.h)}`:'')+' cm';
+  /* 缺什麼直接寫在卡片上（_d §9-1b 允許不完整，§9-2 結算前要抓）
+     🔴 v0.17_i 修三：這塊字【變成可點區域】——
+        Ali：「還沒填尺寸那一個位置，改成可以讓下面展開的 ui 拉，展開的向下箭頭在手機上面好難按」
+     🔴 可點性掛在【元素身上】，不掛在 class 上 ⇒ 打字時 class 被重算也不會掉（§0-6 B-4）。 */
+  const dm=document.createElement('span');
+  applyDim(dm, f);
+  dm.onclick=e=>{
+    if(!(f.w==null || f.d==null)) return;      // 填完了就是一行普通資訊，交給卡片本體處理
+    e.stopPropagation();                        // 🔴 不要再被修十四的「點卡片＝切換」收合掉
+    focusFirstMissing(f.id, {fields:['w','d','h','price'], cause:'manual'});
+  };
   r1.appendChild(nm); r1.appendChild(dm);
   col.appendChild(r1);
 
@@ -3972,7 +4623,36 @@ function itemCard(f){
   r2.appendChild(chipBtn('計價', !!f.isBudgeted, async()=>{
     f.isBudgeted=!f.isBudgeted; await saveItem(f); buildList();
   }));
-  r2.appendChild(chipBtn('已擺', !!f.isPlaced, ()=>toggleChipPlaced(f.id)));
+  /* ╔═ 🔴 v0.17_i 乙-0 ①／乙-6｜一顆【會換臉的動作鈕】，取代舊的〔已擺〕chip ═══╗
+     待擺 →〔擺上圖〕：按下去會把它擺上去，而且【畫面會帶你過去看】（需求 24 的三件）
+     已擺 →〔↩ 收回清單〕：與平面圖上那顆同名（修五），從圖上拿下來、anchor 保留
+     🔴 不做兩段切換條：兩段裡永遠只有一段可按 ⇒ 第二段不必存在（_d §13-36 已結案）。
+     🔴 它是【動作鈕】不是 chip ⇒ 不進入 _d §10-0e「點亮＝有」那套語意。 ╚═════╝ */
+  /* 🔴 v0.17_i 修九（Ali 裁決走甲）＋ 丙-8：缺寬或缺深時，【擺上圖】這個方向要擋住。
+     擋的標的就是這顆鈕（丙-8：規格原本寫「鎖住〔已擺〕那一段」，
+     而那一段在待擺的卡片上根本不存在 ⇒ 照字面做等於沒做）。
+     🔴 守衛只擋 false→true：收回那個方向不可以被擋（萬一資料不一致仍要收得回來）。 */
+  const noSizeYet = (f.w==null || f.d==null);
+  const act=document.createElement('button');
+  act.className='act'+((!placed && noSizeYet) ? ' locked' : '');
+  act.textContent = placed ? '↩ 收回清單' : '擺上圖';
+  act.onclick=e=>{
+    e.stopPropagation();
+    if(!placed && noSizeYet){
+      /* 不切分頁、不跳任何對話框：卡片閃一下（一次、短），
+         然後自動展開並把游標送進【第一個缺的欄位】（與修三同一支）。
+         🔴 cause='chip'：她的意圖確實是「要擺上去」，只是缺尺寸
+            ⇒ 填完之後由既有的 sl.onchange／擺上圖 那條路自動擺上去是對的（D-3）。 */
+      /* 🔴 順序：先 focusFirstMissing（它會 buildList ⇒ 這張卡片被整個換掉），
+         再對【重建後的那一張】閃。反過來寫的話動畫會連同舊節點一起被丟掉，
+         而且不報錯 —— 畫面上就是「什麼都沒發生」（O-18）。 */
+      focusFirstMissing(f.id, {fields:['w','d'], cause:'chip'});
+      flashCard(f.id);
+      return;
+    }
+    setPlaced(f.id, !placed);
+  };
+  r2.appendChild(act);
   /* 🔴 v0.05_i §4（修四）：價錢的位置就是輸入框（含「缺價錢」那個狀態）。
      ⚠️ 不另外開對話框。「缺價錢」用 placeholder 呈現（warnA 色），
         所以「點缺價錢 → 就地打字」是同一個元素，沒有第二個狀態要維護。
@@ -3987,68 +4667,12 @@ function itemCard(f){
   r2.appendChild(pw);
   col.appendChild(r2);
 
-  /* 展開列（🔴 v0.05_i §4：房間下拉與備註【同一列、同一個展開狀態】，不做兩個獨立展開）
-       · 需求 8 §3-2：room===null 時點〔已擺〕→ 由 S.expandCause='chip' 進來
-       · 修四      ：點卡片右側的 ▾ → 由 S.expandCause='manual' 進來 */
-  if(S.expandId===f.id){
-    const rr=document.createElement('div'); rr.className='roomrow';
-    const sl=document.createElement('select');
-    const o0=document.createElement('option'); o0.value=''; o0.textContent='未指定';
-    sl.appendChild(o0);
-    ROOMS.forEach(r=>{ const o=document.createElement('option');
-      o.value=r.id; o.textContent=r.name||'未命名'; sl.appendChild(o); });
-    sl.value = f.room || '';
-    sl.onclick=e=>e.stopPropagation();
-    sl.onchange=async e=>{
-      e.stopPropagation();
-      commitCardEdits();                     // 先把同一列的備註存掉，再改房間
-      const v=sl.value;
-      if(!v){
-        if(S.expandCause==='chip'){          // 選「未指定」→ 收起，〔已擺〕維持沒點亮
-          S.expandId=null; S.expandCause=null; buildList(); return;
-        }
-        f.room=null; f.isPlaced=false;       // 手動展開時，「未指定」＝真的把房間清掉
-        await saveItem(f);
-        await reloadObjects(); render(); buildList(); refreshTop(); return;
-      }
-      f.room=v;
-      if(S.expandCause==='chip') f.isPlaced=true;
-      if(f.isPlaced) placeIntoRoomIfOutside(f);
-      await saveItem(f);
-      if(S.expandCause==='chip'){ S.expandId=null; S.expandCause=null; }
-      await reloadObjects(); render(); buildList(); refreshTop();
-    };
-    rr.appendChild(sl);
-    /* 🔴 需求 22：長寬高進清單卡片的展開列。
-       [房間下拉] [寬] [深] [高] [備註]
-       🔴 選中面板的長寬高【保留不動】——那是現場調整用的（情境 B、BP-F2 同屏看後果）。
-          兩邊改的是同一個 FURN 物件的同一個欄位，不衝突。 */
-    [['w','寬'],['d','深'],['h','高']].forEach(([k,lab])=>{
-      const box=document.createElement('div'); box.className='szbox';
-      const lb=document.createElement('label'); lb.textContent=lab+' cm';
-      const ip=cardInput(f,k,{cls:'sz', inputmode:'decimal',
-        value: f[k]==null ? '' : String(Math.round(f[k]*10)/10)});
-      box.appendChild(lb); box.appendChild(ip);
-      rr.appendChild(box);
-    });
-    const nt=cardInput(f,'note',{cls:'note', placeholder:'備註'});
-    rr.appendChild(nt);
-    col.appendChild(rr);
-  }
   inb.appendChild(col);
 
-  /* 卡片右側：▾（展開房間／備註）＋ ›（跳回平面圖並選中） */
-  const tg=document.createElement('button'); tg.className='go';
-  tg.textContent = (S.expandId===f.id) ? '▴' : '▾';
-  tg.title='房間與備註';
-  tg.onclick=e=>{
-    e.stopPropagation();
-    commitCardEdits();
-    if(S.expandId===f.id){ S.expandId=null; S.expandCause=null; }
-    else { S.expandId=f.id; S.expandCause='manual'; }
-    buildList();
-  };
-  inb.appendChild(tg);
+  /* 🗑 v0.17_i 修十四 ①：卡片右側那顆 ▾【拿掉了】。
+     Ali：「兩個按鈕沒有畫面指引，我想要整合成一個」＋ 舊抱怨「▾ 在手機上好難按」
+     ⇒ 展開／收合改綁在【整張卡片】上（見下方 card.onclick），右側只留 ›。
+     🔴 這是【拿掉一個現有控制項】，已明寫並經 Ali 2026-09-18 同意（obs O-27）。 */
   const go=document.createElement('button'); go.className='go'; go.textContent='›';
   /* 🔴 v0.09_i 需求 30：三條守衛，【只加訊息、不擋操作】。
      現況重現到的結果是：帶你到平面圖、面板出現、而畫面一片空白且不解釋
@@ -4058,12 +4682,50 @@ function itemCard(f){
     /* ① 沒有任何存活的房間 → 不切分頁，在清單頁說出來。
        ⚠️ 需求 28／29 之後這種情況應該很少，但守衛仍要留（它是最後一道）。 */
     if(!ROOMS.length){ S.listNote='目前沒有任何房間。'; buildList(); return; }
+    /* ╔═ 🔴 v0.17_i 修二｜沒指定房間時，› 不要把人丟到平面圖 ══════════════════╗
+       Ali：「但如果不選房間，為什麼要跳到平面圖上面.....。」
+       舊守衛只擋「一間房都沒有」⇒ 只要專案裡有任何房間，這一件自己沒有房間也照樣
+       切過去，而它沒有座標 ⇒ 畫面停在空白區（O-18 第 6 次變形）。
+       🔴 上面那條 !ROOMS.length 的守衛【留著】，它擋的是另一件事。兩條都要。
+       🔴 cause='manual'（D-3）：她只是想看平面圖，不可以因此被自動擺上去。
+       ⚠️ 建造者補充：§0-7-戊 的四批清單【沒有列到修二】（應是漏列，修二在 _i 有完整
+          規格與 N-302~304）⇒ 併進第二批做，理由是它與修三／修九共用同一套
+          「就地展開 ＋ 把游標送到該去的欄位」。已在測試待辦標明，請 Ali 確認。 ╚═══╝ */
+    if(!roomAlive(f.room)){
+      S.listNote='這一件還沒指定房間，先選一間再看平面圖。';
+      S.expandId=f.id; S.expandCause='manual';
+      buildList();
+      const sl=document.querySelector(`.icard[data-id="${f.id}"] .cedit select`);
+      if(sl){ try{ sl.closest('.icard').scrollIntoView({block:'center'}); }catch(err){} sl.focus(); }
+      return;                       // 🔴 不要 setTab('plan')
+    }
     /* ②③ 照樣過去、照樣選中——她可能就是要去看那個房間長怎樣。
        訊息由 syncSel() 依 room／isPlaced 產生。 */
     S.listNote='';
     select(f.id); centerOn(f); setTab('plan'); };
   inb.appendChild(go);
-  card.appendChild(inb);
+  body.appendChild(inb);
+  /* 展開列（🔴 v0.05_i §4：房間下拉與備註【同一個展開狀態】，不做兩個獨立展開）
+       · 需求 8 §3-2：room===null 時按〔擺上圖〕→ 由 S.expandCause='chip' 進來
+       · 修十四    ：點卡片本體 → 由 S.expandCause='manual' 進來 */
+  if(S.expandId===f.id) body.appendChild(cardEditRow(f));
+  card.appendChild(body);
+
+  /* ╔═ 🔴 v0.17_i 修十四 ②｜點卡片本體＝展開／收合 ════════════════════════════╗
+     沿用原本 ▾ 的整段邏輯（commitCardEdits → 切換 expandId／expandCause → buildList），
+     🔴 邏輯一行不改，只是換一個觸發元素；目標從 30px 的鈕變成整張卡片。
+     不會誤觸的依據（查碼）：所有輸入框與下拉都已經 e.stopPropagation()，
+     chipBtn 也有（3947），本批新增的〔動作鈕〕與 🗑 也各自加了。
+     ⚠️ 建造者的一個收斂（規格只寫「.icard 的任何非輸入、非按鈕區域」）：
+        點在【展開列內部】的空白／標籤上不收合 —— 否則她正在填欄位時碰到標籤，
+        整列就關起來，而那正是修三／修九要把她送進去的地方。 ╚═══════════════╝ */
+  card.onclick=e=>{
+    if(e.target.closest && e.target.closest('.cedit')) return;
+    commitCardEdits();
+    if(S.expandId===f.id){ S.expandId=null; S.expandCause=null; }
+    else { S.expandId=f.id; S.expandCause='manual'; }
+    buildList();
+  };
   return card;
 }
 /* is_placed false → true 的兩條邊界（需求 8） */
@@ -4095,9 +4757,20 @@ function placeIntoRoomIfOutside(f){
   const c=roomCenter(f.room);
   if(c) f.anchor={type:'free', x:c.x, y:c.y};
 }
-async function toggleChipPlaced(id){
+/* ╔═ 🔴 v0.17_i §0-5 A-3 ＋ 新引入-1｜setPlaced(id, want) ═══════════════════════╗
+   舊的 toggleChipPlaced 是【toggle】，不吃「要變成什麼」。
+   乙-0 的動作鈕按下去是一個【確定的方向】（待擺→擺上去／已擺→收回），
+   ⇒ 需要一個吃參數的版本，否則「狀態看得見了，但點它會說謊」。
+   🔴 每一條分支的【內容】一行不改，只是為了吃參數而搬家（A-3 的鬆綁條款）。
+   守衛順序（新引入-1 指定，不可換）：
+     ① f.isPlaced===want ⇒ 什麼都不做（點「它現在就是這樣」＝沒事發生）
+     ② want===false ⇒ 收回那一路【不檢查房間】（收回不需要房間）
+     ③ 以下才是原本 false→true 的整段
+   ⚠️ toggleChipPlaced 保留成薄殼：舊呼叫點（若有）語意不變。 ╚═══════════════╝ */
+async function setPlaced(id, want){
   const f=FURN.find(x=>x.id===id); if(!f) return;
-  if(f.isPlaced){
+  if(!!f.isPlaced === !!want) return;
+  if(want===false){
     /* 🔴 true → false：anchor 保留不動（與「清擺設」一致）——它記得上次擺哪 */
     f.isPlaced=false;
     await saveItem(f);
@@ -4128,6 +4801,11 @@ async function toggleChipPlaced(id){
   setTab('plan');              // ② 帶到它在的地方（setTab 內含 render/syncSel）
   ensureVisible(f);            // ③ 若它在畫面外 → 平移過去（🔴 不動 zoom）
   render(); buildList(); syncSel();
+}
+/* 薄殼：語意與舊版完全相同（「反轉」），給還在用 toggle 語意的呼叫點。 */
+async function toggleChipPlaced(id){
+  const f=FURN.find(x=>x.id===id); if(!f) return;
+  return setPlaced(id, !f.isPlaced);
 }
 /* 🔴 v0.07_i 需求 24：只平移，【不動 zoom】。
    理由：zoom 是使用者剛剛自己調的，而長度比例尺是由 zoom 實算的（需求 14／_d §10-2c）
@@ -4180,34 +4858,37 @@ function buildList(){
     const n=document.createElement('div'); n.className='listnote';
     n.textContent=S.listNote; box.appendChild(n);
   }
-  /* 🔴 v0.09_i 需求 33：孤兒（room 指向已刪房間）要落進既有的「未擺放」分組，
-     不要新開一個分組，更不可以兩個分組都收不下而【安靜地消失】。
-     ⚠️ 舊條件 `!f.isPlaced || !f.room` 收不到孤兒（f.room 有值、truthy）
-        而上面的 ROOMS.forEach 也收不到它（那間房間不在 ROOMS 裡）
-        ⇒ 家具 3 筆、清單只渲染 2 張，且沒有任何訊息
-        ⇒ 這是「用『什麼都沒有』表達某件事」的第八次變形。 */
-  const unplaced=FURN.filter(f=>!f.isPlaced || !roomAlive(f.room));
-  if(!FURN.length && !ROOMS.length){
-    // 空狀態：一個圖示 ＋「還沒有項目」＋ (+) 仍在（同一顆）
+  /* ╔═ 🔴 v0.17_i 修十｜分組【只看房間】，不再用「擺沒擺」切群組 ═══════════════╗
+     Ali：「未擺這一選項，要放到他的指定房間裡面。本來的未擺變成未指定房間。」
+     ⇒ 一件已經指定客廳、但還沒擺上去的桌子，要出現在【客廳】底下。
+     🔴 丙-1：判準用 roomAlive(f.room)，【不可以】用 f.room 的 truthy ——
+        孤兒（room 有值、但那間房已被另一台軟刪）的 f.room 是 truthy，
+        用 truthy 判就會兩邊都收不下 ⇒ 從清單上安靜消失（O-18 的第 7 次變形，
+        v0.09_i 需求 33 修好過一次）。
+     🔴 「已擺／待擺」的區別改由【卡片上那顆會換臉的動作鈕 ＋ 左側色條】表達（乙-0）。
+     ⚠️ groupHead 的「N 件」語意因此變了：從「已擺 N 件」變成「共 N 件」（含待擺）。
+        這是預期的改變，已寫進交付必講。 ╚═══════════════════════════════════════╝ */
+  /* 🔴 丙-1 ②：空狀態要搬家。舊版把「📋 還沒有項目」掛在【未擺放群組的 if 裡面】，
+     拿掉那個群組之後，「有房間、一件家具都沒有」時清單頁會只剩幾個 0 件的房間標題、
+     一句話都沒有 ⇒ 改成掛在 buildList() 頂層，判準是 !FURN.length。
+     ⚠️ 位置選在【群組之前】（建造者決定）：她有 11 間房，放最後會被標題擠到看不見。 */
+  if(!FURN.length){
     const e=document.createElement('div'); e.className='empty';
     e.innerHTML='<span class="ic">📋</span>還沒有項目';
     box.appendChild(e);
-    return;
   }
   ROOMS.forEach(r=>{
-    const items=FURN.filter(f=>f.room===r.id && f.isPlaced);
+    const items=FURN.filter(f=>roomAlive(f.room) && f.room===r.id);
     // 一個房間 0 件 → 分組標題仍顯示（「N 件」寫 0）
     box.appendChild(groupHead(r.name||'未命名', roomColor(r.id), items.length, r.id));
     items.forEach(f=>box.appendChild(itemCard(f)));
   });
-  if(unplaced.length || !FURN.length){
-    box.appendChild(groupHead('未擺放','var(--dim)',unplaced.length,null));
-    if(!unplaced.length){
-      const e=document.createElement('div'); e.className='empty';
-      e.innerHTML='<span class="ic">📋</span>還沒有項目';
-      box.appendChild(e);
-    }
-    unplaced.forEach(f=>box.appendChild(itemCard(f)));
+  /* 🔴 「未指定房間」＝真的沒有房間可去的那些（room 為 null／空，以及孤兒）。
+     它與「未擺放」不是同一件事：未擺放已經回到它自己的房間底下了。 */
+  const noRoom=FURN.filter(f=>!roomAlive(f.room));
+  if(noRoom.length){
+    box.appendChild(groupHead('未指定房間','var(--dim)',noRoom.length,null));
+    noRoom.forEach(f=>box.appendChild(itemCard(f)));
   }
 }
 /* 需求 8 §3-1：點 (+) 直接建一筆新項目（🔴 不開挑選器——挑選器是 v0.1.5），
