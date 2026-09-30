@@ -2,8 +2,25 @@
      檔案本身沒有這一行就會變亂碼（v0.1.2.2 踩過）。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>【測試版】裝修估價 App 互動預覽 v0.1.9</title>
+<title>【測試版】裝修估價 App 互動預覽 v0.1.10</title>
 <!--
+  裝修估價 App — 手機互動預覽　版次：v0.1.10（進版：相簿序號與顏色 ＋ v0.1.9 驗收回饋 P1～P11）
+  作者：claude（建造者 a7cff279bf59c6e92）/ 2026-10-01
+  規格：v0.1.10_探索/修正需求/裝修估價App_修正需求表_v0.23_i_claude_20260930.md（🔴 §0d ＞ 下文；v0.22_i 未被提到的沿用）
+  讀坑：v0.1.10_探索/_關卡報告/建造前讀坑_v0.1.10_opus_20260930.md（①～⑦；⑦ P9 改案取代 ④ 的 SQL 與 #6／#10）
+  SQL ：v0.1.10_探索 的「序號＋顏色（雲端發號）」那一份（Ali 10-01 已貼；albums.no／albums.color 由雲端 trigger 發，App 只讀）
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║ 🔴 v0.1.10 本輪待辦（7 批；做完一批就在前面標 ✅）                      ║
+  ║ ✅ 批 1　P1 存失敗要講原因、不留空相簿（本機三筆先寫、全成功才推）      ║
+  ║ ✅ 批 2　P7 背景續傳（pushPending＋回前景、sbFetch 逾時、暫時性分類）   ║
+  ║ ✅ 批 3　P9 資料層（no／color 只讀：不送、BACKFILL、回傳列套用）        ║
+  ║ ✅ 批 4　P9 顯示（#序號、淡色相機、選中樣式、滑塊同色）                ║
+  ║ ✅ 批 5　介面（P2 整批閃／P3＋P10 放大按鈕／P4 0.8 秒／P5／P6）         ║
+  ║ ✅ 批 6　P11 圖層列（橫捲＋漸層＋四個 CSS 變數）                      ║
+  ║ ✅ 批 7　收尾                                                          ║
+  ║ 施工紀錄：v0.1.10_探索/_關卡報告/施工紀錄_v0.1.10_opus_20261001.md     ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+  ── 以下為 v0.1.9 的檔頭，保留備查 ──
   裝修估價 App — 手機互動預覽　版次：v0.1.9（進版：相簿 ＋ 下-28）
   作者：claude（建造者 a7cff279bf59c6e92）/ 2026-09-30
   規格：v0.1.9_探索/修正需求/裝修估價App_修正需求表_v0.22_i_claude_20260929.md
@@ -13,9 +30,25 @@
   ║ ✅ 批 1　下-28：isFlushToWall ＋〔🧲〕三態 ＋ litWall                  ║
   ║ ✅ 批 2　本機資料層（deco_album DB、兩個 store、UUIDv5）＋ 搬家（本機） ║
   ║ ✅ 批 3　同步層（Ali 09-30 貼完 SQL）＋ ✅ 批 4　進件／原檔上雲／用量   ║
-  ║ 　 批 5～10　相簿畫面／放大與刪除／垃圾桶／釘子與定位／zip／收尾       ║
+  ║ ✅ 批 5　相簿畫面　✅ 批 6　放大畫面＋刪除框                            ║
+  ║ ✅ 批 8　平面圖釘子＋預覽卡＋定位模式　✅ 批 9　匯出 zip                ║
+  ║ ✅ 追加　§3 搜尋佔位框（Ali 09-30 裁 b）                                 ║
+  ║ ✅ 批 7　垃圾桶頁＋永久刪除（purged_at＋purge_photo＋待刪檔清單）＋原檔管理 ║
+  ║ ✅ 批 10　收尾（O-37 全檔掃、舊註解改寫、死碼拿掉、檔頭、測試待辦、_debug） ║
   ║ 施工紀錄：v0.1.9_探索/_關卡報告/施工紀錄_v0.1.9_opus_20260930.md       ║
+  ║ 測試待辦：v0.1.9_探索/測試待辦_v0.1.9.md                                ║
   ╚══════════════════════════════════════════════════════════════════════╝
+  ── v0.1.9 做了什麼（給下一個接手的人；細節與行號見施工紀錄）──
+   相簿三層　相簿 album ─ 相簿裡的一張 album_photo（名字／備註／排序各本一份）─ 照片本身（deco_probe.photos）
+   資料庫　　相簿兩個 store 在【另一個】IndexedDB（ENV_PREFIX＋deco_album）；deco_probe 維持 v3 ⇒ 可回退 v0.1.8.1
+   搬家　　　第一次開：每張舊照片＝一本相簿（UUIDv5 推 id，可重複執行、兩台不會變兩本）
+   同步　　　六張物件表＋照片；pull 一律翻頁（sbFetchAll）；推送用 return=representation 當場套用；data_ver 只讀
+   刪除　　　一律軟刪（batch_id＝垃圾桶一行）；垃圾桶 183 天；永久刪除＝purged_at 墓碑（雲端 trigger 擋復活）
+   　　　　　照片本身只在「沒有任何未永久刪除的 album_photo」時走 RPC purge_photo，再刪 Storage 兩個檔
+   原檔　　　上傳前清 GPS（jpg 原地清、非 jpg 轉 jpg）；70% 只存壓縮版、95% 擋上傳；〔備份原檔〕〔刪除雲端的原檔〕
+   平面圖　　相簿釘子（畫面座標、固定大小）＋預覽卡＋定位模式（另一個面板元素 #pinSel）
+   🔧 測試開關（只給建造者／測試用；開著時診斷列會寫出來）：localStorage deco.usageFake（用量）、deco.nowFake（現在時間）
+   🛑 碼裡只有 anon key；service_role 永不進本檔。不改全域 viewport。
   ── 以下為 v0.1.8.1 的檔頭，保留備查 ──
   版次：v0.1.8.1（補釘，v0.1.8 驗收後的介面調整）
   作者：claude（建造者 ab69b49035b365e52）/ 2026-09-28 / 對應 _d v0.43
@@ -180,7 +213,7 @@
    需求 2  本機持久化：DB_VER 2、四個 store、onblocked／onversionchange
    需求 3  雲端四張表 SQL（見 v0.02_i 需求 3，本檔不含 SQL，由 Ali 貼進 Supabase）
    需求 4  物件資料層八函式 ＋ 單位換算（DB 公釐整數／記憶體公分浮點）＋ 時區走 ISO
-   需求 5  種子範例、清擺設／清清單、垃圾桶（purgeTrash 只刪本機，雲端留墓碑）
+   需求 5  種子範例、清擺設／清清單、垃圾桶（🗂 v0.1.9 批 7 起：183 天、永久刪除寫 purged_at 墓碑＋照片走 purge_photo）
    需求 6  房間改名／刪除（含 anchor 就地轉絕對座標，🔴 先算 place() 再刪牆）
    需求 7  家具 CRUD ＋ 存檔顆粒度（blur／Enter／visibilitychange）＋ 無效輸入紅框
    需求 8  清單頁版面（房間色條、chip、缺什麼直接標、浮動 (+)、icon 欄留空 46px）
@@ -217,22 +250,32 @@
    ⇒ --fs 是一個【乘數】：所有 font-size 都寫成 calc(原本px * var(--fs))
      ⇒ 之後要再調只改這一個數字，不必逐處調（v0.09_i 明訂「只改一個基準來源」）
    ⚠️ 只動【字】——不動任何按鈕高度、間距、容器尺寸。 */
-:root{ --fs:1.2; }
+:root{ --fs:1.2;
+  /* ╔═ 🔴 v0.1.10 P11｜平面圖圖層列的四個尺寸（Ali 10-01 用滑桿定案；之後只改這四行）═══╗ */
+  --lb-w:   1.30;   /* 按鈕長度（倍數；1＝v0.1.9 的 .chip 自然寬 --lb-w0） */
+  --lb-h:   1.05;   /* 按鈕高度（倍數；1＝26px） */
+  --lb-ic:  1.50;   /* icon 大小（倍數；1＝11px × --fs） */
+  --lb-gap: 4px;    /* 按鈕間距 */
+  --lb-w0:  38px;   /* 基準寬：v0.1.9 最寬那顆 chip 的自然寬（施工時實量 37.8 px，375 寬手機模式、--fs 1.2） */
+}
 :root{
   --bg:#f6f5f2; --panel:#fff; --ink:#232323; --sub:#6b6b6b; --line:#dcd8d0;
   --accent:#3a6ea5; --wall:#4a4a4a; --furn:#8fa8bd; --furnSel:#3a6ea5;
   --warnA:#e08b2a; --warnB:#cf4444; --ok:#4a8f5e; --ghost:#9bb8d4; --dim:#b9b4ab;
+  --mark:#d0451b;   /* 🔴 v0.1.9 §10-1：相簿釘子（相機）的顏色，照預覽第六版 */
 }
 :root:not([data-theme="light"]){}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#1c1d1f; --panel:#26282b; --ink:#ececec; --sub:#a0a0a0; --line:#3a3d41;
   --accent:#7fb0e0; --wall:#c8c8c8; --furn:#48606f; --furnSel:#7fb0e0;
   --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e; --dim:#5a5a5a;
+  --mark:#ff8a5c;
 }}
 :root[data-theme="dark"]{
   --bg:#1c1d1f; --panel:#26282b; --ink:#ececec; --sub:#a0a0a0; --line:#3a3d41;
   --accent:#7fb0e0; --wall:#c8c8c8; --furn:#48606f; --furnSel:#7fb0e0;
   --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e; --dim:#5a5a5a;
+  --mark:#ff8a5c;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -286,10 +329,27 @@ body{margin:0;background:var(--bg);color:var(--ink);
       吸附＝擺放手感；網格全顯＝Ali 用來自己確認走道有沒有相撞（_d §13-38，
       方向 #9「算給你看，不替你判斷」）。舊註解說「正式版沒有這排」已過期，已改寫。 */
 .protobar{flex:none;background:var(--panel);border-bottom:1px solid var(--line);
-  padding:5px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:calc(12px * var(--fs));
+  padding:5px 8px;display:flex;gap:var(--lb-gap);align-items:center;font-size:calc(12px * var(--fs));
   /* 🔴 v0.19_i §1-4a：清單頁／照片頁這一列【留白但版位留著】⇒ 高度固定，切分頁不會跳動。
-     （*{box-sizing:border-box} 在 220 行 ⇒ 這 38px 已含 padding 與 border。） */
-  min-height:38px}
+     🔴 v0.1.10 P11：高度＝按鈕高＋12（上下 padding 5＋5、下框線 1、餘 1 ＝ v0.1.9 那個 38 的算法）；
+        用 height 不用 min-height ⇒ 列高只由按鈕高決定，四頁一樣高。
+        不折行、放不下就左右滑（不顯示捲軸）；touch-action:pan-x ⇒ 手指只做橫捲，也不會帶動平面圖（兩個是不同元素）。 */
+  height:calc(26px * var(--lb-h) + 12px);
+  flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain}
+.protobar::-webkit-scrollbar{display:none}
+/* 🔴 v0.1.10 P11：只改平面圖圖層列的按鈕（其他地方的 .chip 不動）。
+   上下 padding 0、行高 1、置中：icon 19.8 px 的 emoji 墨水約 23～24 px，按鈕內高 25.3 px ⇒ 放得下；
+   🛑 不可以加 overflow:hidden（Android 的 emoji 上下只剩約 0.5 px，會剛好切到）。 */
+#layerBar .chip{flex:none;height:calc(26px * var(--lb-h));min-height:0;min-width:calc(var(--lb-w0) * var(--lb-w));
+  padding:0 9px;line-height:1;font-size:calc(11px * var(--fs) * var(--lb-ic));
+  display:inline-flex;align-items:center;justify-content:center}
+#layerBar .lsep{height:calc(18px * var(--lb-h))}
+/* 右緣（與左緣）漸層：還能往那邊滑才出現。放在外框上（漸層放在會捲的元素裡面會跟著捲走）。 */
+.lbwrap{position:relative;flex:none}
+.lbfade{position:absolute;top:0;bottom:1px;width:28px;pointer-events:none;opacity:0;transition:opacity .15s}
+.lbfade.r{right:0;background:linear-gradient(to right,transparent,var(--panel))}
+.lbfade.l{left:0;background:linear-gradient(to left,transparent,var(--panel))}
+.lbwrap.more-r .lbfade.r,.lbwrap.more-l .lbfade.l{opacity:1}
 /* 🔴 §1-4a：空的時候 background 與 border-bottom 都拿掉（透明），只保留高度。
    理由：.protobar 自己有面板底色＋下框線 ⇒ 空的時候會變成「一條看得見的空橫條」，
    正好撞上 .icard .icon 那條先例寫的「留空 ≠ 留一個看得見的空框」。
@@ -392,6 +452,10 @@ body{margin:0;background:var(--bg);color:var(--ink);
      —— 那正是 §10-3 要避免的 obs O-18。
    ✅ 比照 .btn:disabled，不新造語彙。 */
 .chip:disabled{opacity:.42;cursor:default}
+/* 🔴 v0.1.9 §3：相簿清單頁的搜尋佔位框（灰色、不能按）。高度 26px＝.chip 的 min-height ⇒ 整條仍是 38px。 */
+.srchph{flex:1;min-width:0;height:calc(26px * var(--lb-h));border:1px solid var(--line);border-radius:20px;padding:0 10px;
+  font-size:calc(12px * var(--fs));font-family:inherit;color:var(--sub);background:var(--bg);opacity:.6;
+  pointer-events:none;-webkit-user-select:none;user-select:none}
 /* ╔═ 🔴 v0.17_i 乙-0／乙-6｜【一顆會換臉的動作鈕】，取代舊的〔已擺〕chip ═══════╗
    待擺 →〔擺上圖〕　已擺 →〔收回清單〕　—— 同一個位置、同一顆按鈕。（v0.21_i B-3：拿掉 ↩）
    🔴 刻意【不用】chip 的膠囊樣式，也不用兩段切換條（_d §13-36 已結案）：
@@ -648,30 +712,133 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .orig svg{flex:none}
 .orig .t{font-size:calc(10.5px * var(--fs));color:var(--sub);line-height:1.35}
 
-/* ── 📷 照片分頁 ── */
-.pbtns{display:flex;gap:8px;margin-bottom:10px}
-.pbtns label{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
-  min-height:52px;border:1px solid var(--line);border-radius:10px;background:var(--panel);
-  cursor:pointer;font-size:calc(13px * var(--fs));font-weight:600}
-.pbtns label:active{background:var(--accent);color:#fff}
-.pbtns input{display:none}
+/* ── 📷 相簿分頁（v0.1.9 批 5；取代舊的照片分頁）── */
+/* pstat：狀態小方塊（envNote、資料庫錯誤、上傳訊息共用這個外觀） */
 .pstat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   padding:9px 11px;margin-bottom:10px;font-size:calc(11.5px * var(--fs));color:var(--sub);line-height:1.7;
   font-variant-numeric:tabular-nums}
 .pstat b{color:var(--ink)}
-.pcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  padding:9px;margin-bottom:8px;display:flex;gap:10px}
-.pcard .thumbs{flex:none;display:flex;flex-direction:column;gap:4px;align-items:center}
-.pcard img,.pcard canvas{width:76px;height:76px;object-fit:contain;border-radius:7px;
-  background:#2a2a2a;border:1px solid var(--line);display:block;cursor:pointer}
-.pcard img:active{outline:2px solid var(--accent)}
-.pcard .tlab{font-size:calc(9px * var(--fs));color:var(--sub)}
-.pcard .meta{flex:1;min-width:0;font-size:calc(11px * var(--fs));color:var(--sub);line-height:1.65;
-  font-variant-numeric:tabular-nums;word-break:break-all}
-.pcard .meta b{color:var(--ink);font-size:calc(12px * var(--fs))}
-.pcard .bad{color:var(--warnB);font-weight:600}
-.pcard .good{color:var(--ok)}
-.pcard .acts{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.pstat .bad{color:var(--warnB);font-weight:600}
+.pstat:empty{display:none}
+/* 頂端一排：〔📷〕〔＋ 上傳到：… ▾〕 */
+.atop{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.atop .ttl2{font-weight:600;font-size:calc(14px * var(--fs));flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atop .ttl2.edit{border-bottom:1px dashed var(--sub);cursor:text}
+.abtn{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;
+  padding:6px 10px;font:inherit;font-size:calc(12.5px * var(--fs));min-height:34px;cursor:pointer;
+  white-space:nowrap}
+.abtn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.abtn:disabled{opacity:.42;cursor:default}
+.abtn.sm{min-height:28px;padding:3px 9px;font-size:calc(11.5px * var(--fs))}
+/* 上傳鈕＝主體＋▾ 兩塊（主體＝選照片、▾＝換目標，R-36） */
+.upl{display:inline-flex;align-items:stretch}
+.upl .abtn:first-child{border-radius:8px 0 0 8px}
+.upl .abtn.dd{border-radius:0 8px 8px 0;border-left:1px solid color-mix(in srgb,#fff 40%,transparent);padding:6px 9px}
+.upl .abtn:disabled + .abtn{opacity:.42}
+/* 用量條（§9-4：常駐、同一條、不跳視窗） */
+.usage{padding:7px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;
+  font-size:calc(11.5px * var(--fs));color:var(--sub);background:var(--panel)}
+.usage .ubar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px}
+.usage .ubar i{display:block;height:100%;background:var(--ok)}
+.usage.warn{background:color-mix(in srgb,var(--warnA) 14%,var(--panel));color:var(--ink)}
+.usage.warn .ubar i{background:var(--warnA)}
+.usage.full{background:color-mix(in srgb,var(--warnB) 12%,var(--panel));color:var(--ink)}
+.usage.full .ubar i{background:var(--warnB)}
+.usage .uacts{display:flex;gap:6px;margin-top:6px}
+.usage.thin{padding:4px 10px}
+/* 清單頁的相簿卡（圖 1） */
+.alb{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:9px}
+.alb.flash{animation:cardflash .9s ease-out 1}
+.alb .ah{display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;min-height:30px}
+.alb .an{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alb .am{font-size:calc(11px * var(--fs));color:var(--sub);white-space:nowrap}
+/* 🔴 F-3：橫排的起點離左緣 ≥ 20px（卡片 margin 10＋padding 8＋這裡 4），避開 iPhone 左緣返回手勢 */
+.astrip{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:0 4px 2px;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x pan-y}
+.astrip::-webkit-scrollbar{display:none}
+.astrip .tn{flex:none;height:88px;position:relative;border-radius:6px;overflow:hidden;
+  background:var(--line);scroll-snap-align:start;cursor:pointer}
+.astrip .tn img{height:88px;width:auto;display:block}
+.astrip .tn.ph{width:88px;display:flex;align-items:center;justify-content:center;
+  font-size:calc(10px * var(--fs));color:var(--sub)}
+.astrip .empty1{flex:none;width:118px;height:88px;border-radius:6px;border:1px dashed var(--line);
+  background:color-mix(in srgb,var(--line) 30%,transparent)}
+/* 沒有原檔的照片：右側橘色直條（§3） */
+.origbar{position:absolute;right:0;top:0;bottom:0;width:6px;background:var(--warnA)}
+.scrub{position:relative;height:18px;margin:6px 4px 0;touch-action:none;cursor:pointer}
+.scrub .tr{position:absolute;left:0;right:0;top:7px;height:4px;border-radius:2px;background:var(--line)}
+.scrub .th{position:absolute;top:3px;height:12px;border-radius:6px;background:var(--accent);min-width:14px}
+/* 🔴 v0.1.10 P8／P9：滑塊＝該相簿的顏色（淡色）＋ 1px 深色邊（淡色放在淺灰軌道上，沒有邊線看不出來；邊線對軌道 8.0:1） */
+.scrub .th.col{border:1px solid #3a3a3a;box-sizing:border-box}
+/* 🔴 v0.1.10 P9：相簿序號「#3」（名稱左邊）、色點、內頁標題下的細色線 */
+.ano{flex:none;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;margin-right:2px}
+.csw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #3a3a3a;vertical-align:-1px;margin-right:5px;flex:none}
+.acline{height:3px;border-radius:2px;margin:-2px 0 8px}
+.scrubt{font-size:calc(10.5px * var(--fs));color:var(--sub);margin:1px 4px 0;font-variant-numeric:tabular-nums}
+/* 🔴 R-38：只有相簿畫面的卡片關掉選字與 iPhone 長按圖片選單（🛑 不退回全頁白名單，O-26） */
+.alb,.apc{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* 🔴 v0.1.10 P6：iPhone 長按圖片會跳「儲存影像」⇒ callout 要設在 img 本身才確定有效 */
+.astrip .tn img,.apc .tbox img{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none}
+.alb img,.apc img{-webkit-user-drag:none}
+/* 相簿內頁的照片卡（圖 2） */
+.apc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:7px;
+  display:flex;gap:9px;align-items:flex-start;position:relative}
+.apc.flash{animation:cardflash .9s ease-out 1}
+.apc.sel{outline:2px solid var(--accent)}
+.apc.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:5}
+.apc .tbox{flex:none;width:88px;height:88px;display:flex;align-items:center;justify-content:center;
+  position:relative;border-radius:6px;overflow:hidden;background:var(--bg);cursor:pointer}
+.apc .tbox img{max-width:88px;max-height:88px;display:block}
+.apc .tx{flex:1;min-width:0;font-size:calc(12.5px * var(--fs))}
+.apc .l1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.apc .nm2{font-weight:600;font-size:calc(13.5px * var(--fs));border-bottom:1px dashed var(--sub);cursor:text;
+  min-width:0;overflow-wrap:anywhere}
+.apc .nm2.ph{color:var(--sub)}
+.apc.multi .nm2{border-bottom:0;cursor:default}
+.apc .nbtn{font-size:calc(11px * var(--fs));border:1px solid var(--accent);color:var(--accent);background:transparent;
+  border-radius:6px;padding:1px 7px;font-family:inherit;cursor:pointer;min-height:24px}
+.apc .nbtn.on{background:var(--accent);color:#fff}
+.apc .nt{margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere}
+.apc .nt.noval{color:var(--sub);opacity:.75}   /* ⚠️ 不可叫 .empty：全檔已有 .empty（空狀態，置中＋48px 內距），自驗撞到過 */
+.apc input.ed,.apc textarea.ed{width:100%;font:inherit;border:2px solid var(--accent);border-radius:6px;
+  padding:4px 6px;background:var(--bg);color:var(--ink);-webkit-user-select:text;user-select:text}
+.apc textarea.ed{min-height:3.2em;resize:vertical}
+.apc .st{font-size:calc(10.5px * var(--fs));color:var(--sub);margin-top:3px}
+.apc .st .retry{color:var(--warnB);text-decoration:underline;cursor:pointer}
+.apc .grip{flex:none;align-self:stretch;display:flex;align-items:center;padding:0 6px;
+  color:var(--sub);font-size:calc(18px * var(--fs));cursor:grab;touch-action:none}
+.apc .ck{flex:none;width:22px;height:22px;border:2px solid var(--sub);border-radius:50%;margin-top:33px;position:relative}
+.apc .ck.on{background:var(--accent);border-color:var(--accent)}
+.apc .ck.on::after{content:"✓";color:#fff;position:absolute;left:4px;top:-2px;font-size:13px}
+.atool{position:sticky;bottom:0;display:flex;justify-content:space-around;gap:6px;background:var(--panel);
+  border-top:1px solid var(--line);padding:8px 4px;margin:8px -10px 0}
+.atool .abtn{flex:1}
+.gonebox{padding:24px 12px;text-align:center;color:var(--sub)}
+/* 選單（▾ 換上傳目標／轉移複製的目標／⋯）＝頁內覆蓋層，z 55（高於放大畫面 47、確認框 50） */
+.ovm{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.30);display:flex;align-items:flex-end;justify-content:center}
+.ovm[hidden]{display:none!important}
+.ovm .mbox{background:var(--panel);width:100%;max-width:520px;max-height:70vh;overflow-y:auto;
+  border-radius:14px 14px 0 0;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px))}
+.ovm .mt{font-size:calc(12px * var(--fs));color:var(--sub);padding:6px 16px 8px}
+.ovm .mi{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;
+  color:var(--ink);font:inherit;font-size:calc(13.5px * var(--fs));padding:11px 16px;cursor:pointer}
+.ovm .mi:disabled{color:var(--dim);cursor:default}
+.ovm .mi .ms{font-size:calc(11px * var(--fs));color:var(--sub);margin-left:6px}
+.ovm .mi.danger{color:var(--warnB)}
+.ovm .mi.cur{color:var(--accent);font-weight:600}
+/* 勾選清單框（§8-1／§8-2；🔴 R-21：新元件，不把 askDialog 改成第四種模式）z 52 */
+.ovp{position:fixed;inset:0;z-index:52;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:16px}
+.ovp[hidden]{display:none!important}
+.ovp .prow{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);
+  font-size:calc(12.5px * var(--fs));cursor:pointer}
+.ovp .prow .box{width:20px;height:20px;border:2px solid var(--sub);border-radius:4px;flex:none;margin-top:1px}
+.ovp .prow .box.on{background:var(--warnB);border-color:var(--warnB)}
+.ovp .prow .sub{color:var(--sub);font-size:calc(11px * var(--fs))}
+.ovp .pacts{display:flex;justify-content:flex-end;gap:8px;margin-top:11px;flex-wrap:wrap}
+.ovp .pacts .btn{flex:none;padding:9px 12px}
+.btn.dangerfill{background:var(--warnB);border-color:var(--warnB);color:#fff}
+.fhide{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 
 /* ╔═ 🔴 v0.19_i §下-9｜房間備註頁 ═══════════════════════════════════════════════╗
    🔴🔴 z-index:45 —— 現有層級 zoombtns 10／sel 20／fab 24／pinning 25／tabbar 30／
@@ -704,24 +871,75 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .notepage .nprow #npCancel{flex:0 0 32%;min-height:46px}
 .notepage .nprow #npDone{flex:1;min-height:46px}
 
-.viewer{position:fixed;inset:0;z-index:60;background:rgba(16,16,16,.96);
+/* ╔═ 🔴 v0.1.9 批 6｜放大畫面（圖 4）═══════════════════════════════════════════════════╗
+   🔴 R-21：z-index 47（高於備註頁 45、低於確認框 .ov 50、勾選清單框 52、選單 55）
+      ⇒ 在放大畫面上按〔刪除〕〔轉移／複製〕跳出的框看得到、按得到（相-34）。舊的 60 會把它們蓋住、App 卡死。
+   🔴 直／橫換版用 CSS 的 orientation（§5）—— 🛑 不改全域 viewport。
+   🔴 Q-A3（Ali 09-30 選甲）：直拿時〔回上一頁〕（v0.1.10 P10 前叫〔✕ 關閉〕）在照片正下方、按鈕列最前面；橫放時在右欄最下面。 ╚═╝ */
+.viewer{position:fixed;inset:0;z-index:47;background:rgba(16,16,16,.97);color:#eee;
   display:flex;flex-direction:column}
 .viewer[hidden]{display:none!important}
-.viewer .vimg{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}
-.viewer .vimg img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-.viewer .vbar{flex:none;color:#eee;font-size:calc(11.5px * var(--fs));line-height:1.7;padding:9px 12px;
-  background:rgba(0,0,0,.55);font-variant-numeric:tabular-nums;word-break:break-all}
-.viewer .vbar b{color:#fff}
-/* 🔴 需求 17：關閉鈕在【圖片正下方】，整寬、高度 ≥ 44px（已驗收的觸控尺寸）。
-   position 不再是 absolute ⇒ 它參與 flex 排版，圖片區高度自動縮小、圖片仍 contain 不裁切。 */
-.viewer .vclose{flex:none;margin:0 12px 8px;min-height:46px;
-  background:rgba(255,255,255,.14);color:#fff;border:1px solid #888;border-radius:10px;
-  font-size:calc(15px * var(--fs));font-weight:700;padding:10px 13px;cursor:pointer;font-family:inherit}
-.viewer .vclose:active{background:rgba(255,255,255,.28)}
+.viewer .vstage{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;
+  display:flex;align-items:center;justify-content:center}
+.viewer .vstage img{max-width:100%;max-height:100%;object-fit:contain;display:block;
+  transform-origin:50% 50%;will-change:transform;-webkit-user-drag:none;user-select:none;-webkit-touch-callout:none}
+.viewer .vpos{position:absolute;top:8px;right:12px;font-size:calc(11.5px * var(--fs));color:#aaa;pointer-events:none}
+.viewer .vload{position:absolute;left:12px;top:8px;font-size:calc(11.5px * var(--fs));color:#ddd;pointer-events:none}
+.viewer .vside{flex:none;display:flex;flex-direction:column;max-height:52vh;overflow-y:auto}
+.viewer .vbtns{display:flex;gap:8px;padding:8px 12px;flex-wrap:wrap;order:1}
+.viewer .vbtns .vb{background:#2a2a2a;color:#eee;border:1px solid #555;border-radius:9px;
+  padding:8px 11px;font:inherit;font-size:calc(12.5px * var(--fs));min-height:40px;cursor:pointer}
+.viewer .vbtns .vb:disabled{opacity:.4;cursor:default}
+.viewer .vbtns .vb.close{font-weight:700;background:rgba(255,255,255,.14);border-color:#888}
+.viewer .vinfo{padding:2px 12px 6px;font-size:calc(12.5px * var(--fs));color:#bbb;line-height:1.65;order:2;
+  overflow-wrap:anywhere}
+/* 🔴 v0.1.10 P3：小字那一塊＋右邊的〔刪除照片〕（紅字）＝同一列；不跟其他按鈕擠在一起 */
+.viewer .vbot{display:flex;align-items:flex-end;gap:10px;padding:0 12px 6px;order:2}
+.viewer .vbot .vinfo{flex:1;min-width:0;padding:2px 0 0;order:0}   /* 🔴 .vinfo 本身有 order:2（v0.1.9 直拿的排序）⇒ 放進這一列要歸零，不然〔刪除照片〕會跑到左邊 */
+.viewer .vbot .vb.del{order:1}
+.viewer .vb.del{flex:none;background:transparent;border:1px solid #a33;color:#ff8a8a;font-weight:700;border-radius:9px;
+  padding:8px 11px;font:inherit;font-size:calc(12.5px * var(--fs));font-weight:700;min-height:40px;cursor:pointer}
+.viewer .vb.del:disabled{opacity:.4;cursor:default}
+.viewer .vinfo b{color:#fff;font-size:calc(14px * var(--fs))}
+.viewer .vinfo .on2{color:#fff;font-weight:700;border-bottom:2px solid #7fbf90}
+.viewer .vinfo .on2.w{border-bottom-color:#e0a252}
+.viewer .vinfo .off2{color:#666}
+.viewer .vinfo .er{color:#ff8a8a}
+/* 診斷列（R-40：保留到放大畫面最下面；Ali 09-20：真機跑過一輪後才刪）＋本機儲存配額（pstat） */
+.viewer .vdiag{padding:4px 12px 10px;font-size:calc(10px * var(--fs));color:#888;line-height:1.55;order:3;
+  word-break:break-all;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
+@media (orientation:landscape){
+  .viewer{flex-direction:row}
+  .viewer .vside{width:min(40%,300px);max-height:none;height:100%;border-left:1px solid #333}
+  .viewer .vbtns{flex-direction:column;order:2;padding:6px 10px}
+  .viewer .vbtns .vb{text-align:center}
+  .viewer .vinfo{order:1;padding-top:10px}
+  /* 🔴 v0.1.10 P3：橫放時〔刪除照片〕在文字下面靠右；〔回上一頁〕仍在右欄最下（Q-A3），兩者中間隔開 */
+  .viewer .vbot{order:1;flex-direction:column;align-items:stretch;padding:0 10px 6px}
+  .viewer .vbot .vb.del{align-self:flex-end}
+  .viewer .vdiag{order:2}                     /* 橫放：文字＋刪除照片 → 診斷 → 按鈕 → 回上一頁（§5：右欄由上往下） */
+  .viewer .vbtns{order:3;margin-top:auto}
+  .viewer .vbtns .vb.close{order:9}          /* 🔴 Q-A3：橫放時〔回上一頁〕在右欄最下面 */
+}
 
 .pinning{position:fixed;left:0;right:0;bottom:56px;z-index:25;max-width:520px;margin:0 auto;
   background:var(--accent);color:#fff;padding:11px;text-align:center;font-size:calc(13px * var(--fs));font-weight:600}
 .pinning[hidden]{display:none!important}
+/* 🗂 v0.1.9 R-23：.pinning 這組樣式【保留】—— 舊的 #pinning（標到平面圖提示）拿掉了，
+   但 #beamBack〔‹ 返回設定〕也用這個 class（返回列共用樣式）。 */
+/* ╔═ 🔴 v0.1.9 批 8｜定位提示條（§10-3：藍色、頂端；沒有〔取消〕）與預覽卡（§10-2）═══╗
+   提示條右邊讓出縮放鈕的位置（.zoombtns 在右上）。預覽卡＝底部抽屜，z 21（家具面板 20、分頁列 30）。 ╚═╝ */
+.lochint{position:absolute;left:0;right:54px;top:0;z-index:11;background:var(--accent);color:#fff;
+  font-size:calc(12.5px * var(--fs));padding:7px 10px;pointer-events:none;border-radius:0 0 8px 0}
+.lochint[hidden]{display:none!important}
+.pcardx{position:fixed;left:0;right:0;bottom:56px;z-index:21;max-width:520px;margin:0 auto;
+  background:var(--panel);border-top:1px solid var(--line);border-radius:12px 12px 0 0;
+  box-shadow:0 -4px 14px rgba(0,0,0,.15);padding:6px 10px calc(8px + env(safe-area-inset-bottom,0px))}
+.pcardx[hidden]{display:none!important}
+.pcardx .handle{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 6px;touch-action:none}
+.pcardx .pch{display:flex;align-items:center;gap:6px;margin-bottom:6px;touch-action:none}
+.pcardx .pch b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ovm .mi img{width:32px;height:32px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:8px}
 
 /* ── 需求 13：頁內覆蓋層對話框 ──
    🔴 O-11：沙箱環境裡 window.open／alert／confirm 都不可靠（點了完全沒反應）
@@ -811,6 +1029,25 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .prow{display:flex;gap:6px;flex-wrap:wrap}
 .prow .btn{flex:1;min-width:96px}
 .tcount{font-size:calc(12px * var(--fs));color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
+/* ╔═ 🔴 v0.1.9 批 7｜垃圾桶頁（專案頁的子畫面）＝沿用 .soonrow 的卡片語彙與 .ovp .prow .box 的勾選框，不新造語彙 ═╗ */
+.trashbtn{width:100%;margin-top:8px;text-align:left;justify-content:flex-start}
+.trnote{font-size:calc(11.5px * var(--fs));color:var(--sub);margin:0 2px 8px}
+.trfilt{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.trlist{display:flex;flex-direction:column;gap:7px;padding-bottom:70px}
+.trrow{display:flex;align-items:flex-start;gap:9px;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:10px;cursor:pointer}
+.trrow .box{width:20px;height:20px;border:2px solid var(--sub);border-radius:4px;flex:none;margin-top:2px}
+.trrow .box.on{background:var(--warnB);border-color:var(--warnB)}
+.trmid{flex:1;min-width:0}
+.trt{font-size:calc(13px * var(--fs));font-weight:600;overflow-wrap:anywhere}
+.trs{font-size:calc(11px * var(--fs));color:var(--sub);margin-top:2px;font-variant-numeric:tabular-nums}
+.trth{display:flex;gap:4px;margin-top:6px}
+.trth img,.trth span{width:36px;height:36px;border-radius:5px;object-fit:cover;background:var(--line);flex:none}
+.trres{flex:none;padding:6px 12px}
+.trempty{color:var(--sub);text-align:center;padding:24px 0;font-size:calc(12px * var(--fs))}
+.trfoot{position:sticky;bottom:0;background:var(--bg);padding:8px 0 4px;border-top:1px solid var(--line)}
+.trfoot .btn{width:100%}
+.trwhy{font-size:calc(11px * var(--fs));color:var(--warnB);margin-top:4px}
 /* 🔴 v0.12_i 需求 44-b：設定頁欄位（專案名字／全域樓高／逐根樑的下垂量）。
    ⚠️ 沿用既有 .soonrow 的版位語彙（同樣的圓角卡片一列），不新造一種版面。 */
 .setrow{display:flex;align-items:center;gap:9px;background:var(--panel);
@@ -865,10 +1102,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
   <!-- 🔴 v0.19_i §1-1d：改成【點亮式】(.chip/.chip.on)，內容由 LAYERS 生成。
        舊的 <label class="chk"><input type="checkbox"> 兩組已整組移除
        （元素、CSS、事件繫結一起刪 —— 只刪元素會留下讀它的行，語法過而畫面白）。 -->
-  <div class="protobar" id="layerBar"></div>
+  <!-- 🔴 v0.1.10 P11：外框 #layerBarWrap（放兩道漸層）；#layerBar 本身 id 不變（R-51：讀它的地方不必改） -->
+  <div class="lbwrap" id="layerBarWrap"><div class="protobar" id="layerBar"></div><span class="lbfade l"></span><span class="lbfade r"></span></div>
 
   <div class="stage" id="stage">
     <svg id="plan"></svg>
+    <div class="lochint" id="locHint" hidden>點平面圖任何地方＝把釘子移過去</div>
     <div class="zoombtns" id="zoombtns">
       <button id="zIn">＋</button>
       <button id="zOut">−</button>
@@ -879,22 +1118,21 @@ body{margin:0;background:var(--bg);color:var(--ink);
     <!-- 需求 8：清單頁 -->
     <div class="page" id="listPage" hidden></div>
 
-    <!-- 📷 照片分頁（cloudbar 已依需求 13 移出） -->
+    <!-- 📷 相簿分頁（v0.1.9 批 5；取代舊的照片分頁。分頁 key 仍是 'photo'、deco.tab 不動，F-4／R-25）
+         🔴 R-51：#fCam／#fLib 兩個 input【保留同樣的 id】（頂層繫結 $('fCam').onchange 還在讀它們；
+            刪掉元素卻留著那一行 ＝ 載入就 TypeError ＝ 白畫面）。它們現在由〔📷〕〔＋ 上傳到〕觸發。
+         ⚠️ 不用 hidden／display:none：舊版 iPhone Safari 對 display:none 的 file input 呼叫 click() 不一定開得了選檔
+            ⇒ 改成「看不見但還在版面上」（.fhide）。 -->
     <div class="page" id="photoPage" hidden>
-      <div class="pbtns">
-        <label>📷 拍照
-          <input type="file" id="fCam" accept="image/*" capture="environment">
-        </label>
-        <label>🖼️ 從相簿選
-          <input type="file" id="fLib" accept="image/*" multiple>
-        </label>
-      </div>
-      <div class="pstat" id="pstat">讀取中…</div>
-      <div id="plist"></div>
+      <input type="file" id="fCam" class="fhide" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+      <input type="file" id="fLib" class="fhide" accept="image/*" multiple tabindex="-1" aria-hidden="true">
+      <div id="albView"></div>
     </div>
 
     <!-- 需求 13：專案頁（齒輪）。🔴 需求 16：加出口。 -->
     <div class="page" id="projPage" hidden>
+      <!-- 🔴 v0.1.9 批 7：垃圾桶頁＝專案頁的【子畫面】（不新增 S.tab 值，O-30）⇒ 原本的內容包成 #projMain，與 #trashView 互換顯示 -->
+      <div id="projMain">
       <!-- 🔴 需求 16：專案頁不在底部 5 格裡 ⇒ 進去之後畫面上沒有任何出口。
            ⚠️ 依 _d §10-0b：「‹ 返回」是【控制項】不是功能說明，可以有；
               不要加「這裡可以設定專案」這種句子。 -->
@@ -920,7 +1158,8 @@ body{margin:0;background:var(--bg);color:var(--ink);
         <button class="btn" id="btnClearPlace">清擺設</button>
         <button class="btn" id="btnClearAll">清清單</button>
       </div>
-      <div class="tcount" id="trashCount">垃圾桶 — 筆</div>
+      <!-- 🔴 v0.1.9 批 7（R-51）：#trashCount（只顯示數字）換成〔垃圾桶 N 行 ›〕入口；讀它的那一行（refreshProj）同批改掉 -->
+      <button class="btn trashbtn" id="btnTrash">垃圾桶 — 行 ›</button>
       <div class="projsec">之後</div>
       <div class="soonrow off"><div class="k">📦 結案封存</div></div>
       <!-- 🔴 v0.07_i 需求 25：診斷列。
@@ -929,6 +1168,8 @@ body{margin:0;background:var(--bg);color:var(--ink);
            內容純狀態、沒有解釋句。⭐ 存在目的就是讓 Ali 截這一行給 claude
            ⇒ 不要縮寫、不要用圖示代替數字。 -->
       <div class="diagrow" id="diagRow">—</div>
+      </div>
+      <div id="trashView" hidden></div>
     </div>
 
     <!-- 需求 13：估價／格局（灰化，點了只給狀態，不寫功能說明） -->
@@ -940,7 +1181,48 @@ body{margin:0;background:var(--bg);color:var(--ink);
   <!-- 需求 8：浮動 (+)。空狀態與非空狀態是同一顆 -->
   <button class="fab" id="fabAdd" hidden>＋</button>
 
-  <div class="pinning" id="pinning" hidden>👆 點平面圖上要標記的位置（再按一次此列取消）</div>
+  <!-- 🗂 v0.1.9 R-23：舊的 #pinning（〔標到平面圖〕提示列）整個拿掉，由定位模式取代。 -->
+
+  <!-- ╔═ 🔴 v0.1.9 批 8｜定位面板＝【另一個元素】（R-20：共用 .sel 的 CSS，🛑 不共用 id #sel ——
+       syncSel 沒選家具時每幀把 #sel 藏掉）。結構照抄家具選中面板（§10-3、預覽 7-c）。 ╚═╝ -->
+  <div class="sel" id="pinSel" hidden>
+    <div class="selhead">
+      <button class="selback recall" id="pinBack">取消定位</button>
+      <span class="selname" id="pinName">—</span>
+      <button class="ib" id="pinFold" title="收合">▾</button>
+    </div>
+    <div class="selrow">
+      <div class="padwrap">
+        <div class="pad" id="pinPad">
+          <button class="up" data-d="u">▲</button>
+          <button class="dn" data-d="d">▼</button>
+          <button class="lf" data-d="l">◀</button>
+          <button class="rt" data-d="r">▶</button>
+        </div>
+        <div class="padc" id="pinPadc">1 cm</div>
+      </div>
+      <div class="grid2">
+        <div class="g3">
+          <button class="btn pri" id="pinDone">定位完成</button>
+          <button class="btn" id="pinOpen">打開相簿</button>
+          <span class="btn hold">（保留）</span>
+        </div>
+        <div class="g2">
+          <span class="btn hold">（保留）</span>
+          <span class="btn hold">（保留）</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔴 v0.1.9 批 8｜預覽卡（點釘子）：名稱｜〔修正定位位置〕〔打開相簿〕＋照片橫排；往下滑＝收起 -->
+  <div class="pcardx" id="pinCard" hidden>
+    <div class="handle"></div>
+    <div class="pch"><b id="pcName">—</b>
+      <button class="abtn sm" id="pcFix">修正定位位置</button>
+      <button class="abtn sm" id="pcOpen">打開相簿</button></div>
+    <div class="astrip" id="pcStrip"></div>
+  </div>
 
   <!-- 🔴 v0.13_i 修九：從設定頁按〔預覽〕過來時的返回列。
        落點沿用 .pinning（bottom:56px、z-index 25），不新造版位。
@@ -948,15 +1230,43 @@ body{margin:0;background:var(--bg);color:var(--ink);
           否則選中家具面板（.sel，同樣 bottom:56px）會跟這一列重疊。 -->
   <div class="pinning" id="beamBack" hidden>‹ 返回設定</div>
 
-  <!-- 全螢幕檢視層。不開新分頁（O-11：沙箱 iframe 會擋）
-       🔴 需求 17：關閉鈕從【右上角】移到【圖片正下方】。
-          Ali 原話：「照片的關閉放在圖片正下方，不然我一直誤觸上一頁」
-          ⇒ 右上角與手機瀏覽器的返回／分頁區在同一個拇指軌跡上。
-          ⚠️ 右上角那顆【移除】，不留兩顆——兩顆會讓誤觸繼續存在。 -->
+  <!-- ╔═ 🔴 v0.1.9 批 6｜放大畫面（圖 4）════════════════════════════════════════════════╗
+       不開新分頁（O-11：沙箱 iframe 會擋）。
+       🔴 R-21：只由〔回上一頁〕（舊名〔✕ 關閉〕）與下滑關閉 —— 舊的「點非圖片處就關」拿掉（手指縮放／滑動時會誤關）。
+       🔴 需求 17（v0.1.4.1）＋ Q-A3：關閉鈕在照片【正下方】、按鈕列最前面；右上角不放（Ali：「不然我一直誤觸上一頁」）。 ╚═╝ -->
   <div class="viewer" id="viewer" hidden>
-    <div class="vimg"><img id="vImg" alt=""></div>
-    <button class="vclose" id="vClose">✕ 關閉</button>
-    <div class="vbar" id="vBar">—</div>
+    <div class="vstage" id="vStage">
+      <img id="vImg" alt="">
+      <span class="vpos" id="vPos"></span>
+      <span class="vload" id="vLoad"></span>
+    </div>
+    <div class="vside">
+      <!-- 🔴 v0.1.10 P10：〔✕ 關閉〕→〔回上一頁〕（只改字，行為不變）；P3：〔刪除照片〕紅字、移出按鈕列，
+           放在最下面、小字（拍攝時間／雲端儲存那一塊）的右邊。id 全部沿用（R-51：讀它們的行不必改）。 -->
+      <div class="vbtns">
+        <button class="vb close" id="vClose">回上一頁</button>
+        <button class="vb" id="vOrig">查看原檔</button>
+        <button class="vb" id="vMove">轉移／複製</button>
+      </div>
+      <div class="vbot">
+        <div class="vinfo" id="vInfo">—</div>
+        <button class="vb del" id="vDel">刪除照片</button>
+      </div>
+      <div class="vdiag" id="vDiag"></div>
+    </div>
+  </div>
+
+  <!-- 🔴 v0.1.9：選單（▾ 換上傳目標／轉移複製的目標／內頁 ⋯）。z 55，放大畫面上也叫得出來。 -->
+  <div class="ovm" id="ovMenu" hidden><div class="mbox" id="menuBox"></div></div>
+
+  <!-- 🔴 v0.1.9 §8-1／§8-2：勾選清單框（刪除要從哪幾本拿掉）。z 52；🛑 不是 askDialog 的第四種模式（R-21）。 -->
+  <div class="ovp" id="ovPick" hidden>
+    <div class="dlg">
+      <h4 id="pickTitle">—</h4>
+      <div class="dlgbody" id="pickBody"></div>
+      <div id="pickRows"></div>
+      <div class="pacts" id="pickActs"></div>
+    </div>
   </div>
 
   <!-- 需求 13：同步對話框（原 .cloudbar 的三顆鈕與狀態列搬到這裡，狀態文字一字不改） -->
@@ -1185,7 +1495,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
     <button id="tabPlan"  class="on"><span class="ic">🧩</span>平面圖</button>
     <button id="tabList"><span class="ic">📋</span>清單</button>
     <button id="tabCost"  class="soon"><span class="ic">💰</span>估價</button>
-    <button id="tabPhoto"><span class="ic">📷</span>照片</button>
+    <button id="tabPhoto"><span class="ic">📷</span>相簿</button>   <!-- 🔴 v0.1.9 F-4：只改字；key 'photo'、deco.tab 不動 -->
     <button id="tabLayout" class="soon"><span class="ic">📐</span>格局</button>
   </div>
 </div>
@@ -1197,7 +1507,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
    畫面部分是拋棄式的
    ══════════════════════════════════════════════════════════════ */
 
-const APP_VER = 'v0.1.9'; /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它）
+const APP_VER = 'v0.1.10'; /* 需求 40：版號。補釘也要跟著跳（診斷列與每筆資料的 appVer 都讀它）
                               🔴 v0.20_i 下-17：v0.1.7 交付時【忘了跳】，正本與線上都還寫著 v0.1.6，
                                  診斷列與每一筆資料的 appVer 都在說謊。本批起版號列進每一批的交付必講。 */
 
@@ -1210,7 +1520,7 @@ const APP_VER = 'v0.1.9'; /* 需求 40：版號。補釘也要跟著跳（診斷
    🔧 建造者自驗用：只有在 localhost／127.0.0.1 時，網址帶 ?env=xxx 才會覆寫（模擬兩台手機用）；
       正式網域上這個參數一律無效（不讓一個網址參數改變她的資料去哪裡）。 ╚═════════════════╝ */
 const ENV_PREFIX = (()=>{
-  const DEFAULT_PREFIX = 'T1_';   // 🧪 iPhone 真機探針用測試版（2026-09-30）；正式版＝''
+  const DEFAULT_PREFIX = 'T1_';
   try{
     const h=location.hostname;
     if(h==='localhost' || h==='127.0.0.1'){
@@ -1390,7 +1700,8 @@ const S = { layers: defaultLayers(),
             foldRooms:{},          // 🔴 §下-10：只記【收合的】房間，存 localStorage、不存雲端
             selId:null, zoom:1, panX:0, panY:0, tab:'plan',
             dragging:null, snapCand:null,
-            pinPhoto:null,
+            /* 🔴 v0.1.9 批 8：舊的 pinPhoto（標到平面圖）整族拿掉（R-23），換成相簿釘子的三個狀態 */
+            loc:null, pinSel:null, pinCard:false,
             prevTab:'plan',        // 🔴 需求 16：進專案頁之前停在哪一個分頁
             /* 🔴 v0.09_i 需求 30：守衛訊息。selNote 跟著選中狀態走、listNote 跟著清單頁走。 */
             selNote:'', listNote:'',
@@ -1897,9 +2208,10 @@ const selPanelShown = ()=> !!FURN.find(x=>x.id===S.selId) && S.tab==='plan';
 /* 🔴 v0.21_i B-4（Ali 2026-09-28 照建議）：同一塊地方還有兩條提示列會蓋住 HUD ——
    〔👆 點平面圖上要標記的位置〕（#pinning）與〔‹ 返回設定〕（#beamBack），
    兩者都是 `position:fixed; bottom:56px`，正好壓在 svg 底部。
-   ⇒ 照同一個原理，也用它們的【判準】（S.pinPhoto／S.beamFocus），不讀 DOM 的 hidden。 */
+   ⇒ 照同一個原理，也用它們的【判準】（S.beamFocus），不讀 DOM 的 hidden。
+   🗂 v0.1.9：#pinning 與 S.pinPhoto 已拿掉（R-23）；改成定位面板與預覽卡的判準（見下一行）。 */
 const hudCovered = ()=> selPanelShown()
-                     || !!S.pinPhoto
+                     || pinPanelShown() || pinCardShown()     // 🔴 v0.1.9 R-20：定位面板與預覽卡也壓在同一塊
                      || (S.tab==='plan' && !!S.beamFocus);
 
 /* ╔═ 🔴 v0.21_i 下-22｜走道示意＋比例尺 → 固定在畫面左下（HUD）═══════════════════════╗
@@ -2089,21 +2401,8 @@ function drawName(ctx){
         {size:12, anchor:'middle', fill:'var(--ink)', clamp:false});
   });
 }
-/* 照片標記（_d §8-1 Marker）
-   🔴 v0.19_i §1-3：照片層熄著 ⇒ 不畫（命中那邊用【同一個】shown('photo')）。 */
-function drawMk(ctx){
-  const {g}=ctx;
-  if(!shown('photo')) return;
-  MARKERS.forEach(m=>{
-    const gm=el('g',{transform:`translate(${m.x},${m.y})`,'data-mk':m.id,style:'cursor:pointer'});
-    gm.appendChild(el('circle',{cx:0,cy:0,r:17,fill:'var(--warnA)','fill-opacity':.92,
-      stroke:'#fff','stroke-width':3}));
-    const tt=el('text',{x:0,y:7,'text-anchor':'middle',
-      'font-size':19*fsScale(),'pointer-events':'none'});
-    tt.textContent='📷'; gm.appendChild(tt);
-    g.appendChild(gm);
-  });
-}
+/* 🗂 v0.1.9 R-23：舊的照片標記 drawMk（世界座標、r=17 公分、跟著縮放）整支拿掉，
+   換成相簿釘子 drawPins（畫面座標、固定大小；在 render 的 drawName 之後呼叫，見下方）。 */
 /* 🛑 本批【佔位，不畫】（§0-3：三層的本體不做）。
    下一批要畫時，內容填進來就好 —— 順序已經在 DRAW_ORDER 裡排好了。
    🔴 各支自己判斷要不要畫：填內容時第一行請寫 `if(!shown('appl')) return;`。 */
@@ -2124,7 +2423,8 @@ const DRAW_ORDER = [
   { z:30, fn:drawAppl, layer:'appl'  },   // 電器（本批空）
   { z:50, fn:drawWire, layer:'wire'  },   // 弱電（本批空）
   { z:51, fn:drawLamp, layer:'lamp'  },   // 燈具（本批空）
-  { z:70, fn:drawMk,   layer:'photo' },   // 照片標記（最上面）
+  /* 🗂 v0.1.9：z:70 的照片標記移出這張表 —— 相簿釘子畫在畫面座標（_uiLayer），
+     與世界座標的一切沒有前後關係（永遠在上面），給它 z 是假的（同 drawName 的理由）。 */
 ];
 
 /* ╔═ 🔴 v0.21_i 下-23｜活方向（`_d` §13-102）：拖曳時房間名要不要暫時出現 ═══════════╗
@@ -2334,9 +2634,11 @@ function render(){
   /* 🔴🔴 家具名稱在排序迴圈【結束之後】才畫，而且**不在 DRAW_ORDER 裡**。
      位置對疊圖沒有任何影響（它畫進 _uiLayer，永遠在 g 的一切之上），
      固定放這裡只是為了**可預測**、讓下一個人一眼看到它不在排序裡。
-     🛑 不要試圖把它插進迴圈 —— drawFurn 與 drawMk 都在同一個 forEach 裡，
+     🛑 不要試圖把它插進迴圈 —— 「家具與照片標記之間」這個位置在迴圈外不存在（v0.1.9 起照片標記改成 drawPins，也在迴圈外），
         「在它們之間」這個位置在迴圈外根本不存在。 */
   drawName(ctx);
+  /* 🔴 v0.1.9 批 8：相簿釘子（R-22：房間名 → 家具名 → 釘子 → HUD） */
+  drawPins();
   /* 🔴 v0.21_i 下-22：左下角的走道示意＋比例尺（畫面座標，永遠在最上層）。
      放在家具名之後 ⇒ 兩者重疊時 HUD 在上面，比例尺不會被名字蓋住。 */
   drawHUD();
@@ -2410,7 +2712,10 @@ svg.addEventListener('pointerdown',e=>{
   startPt={id:e.pointerId,x:e.clientX,y:e.clientY,sx,sy,panX:S.panX,panY:S.panY};
   moved=false;
   const f=furnAt(sx,sy); hitId=f?f.id:null;
-  if(canDragFurn(f)){
+  /* 🔴 v0.1.9 R-20：按下點命中釘子 ⇒ 不啟動家具拖曳（釘子壓在已選中的家具上時，點擊要給釘子）；
+     定位中一律不拖家具（進定位時已 select(null)，這裡是第二道）。 */
+  const pinDown = !!S.loc || pinsAt(sx,sy).length>0;
+  if(!pinDown && canDragFurn(f)){
     const q=place(f);
     S.dragging={f, gx:q.x, gy:q.y, ang:q.ang,
       ox:q.x-s2w(sx,sy).x, oy:q.y-s2w(sx,sy).y};
@@ -2455,17 +2760,16 @@ function endPointer(e){
   else if(!moved && mine){
     const r2=svg.getBoundingClientRect();
     const wp=s2w(e.clientX-r2.left, e.clientY-r2.top);
-    if(S.pinPhoto){ dropMarker(wp.x, wp.y); }
+    /* 🔴 v0.1.9 R-23：定位中「點＝移過去」接在這裡（舊的 S.pinPhoto 那一格）。
+       Q-12 判定順序：兩指＝縮放 → 已選中家具＝拖曳（按下當下決定）→ 其他單指移動＝平移
+                      → 沒移動就放開：定位中＞釘子（📷 亮著才算；收集全部）＞家具選取／點空白取消。 */
+    if(S.loc && S.loc.phase==='locating'){ locMoveTo(wp.x, wp.y); }
     else {
-      /* 🔴 v0.19_i §1-3／§1-3a：沒點亮 ⇒ 不畫 ⇒ 連帶不可點（shown() 是畫那邊的同一個判斷）。
-         🔴 只改這一個運算式：把候選變成 null 就會自然落到下面的家具 select()
-            ⇒ 結構上不可能把上面的 dropMarker(1958) 或下面的 select() 包進來
-              （_i §1-3a 的警告：包錯會變成「照片層關掉就不能拖家具」）。 */
-      const hitM = shown('photo')
-        ? MARKERS.find(m=>Math.hypot(wp.x-m.x, wp.y-m.y) <= 17+8/S.zoom)
-        : null;
-      if(hitM){ showMarker(hitM); }
+      const hits = pinsAt(e.clientX-r2.left, e.clientY-r2.top);
+      if(hits.length===1){ openPinCard(hits[0].albumId); }
+      else if(hits.length>1){ openPinList(hits.map(h=>h.albumId)); }
       else{
+        if(S.loc || S.pinSel) clearPinState();       // 定位完成後／預覽卡開著：點空白處＝取消選取（同家具）
         const f=hitId?FURN.find(x=>x.id===hitId):null;
         select(f?f.id:null);                         // 輕點＝選取 / 點空白＝取消
       }
@@ -2708,6 +3012,7 @@ function select(id){
      📌 obs O-20／O-25 的形狀：函式名字沒變，但「它現在該做的事」變多了。 ╚═══════════╝ */
   commitFieldEdits();
   commitAngEdit();
+  if(id) clearPinState();            // 🔴 v0.1.9 R-20：家具與釘子互斥（選了家具 ⇒ 收掉預覽卡／定位面板）
   S.selId=id;
   S.sizeOpen=false; S.angOpen=false; S.warnOpen=false;
   S.selNote='';                      // 🔴 需求 30：訊息跟著選中狀態走
@@ -2733,6 +3038,7 @@ function warnSummary(n){
 }
 
 function syncSel(){
+  syncPinUI();                       // 🔴 v0.1.9 R-20：定位面板／預覽卡／提示條（另一個元素，每幀跟著套用）
   const f=FURN.find(x=>x.id===S.selId);
   const box=$('sel');
   /* 🔴 v0.21_i §1-3 ⑤：面板顯不顯示的判準抽成 selPanelShown()，drawHUD 讀【同一支】
@@ -3142,6 +3448,7 @@ document.addEventListener('visibilitychange',()=>{
     commitFieldEdits();
     commitAngEdit();          // 🔴 §3-1d 入口 ④：資料損毀級，不可以漏
     commitNameEdits();
+    commitAlbumEdits();       // 🔴 v0.1.9：相簿的名字／備註（手機鎖屏時 blur 不可靠）
   }
 });
 /* 角度欄的三條繫結（§3-1d 入口 ①②）＋ 打字中的紅框（沿用需求 7 的顆粒度） */
@@ -3358,7 +3665,9 @@ function openDB(){
 function showDbNotice(msg){
   S.dataErr=msg;
   try{ render(); }catch(e){}
-  const b=$('pstat'); if(b) b.innerHTML='🔴 '+esc(msg);
+  /* 🔴 v0.1.9 R-50（🟡-11）：pstat 搬走了 ⇒ 資料庫錯誤改畫在相簿清單頁最上面 */
+  S.dbNote=msg;
+  try{ renderAlbums(); }catch(e){}
 }
 /* ╔═ 🔴 v0.22_i §0c R-45｜相簿的資料庫（另一個 IndexedDB）════════════════════════════╗
    兩個 store：albums（相簿）、album_photos（相簿裡的一張；名字／備註／排序各本一份）。
@@ -3494,7 +3803,7 @@ function fmtLocal(iso){
 /* ── 物件資料層（與照片線同構）──
    🔴 save* 與 savePhoto() 同一個模式：① 寫本機 ② 標 pending ③ 背景推雲端（失敗不擋畫面）
    🔴 delete* 【不是】。delete* 一律走軟刪除（需求 5 / 6 / 7），
-      不可抄 deletePhoto() 的 lDel()。（v0.04_i §6） */
+      不可抄照片線的 lDel()。（v0.04_i §6；🗂 v0.1.9 起照片線也不物理刪除了，舊的 deletePhoto 已拿掉） */
 async function lAllObj(st){ return (await lAll(st)).map(r=>fromDb(st,r)); }
 async function lAllLive(st){ return (await lAllObj(st)).filter(x=>!x.deletedAt); }
 async function lGetObj(st,id){ const r=await lGet(st,id); return r? fromDb(st,r) : null; }
@@ -3549,10 +3858,11 @@ let APHOTOS = [];      // 活的 album_photo（不含垃圾桶與墓碑）
 /* 🔴 兩張新表的雲端推送開關。批 2 時是 false（雲端還沒有這兩張表）；
    Ali 2026-09-30 貼完 v0.1.9 SQL、批 3 接上 push／pull ⇒ 打開。 */
 const ALBUM_CLOUD = true;
-async function saveAlbum(a){ stampObj(a); await lPutObj('albums',a);
-  if(CLOUD.on && ALBUM_CLOUD) cloudPushObj('albums',a.id).catch(e=>cloudErr(e)); return a.id; }
-async function saveAlbumPhoto(ap){ stampObj(ap); await lPutObj('album_photos',ap);
-  if(CLOUD.on && ALBUM_CLOUD) cloudPushObj('album_photos',ap.id).catch(e=>cloudErr(e)); return ap.id; }
+/* 🔴 v0.1.10 P1（§0d #5）：opt.noPush＝只寫本機、先不推（uploadFiles 要「三筆都寫進本機才推」）。 */
+async function saveAlbum(a, opt){ stampObj(a); await lPutObj('albums',a);
+  if(CLOUD.on && ALBUM_CLOUD && !(opt && opt.noPush)) cloudPushObj('albums',a.id).catch(e=>cloudErr(e)); return a.id; }
+async function saveAlbumPhoto(ap, opt){ stampObj(ap); await lPutObj('album_photos',ap);
+  if(CLOUD.on && ALBUM_CLOUD && !(opt && opt.noPush)) cloudPushObj('album_photos',ap.id).catch(e=>cloudErr(e)); return ap.id; }
 /* 最近變動時間（R-16，推算、不存）。ap 含垃圾桶裡的（「從這本拿掉」也算這本有變動）。 */
 async function albumRecency(){
   const m=new Map();
@@ -3690,10 +4000,11 @@ async function migrateOldPhotos(){
   }
   return made;
 }
-/* 批 5（相簿清單頁）會把這一行畫在清單頁最上面；本批先寫進照片分頁的狀態列（它還在）。 */
+/* 搬家進度：畫在相簿清單頁最上面（albNotes 裡的 #albMig）。 */
 function onMigrateProgress(){
-  const b=$('pstat'); if(!b) return;
-  if(S.migrate) b.innerHTML=`正在整理舊照片（${S.migrate.done} / ${S.migrate.total}）`;
+  const b=$('albMig'); if(!b) return;           // 🔴 v0.1.9 批 5：畫在相簿清單頁最上面（albNotes）
+  b.hidden=!S.migrate;
+  b.textContent = S.migrate ? `正在整理舊照片（${S.migrate.done} / ${S.migrate.total}）` : '';
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3840,14 +4151,16 @@ async function loadProject(){
   }catch(e){ PROJECT={code:projKey(), name:'', floorH:null, updatedAt:null, floorHUpdatedAt:null}; }
 }
 
-/* delete*：🔴 軟刪除（進垃圾桶），不是 lDel */
-async function softDelete(store, arr, id, saver){
+/* delete*：🔴 軟刪除（進垃圾桶），不是 lDel
+   🔴 v0.1.9 R-05：一次刪除＝同一個 batchId（垃圾桶一行）。沒給就自己開一個（單筆刪除＝一行）。 */
+async function softDelete(store, arr, id, saver, batchId){
   const o=arr.find(x=>x.id===id) || await lGetObj(store,id);
   if(!o) return;
   o.deletedAt=nowISO();
+  o.batchId=batchId||uid();
   await saver(o);
 }
-async function deleteRoom(id){ return softDelete('rooms',ROOMS,id,saveRoom); }
+async function deleteRoom(id, batchId){ return softDelete('rooms',ROOMS,id,saveRoom,batchId); }
 async function deleteWall(id){ return softDelete('walls',WALLS,id,saveWall); }
 async function deleteBeam(id){ return softDelete('beams',BEAMS,id,saveBeam); }
 async function deleteItem(id){ return softDelete('items',FURN,id,saveItem); }
@@ -3866,6 +4179,7 @@ async function reloadObjects(){
   /* 🔴 v0.1.9：相簿兩層也在這裡載入（活的：不含垃圾桶，也不含永久刪除的墓碑）。 */
   ALBUMS  = (await lAllObj('albums')).filter(x=>!x.deletedAt && !x.purgedAt);
   APHOTOS = (await lAllObj('album_photos')).filter(x=>!x.deletedAt && !x.purgedAt);
+  PHOTOS  = new Map((await lAll('photos')).map(p=>[p.id,p]));   // 照片本身（相簿畫面與放大畫面讀這裡）
   /* 🔴 需求 41 邊界 ＋ v0.13_i 修七 F-29：poly 少於 3 點或格式壞掉 → 不畫，但【不可靜默】。
      ⚠️ 放在這裡重算（而不是畫的時候寫），是為了讓它跟著資料走、
         而且不會被「同步成功就清空」那條路清掉（那是 S.dataErr 的行為）。
@@ -3963,10 +4277,11 @@ const isHouseRoom = r => (r && validPoly(r.poly));
 /* 乙｜清清單：只清【她擺的東西】；房子（既有牆、樑、有 poly 的分區）留著。
    🔴 留什麼：photos / markers 【完全不動】（照片不屬於清單）。 */
 async function clearAll(){
-  for(const r of ROOMS.slice()){ if(isHouseRoom(r)) continue; r.deletedAt=nowISO(); await saveRoom(r); }
-  for(const w of WALLS.slice()){ if(isHouse(w))     continue; w.deletedAt=nowISO(); await saveWall(w); }
+  const batch=uid();                 // 🔴 v0.1.9 R-05：清清單一次＝垃圾桶一行（🟡-12：出現在它含有的每個篩選底下）
+  for(const r of ROOMS.slice()){ if(isHouseRoom(r)) continue; r.deletedAt=nowISO(); r.batchId=batch; await saveRoom(r); }
+  for(const w of WALLS.slice()){ if(isHouse(w))     continue; w.deletedAt=nowISO(); w.batchId=batch; await saveWall(w); }
   /* 🔴 樑跟既有牆同性質（房子本身）⇒ 一根都不刪。 */
-  for(const f of FURN.slice()) { f.deletedAt=nowISO(); await saveItem(f); }
+  for(const f of FURN.slice()) { f.deletedAt=nowISO(); f.batchId=batch; await saveItem(f); }
   await reloadObjects();
   /* 🔴 v0.09_i 需求 29：立刻重生種子，不要等下一次重新載入。
      若清完之後畫面上 0 個房間，而重生只發生在下一次載入
@@ -3976,31 +4291,8 @@ async function clearAll(){
      ⚠️ 不要加「範例房間已重新產生」這種說明句（_d §10-0b）——她看得到它出現在畫面上。 */
   await seedIfEmpty();
 }
-/* 垃圾桶｜真刪除的兩個條件【先到先算】：① 超過 20 筆刪最舊 ② deletedAt 超過 1 個月
-   🔴 只刪【本機】那一列。雲端那一列【保留】當墓碑（v0.04_i §2）——
-      兩邊都刪會讓墓碑消失，另一台未到期的那筆會把它重新插回雲端 ⇒ 復活迴路。 */
-async function purgeTrash(){
-  const MONTH=30*24*3600*1000, now=Date.now();
-  for(const st of ['rooms','walls','beams','items']){
-    const all=await lAllObj(st);
-    const trash=all.filter(x=>x.deletedAt)
-      .sort((a,b)=>String(a.deletedAt).localeCompare(String(b.deletedAt)));
-    const kill=[];
-    const rest=[];
-    for(const x of trash){
-      const t=new Date(x.deletedAt).getTime();
-      if(isFinite(t) && now-t>MONTH) kill.push(x.id); else rest.push(x);
-    }
-    while(rest.length>20) kill.push(rest.shift().id);
-    for(const id of kill) await lDel(st,id);        // 🔴 只刪本機
-  }
-}
-async function trashSize(){
-  let n=0;
-  for(const st of ['rooms','walls','beams','items'])
-    n += (await lAllObj(st)).filter(x=>x.deletedAt).length;
-  return n;
-}
+/* 🗂 v0.1.9 批 7（R-18）：舊的 purgeTrash（「超過 20 筆刪最舊」＋「1 個月」、只刪本機）與 trashSize（數四個 store 的筆數）
+   整段改寫 ⇒ 移到「批 7｜垃圾桶頁＋永久刪除」那一段（183 天、拿掉 20 筆、六張表、連線中寫 purged_at、離線只清本機）。 */
 
 /* ══════════════════════════════════════════════════════════════
    需求 6｜房間：改名／刪除（含 anchor 重設）
@@ -4122,9 +4414,10 @@ async function deleteRoomCascade(rid){
     f.isPlaced=false;
     await saveItem(f);
   }
-  for(const w of WALLS.filter(w=>w.room===rid)){ w.deletedAt=nowISO(); await saveWall(w); }
-  for(const b of BEAMS.filter(b=>b.room===rid)){ b.deletedAt=nowISO(); await saveBeam(b); }
-  await deleteRoom(rid);
+  const batch=uid();                               // 🔴 v0.1.9 R-05：房間＋它的牆與樑＝垃圾桶一行（還原時一起回來）
+  for(const w of WALLS.filter(w=>w.room===rid)){ w.deletedAt=nowISO(); w.batchId=batch; await saveWall(w); }
+  for(const b of BEAMS.filter(b=>b.room===rid)){ b.deletedAt=nowISO(); b.batchId=batch; await saveBeam(b); }
+  await deleteRoom(rid, batch);
   if(S.selId && items.some(f=>f.id===S.selId)) { /* 家具沒刪，但已不在平面圖上 */ }
   await reloadObjects();
 }
@@ -4137,7 +4430,9 @@ function confirmDeleteRoomText(rid){
   if(names.length>10) li+=`<li>…等 ${names.length} 件</li>`;
   return `刪除房間「${esc(roomName(rid))}」。<br>`+
     `牆與樑會一起刪除。<b>家具一件都不刪</b>，會變成未擺放：`+
-    (names.length? `<ul>${li}</ul>` : '<br>（這個房間目前沒有家具）');
+    (names.length? `<ul>${li}</ul>` : '<br>（這個房間目前沒有家具）')+
+    /* 🔴 v0.1.9 F-2（Ali 09-29）：還原房間時家具不會自動回去 ⇒ 刪之前先講 */
+    `<br>之後從垃圾桶還原這個房間時，家具<b>不會</b>自動回到房間裡（要自己重新指定）。`;
 }
 async function confirmDeleteRoom(rid){
   const ok=await askDialog({title:'刪除房間', body:confirmDeleteRoomText(rid), okText:'刪除'});
@@ -4262,16 +4557,46 @@ const hhmm = ()=>{ const d=new Date(), z=x=>String(x).padStart(2,'0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`; };
 /* ⚠️ O-14：fetch 被 CSP 擋掉時丟的是 TypeError，訊息看起來像網路問題。
    要把它與「真的連不上」分開講，否則測試的人會以為程式壞了。 */
+/* ╔═ 🔴 v0.1.10 P7（§0d #3／#4）｜每個請求都有逾時 ════════════════════════════════════════╗
+   v0.1.9：fetch 在背景被凍住、回來也不回應 ⇒ 原檔佇列的 _origBusy 永遠是 true ⇒ 之後的 kick 全部只設
+   _origAgain ⇒ 永遠不再跑（Android 真機：切走 5 分鐘回來橘條不消失，要重新整理）。
+   ⇒ 用 AbortController 設上限：一般 30 秒；上傳 Blob 60 秒＋每 50 KB 1 秒；下載 Storage 檔 120 秒。
+   🔑 timer 在 fetch 回來之後【不清】：呼叫端讀 body（json()／blob()）也要受同一個上限保護；
+      已經讀完的回應被 abort 是 no-op。
+   逾時／網路錯 ⇒ 丟出的錯帶 e.transient＝true（呼叫端據此「留 pending、這一輪停、下次再來」）。
+   冪等性（讀坑 Q3）：Storage 上傳是固定路徑＋x-upsert、列是 upsert＋return=representation、刪檔走待刪清單 ⇒ 逾時後重做不會出錯。 ╚═╝ */
+const SB_TIMEOUT_MS = 30000;
+function sbTimeoutFor(path, opt){
+  if(opt.timeoutMs!=null) return opt.timeoutMs;
+  const b=opt.body;
+  if(b && typeof Blob!=='undefined' && b instanceof Blob) return 60000 + Math.ceil(b.size/51200)*1000;
+  if(/^\/storage\/v1\/object\/photos\//.test(path) && !(opt.method && opt.method!=='GET')) return 120000;
+  return SB_TIMEOUT_MS;
+}
+/* 暫時性的 HTTP 狀態（§0d #4）：留 pending、之後再試；其他 4xx 才算「真的失敗」 */
+const isTransientStatus = s => s>=500 || s===408 || s===429;
 async function sbFetch(path, opt){
   opt = opt || {};
   const h = Object.assign({ apikey: CLOUD.key }, opt.headers||{});
   if(CLOUD.tok) h.Authorization = 'Bearer '+CLOUD.tok;
+  const ms = sbTimeoutFor(path, opt);
+  const ac = (typeof AbortController!=='undefined') ? new AbortController() : null;
+  if(ac) setTimeout(()=>{ try{ ac.abort(); }catch(e){} }, ms);
   let r;
   try{
-    r = await fetch(CLOUD.url+path, Object.assign({}, opt, {headers:h}));
+    const o = Object.assign({}, opt, {headers:h});
+    delete o.timeoutMs; delete o._retry;
+    if(ac) o.signal = ac.signal;
+    r = await fetch(CLOUD.url+path, o);
   }catch(e){
-    CLOUD.blocked = true;
-    throw new Error('對外連線失敗（可能被這個環境的安全政策擋住）：'+e.message);
+    const timedOut = !!(ac && ac.signal.aborted);
+    if(!timedOut) CLOUD.blocked = true;
+    const err = new Error(timedOut
+      ? `連線逾時（${Math.round(ms/1000)} 秒沒有回應，稍後會自動再試）`
+      : '對外連線失敗（可能被這個環境的安全政策擋住，或網路中斷）：'+e.message);
+    err.name = timedOut ? 'TimeoutError' : 'NetworkError';
+    err.transient = true;
+    throw err;
   }
   CLOUD.blocked = false;
   /* 🔴 需求 34：401 先【續期】，續不動才換身分。
@@ -4426,6 +4751,9 @@ function toRow(store,o){
     name:o.name??null,
     /* 🔴 定位點【永遠送】（含 null）：〔取消定位〕＝清成空，這個「清空」必須傳播到別台。 */
     loc_x:toMM(o.locX), loc_y:toMM(o.locY) });
+    /* 🔴🔴 v0.1.10 P9（§0d ⑦）：序號 no 與顏色 color 由【雲端】在 insert 時發（trigger albums_assign_no），
+       App 一律【不送】—— 連 null 都不送（這一行上面的 Object.assign 刻意沒有這兩個 key）。
+       雲端另有 albums_zz_keep_no 擋任何更新，就算誰送了也改不動。 */
   if(store==='album_photos') return Object.assign(base,{
     album_id:o.albumId, photo_id:o.photoId,
     name:o.name??null, note:o.note??null, sort:(o.sort==null? null : Number(o.sort)) });
@@ -4486,7 +4814,9 @@ function fromRow(store,row){
   /* ── 🔴 v0.1.9：相簿兩張表 ── */
   if(store==='albums') return Object.assign(base,{
     name:row.name||'', locX:fromMM(row.loc_x), locY:fromMM(row.loc_y),
-    restoredAt:row.restored_at||null });
+    restoredAt:row.restored_at||null,
+    /* 🔴 v0.1.10 P9：只讀欄（雲端發；沒貼 SQL 時雲端沒有這兩欄 ⇒ undefined ⇒ null ⇒ 畫面「#—」） */
+    no:(row.no==null ? null : Number(row.no)), color:(row.color==null ? null : Number(row.color)) });
   if(store==='album_photos') return Object.assign(base,{
     albumId:row.album_id, photoId:row.photo_id,
     name:row.name||'', note:row.note||'', sort:(row.sort==null? null : Number(row.sort)),
@@ -4553,6 +4883,13 @@ async function applyPushedRow(store, o, row){
   if(!row) return;
   const inc=fromRow(store,row);
   if(inc.purgedAt){ await lDel(store,o.id); return 'purged'; }
+  /* 🔴 v0.1.10 P9：新建相簿推上去那一次，雲端回傳的列帶著剛發的序號與顏色，但 updated_at 跟本機一樣
+     ⇒ 下面的判斷不會覆寫 ⇒ 號會被丟掉、要等下一次 pull。⇒ 這兩欄不同就先寫進本機（不動 pending 的判斷）。 */
+  if(store==='albums' && ((inc.no??null)!==(o.no??null) || (inc.color??null)!==(o.color??null))
+     && (inc.no!=null || inc.color!=null)){
+    const cur=await lGetObj(store,o.id);
+    if(cur){ cur.no=inc.no; cur.color=inc.color; await lPutObj(store,cur); o.no=inc.no; o.color=inc.color; }
+  }
   if((inc.deletedAt||null)!==(o.deletedAt||null)
      || (Date.parse(inc.updatedAt||'')||0)!==(Date.parse(o.updatedAt||'')||0)){
     await lPutObj(store, Object.assign({}, inc, {pending:false, synced:true,
@@ -4600,13 +4937,21 @@ async function cloudPushObj(store,id){
    本機欄位名 ⇄ 雲端欄位名。🔴 只列【雲端認得】的欄位 —— 本機專用的（small／orig 兩個 Blob、
    source、rotated、oriBy、orientation、decoded、err、rawW/H、origClean…）不進來也不被洗掉。 */
 function photoFromRow(row){
-  return { name:row.name, mime:row.mime||'image/jpeg',
-    origSize:row.orig_size, smallSize:row.small_size,
+  const o={ name:row.name, mime:row.mime||'image/jpeg',
+    smallSize:row.small_size,
     w:row.width, h:row.height, dateTaken:row.date_taken||null,
     addedAt:row.added_at||null, storagePath:row.storage_path,
     origPath:row.orig_path||null, origStatus:row.orig_status||null,
-    origType:row.orig_type||null, albumVer:(row.album_ver==null? null : row.album_ver),
+    origType:(row.orig_type==='jpg-shrunk' ? 'jpg' : (row.orig_type||null)),
+    origShrunk:(row.orig_type==='jpg-shrunk'),
+    albumVer:(row.album_ver==null? null : row.album_ver),
     updatedAt:row.updated_at||null };
+  /* 🔴 v0.1.9 批 7 自驗抓到：orig_size 在雲端是「有原檔才送」（photoToRow）⇒ 第一次推（還是 pending）回來的列是 null，
+     舊寫法照單全收 ⇒ 本機的 origSize 被洗成 null ⇒ 之後傳完原檔（has）時 `origSize!=null` 不成立 ⇒ 永遠不送
+     ⇒ 雲端與本機都不知道原檔多大（〔刪除雲端的原檔〕寫不出 MB）。同一個形狀＝3112 判準的反方向（讀回 null 洗掉本機）。
+     ⇒ 雲端沒有值就【不帶這個欄位】（Object.assign 不會碰本機那一欄）。 */
+  if(row.orig_size!=null) o.origSize=row.orig_size;
+  return o;
 }
 function photoToRow(r){
   /* 🔴 R-03 ②：updated_at 送【編輯當時】的時間（rec.updatedAt），不是推送當下。
@@ -4622,7 +4967,8 @@ function photoToRow(r){
   if(r.origSize!=null && r.origStatus==='has') row.orig_size=r.origSize;
   if(r.origPath)   row.orig_path=r.origPath;
   if(r.origStatus) row.orig_status=r.origStatus;
-  if(r.origType)   row.orig_type=r.origType;
+  /* 🔴 v0.1.9 Q-A2：「已縮小」要讓別台也知道 ⇒ 編進 orig_type（'jpg-shrunk'）；讀回來拆開 */
+  if(r.origType)   row.orig_type = (r.origShrunk && r.origType==='jpg') ? 'jpg-shrunk' : r.origType;
   if(r.albumVer!=null) row.album_ver=r.albumVer;
   /* 唯一的例外：〔刪除雲端的原檔〕要把路徑【清掉】，這個清空必須傳播 ⇒ 明寫送 null。 */
   if(r.origStatus==='purged') row.orig_path=null;
@@ -4696,15 +5042,8 @@ async function cloudPushMarker(id){
   SYNC.pushed++;                                 // 🔴 需求 18 ②
   cloudStat();
 }
-/* 🗂 v0.1.9：以下兩支只剩舊的照片分頁〔刪除〕在叫（批 6 拿掉那條路）。
-   貼了 v0.1.9 SQL 之後，雲端的 photos／markers 沒有 delete 權限 ⇒ 這兩支在雲端刪到 0 列、不報錯。 */
-async function cloudDelPhoto(r){
-  await sbFetch('/rest/v1/photos?id=eq.'+r.id,{method:'DELETE'});
-  if(r.storagePath) await sbFetch('/storage/v1/object/photos/'+r.storagePath,{method:'DELETE'});
-}
-async function cloudDelMarker(m){
-  await sbFetch('/rest/v1/markers?id=eq.'+m.id,{method:'DELETE'});
-}
+/* 🗂 v0.1.9 批 10：cloudDelPhoto／cloudDelMarker（雲端硬刪）拿掉 —— 呼叫它們的 deletePhoto／deleteMarker 已拿掉，
+   而且貼了 v0.1.9 SQL 之後雲端的 photos／markers 本來就沒有 delete 權限。 */
 
 /* ══════════════════════════════════════════════════════════════
    🔴 需求 15｜物件表的 pull（v0.1.9 起六張：四張舊表 ＋ 相簿兩張）
@@ -4717,7 +5056,11 @@ async function cloudDelMarker(m){
 /* 🔴 v0.14_i 補一：無視時間戳回填的【白名單】。
    判準：這個欄位使用者【有沒有辦法把它清空】？有 → 不可以進；沒有 → 可以進。
    🔴 不要寫成「所有 null 的欄位」。 */
-const BACKFILL = { rooms:['poly'] };
+const BACKFILL = { rooms:['poly'],
+  /* 🔴 v0.1.10 P9（§0d ⑦）：雲端補號補色【不會】讓 updated_at 變新（albums 沒有自動更新 updated_at 的 trigger）
+     ⇒ 走「晚的贏」拿不到 ⇒ 進白名單：雲端有值、本機空 ⇒ 無視時間戳補下來。
+     使用者清不掉這兩欄（只讀、雲端 trigger 固定）⇒ 符合上面的判準。 */
+  albums:['no','color'] };
 const OBJ_STORES = ['rooms','walls','beams','items','albums','album_photos'];
 async function cloudPullObjects(){
   const q = '&project_code=eq.' + encodeURIComponent(CLOUD.code);
@@ -4768,14 +5111,23 @@ async function cloudPullObjects(){
             poly 目前沒有任何 UI 可以清空它 ⇒ 符合條件。
             ⚠️ 之後若做了「編輯分區形狀」，這一格要重新檢視；
                下一個新欄位（z_min／z_max／category／z_base）要【逐一判斷】，不可以自動加。 */
+      /* 🔴 v0.1.10 批 3 自驗抓到：舊寫法每個欄位各寫一次 `Object.assign({}, cur, {[k]:…})`，
+         而 cur 是迴圈前的快照 ⇒ 白名單有【兩個】欄位時，第二次寫入把第一個欄位蓋回空（O-44 同形）。
+         v0.1.9 以前白名單只有 poly 一個，所以一直沒現形。⇒ 改成先改 cur、最後寫一次。 */
+      let filled=false;
       for(const k of (BACKFILL[store] || [])){
         if(cur && cur[k]==null && inc[k]!=null){
           /* 🔴 不改 updatedAt、不動 pending／synced ——
              這不是一次「雲端比較新」的衝突，是【本機根本不知道有這個欄位】。 */
-          await lPutObj(store, Object.assign({}, cur, {[k]: inc[k]}));
+          cur[k]=inc[k]; filled=true;
         }
       }
+      if(filled) await lPutObj(store, cur);
       if(!inc.updatedAt) continue;            // ③ 雲端沒時間戳 → 當最舊，不覆蓋
+      if(store==='albums'){                   // 🔴 v0.1.10 P9 防呆：雲端的號不會從有變空；真的遇到就保留本機的
+        if(inc.no==null && cur.no!=null) inc.no=cur.no;
+        if(inc.color==null && cur.color!=null) inc.color=cur.color;
+      }
       if(new Date(inc.updatedAt) > new Date(cur.updatedAt||0))
         await lPutObj(store, Object.assign({}, inc, {synced:true, pending:false,
           /* 🔴 v0.05_i §3（修三）：整筆覆蓋時 createdAt 要【保留】。
@@ -4794,12 +5146,66 @@ async function cloudPullObjects(){
       n += (await lAllObj(store)).filter(x=>x.projectCode===CLOUD.code && x.pending).length;
     if(n && !CLOUD.frozen) syncStep(`上傳 ${n} 筆…`);   // 🔴 需求 18 ①（第 6 階段）
   }
-  for(const store of OBJ_STORES){
-    for(const x of await lAllObj(store))
-      if(x.projectCode===CLOUD.code && x.pending)
-        await cloudPushObj(store,x.id).catch(e=>cloudErr(e));
-  }
+  await pushPendingObjects();                    // 🔴 v0.1.10 P7：與回前景共用同一支（O-34）
 }
+/* ╔═ 🔴 v0.1.10 P7（§2、§0d #3）｜補推：本機還沒推成功的（pending）════════════════════════════╗
+   v0.1.9 只有 cloudPull 的 ③／⑥ 會補推 ⇒ 背景中推失敗的壓縮版與相簿列要等「重新整理或按同步」。
+   現在同一支給兩個地方叫：cloudPull（照舊：錯誤記下、繼續推其他筆）與回前景 resumeUploads
+   （opt.stopOnTransient：遇到網路錯／逾時就停，不要連打）。 ╚═══════════════════════════════════╝ */
+async function pushPendingPhotos(opt){
+  const stop=!!(opt && opt.stopOnTransient);
+  for(const st of ['photos','markers']){
+    for(const x of await lAll(st)){
+      if(x.projectCode!==CLOUD.code || !x.pending) continue;
+      try{ await (st==='photos' ? cloudPushPhoto(x.id) : cloudPushMarker(x.id)); }
+      catch(e){ cloudErr(e); if(stop && e && e.transient) return false; }
+    }
+  }
+  return true;
+}
+async function pushPendingObjects(opt){
+  const stop=!!(opt && opt.stopOnTransient);
+  for(const store of OBJ_STORES){
+    for(const x of await lAllObj(store)){
+      if(x.projectCode!==CLOUD.code || !x.pending) continue;
+      try{ await cloudPushObj(store,x.id); }
+      catch(e){ cloudErr(e); if(stop && e && e.transient) return false; }
+    }
+  }
+  return true;
+}
+let _pushBusy=false;
+async function pushPending(opt){
+  if(!CLOUD.on || !CLOUD.code || CLOUD.frozen || _pushBusy) return false;
+  _pushBusy=true;
+  try{
+    /* 照片先（album_photo 指著它）；照片停了就不推物件（多半是網路斷了） */
+    if(!(await pushPendingPhotos(opt))) return false;
+    return await pushPendingObjects(opt);
+  }finally{ _pushBusy=false; }
+}
+/* 回到前景／從 bfcache 回來／網路恢復 ⇒ 接著傳（不跑整個同步：那會重新拉全部資料）。10 秒最多一次。 */
+const RESUME_GAP_MS = 10000;
+let _resumeAt=0;
+function resumeUploads(why){
+  if(!CLOUD.on || !CLOUD.code || CLOUD.frozen || CLOUD.busy) return false;
+  if(document.visibilityState==='hidden') return false;
+  const now=Date.now();
+  if(now-_resumeAt < RESUME_GAP_MS) return false;
+  _resumeAt=now;
+  (async()=>{
+    try{ await pushPending({stopOnTransient:true}); }catch(e){ cloudErr(e); }
+    _origStalled=false;
+    kickOrigQueue();
+    try{ await flushPendingDel(); }catch(e){ cloudErr(e); }
+    refreshTop();
+    if(S.tab==='photo'){ try{ await reloadObjects(); renderAlbums(); }catch(e){} }
+  })();
+  return true;
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) resumeUploads('visible'); });
+window.addEventListener('pageshow',()=>resumeUploads('pageshow'));
+window.addEventListener('online',()=>resumeUploads('online'));
 
 /* ── 拉：雲端 → 本機 ── */
 async function cloudPull(){
@@ -4905,10 +5311,7 @@ async function cloudPull(){
       .concat((await lAll('markers')).filter(x=>x.projectCode===CLOUD.code && x.pending));
     if(pend.length && !CLOUD.frozen) syncStep(`上傳 ${pend.length} 筆…`);   // 🔴 需求 18 ①（第 5 階段）
   }
-  for(const x of await lAll('photos'))
-    if(x.projectCode===CLOUD.code && x.pending) await cloudPushPhoto(x.id).catch(e=>cloudErr(e));
-  for(const x of await lAll('markers'))
-    if(x.projectCode===CLOUD.code && x.pending) await cloudPushMarker(x.id).catch(e=>cloudErr(e));
+  await pushPendingPhotos();                     // 🔴 v0.1.10 P7：與回前景共用同一支（O-34）
 
   // ④ 🔴 需求 15：物件表（掛在照片與標記【之後】；v0.1.9 起含相簿兩張）
   await cloudPullObjects();
@@ -4931,6 +5334,8 @@ async function cloudPull(){
   /* ⑦ 🔴 v0.1.9 批 4：用量（每次同步重讀一次，給用量條與 95% 擋上傳用）＋ 原檔上傳佇列（背景；失敗寫在照片上，不擋同步結果）。 */
   await refreshUsage();
   kickOrigQueue();
+  /* ⑧ 🔴 v0.1.9 批 7（🟠-3）：上次沒刪成的雲端檔（永久刪除／刪除雲端原檔留下的）每次同步重試 */
+  await flushPendingDel().catch(e=>cloudErr(e));
 }
 
 /* 🔴 需求 37：狀態式那一行要用的兩個計數。
@@ -5001,8 +5406,7 @@ async function cloudSync(){
   }
   /* ⚠️ 需求 15 邊界：pull 結束後呼叫【一次】render() ＋ buildList()，
      不要每寫一筆就重畫。 */
-  await loadMarkers();
-  await reloadObjects();
+  await reloadObjects();                          // 🗂 v0.1.9：loadMarkers 拿掉（平面圖不再畫舊標記）
   render(); buildList(); syncSel(); refreshTop(); renderPhotos();
   /* 🔴 v0.17_i 修八：樓高／專案名字是【設定頁】上的欄位。她很可能就站在那一頁按同步，
      而那一頁的欄位只有 refreshProj() 會重填 ⇒ 不補這一行的話，拉下來了但畫面沒變
@@ -5224,7 +5628,7 @@ function refreshTop(pend){
   const t=$('appTitle');
   if(t) t.textContent =
       S.tab==='list' ? '清單'
-    : S.tab==='photo'? '照片'
+    : S.tab==='photo'? '相簿'
     : S.tab==='proj' ? '專案'
     : S.tab==='cost' ? '估價'
     : S.tab==='layout'?'格局'
@@ -5312,8 +5716,9 @@ $('btnClearAll').onclick = async ()=>{
   render(); buildList(); syncSel(); refreshTop(); await refreshProj();
 };
 async function refreshProj(){
-  try{ $('trashCount').textContent='垃圾桶 '+(await trashSize())+' 筆'; }
-  catch(e){ $('trashCount').textContent='垃圾桶 — 筆'; }
+  try{ $('btnTrash').textContent='垃圾桶 '+(await trashSize())+' 行 ›'; }
+  catch(e){ $('btnTrash').textContent='垃圾桶 — 行 ›'; }
+  if(S.trash && S.trash.open) renderTrash();        // 🔴 v0.1.9 批 7：同步完／清清單完，垃圾桶頁開著就重畫
   refreshSettings();
   buildBeamRows();
   refreshDiag();
@@ -5532,7 +5937,9 @@ function refreshDiag(){
   b.textContent = `${APP_VER}　畫面 ${window.innerWidth}×${window.innerHeight}`
     + `　縮放 ${Math.round(S.zoom*100)}%　${uaShort()}`
     + (ENV_PREFIX ? `　環境前綴 ${ENV_PREFIX}` : '')
-    + ((S.usage && S.usage.fake) ? `　⚠️ 用量＝測試值 ${fmtBytes(S.usage.total)}` : '');   // 🔴 v0.1.9：測試狀態不可以長得跟真的一樣
+    + ((S.usage && S.usage.fake) ? `　⚠️ 用量＝測試值 ${fmtBytes(S.usage.total)}` : '')   // 🔴 v0.1.9：測試狀態不可以長得跟真的一樣
+    + (nowFakeOn() ? `　⚠️ 現在時間＝測試值 ${LS.get('deco.nowFake')}` : '')              // 🔴 批 7：到期測試開關
+    + (pendingDelList().length ? `　待刪雲端檔 ${pendingDelList().length}` : '');
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -5551,7 +5958,7 @@ async function savePhoto(rec, opt){
         所以別台永久刪除之後，這台的推送可能把它插回雲端 ⇒ 由雲端的 photo_purged 墓碑擋（§0c R-07，批 3 SQL）。 */
   if(CLOUD.code){ rec.pending = true; rec.synced = false; }
   await lPut('photos',rec);
-  if(CLOUD.on){
+  if(CLOUD.on && !(opt && opt.noPush)){          // 🔴 v0.1.10 P1：noPush＝只寫本機（見 uploadFiles）
     const p=cloudPushPhoto(rec.id).catch(e=>{ cloudErr(e); return 'error'; });
     if(opt && opt.wait) return await p;
   }
@@ -5559,27 +5966,11 @@ async function savePhoto(rec, opt){
 }
 async function loadPhoto(id){ return lGet('photos',id); }
 async function listPhotos(){ return lAll('photos'); }
-async function deletePhoto(id){
-  const r=await lGet('photos',id);
-  await lDel('photos',id);           // ⚠️ 照片是物理刪除（照片線刻意如此，不要統一）
-  if(CLOUD.on && r && r.projectCode===CLOUD.code) cloudDelPhoto(r).catch(e=>cloudErr(e));
-}
-async function saveMarker(m){
-  m.id = m.id || uid();
-  /* 🔴 需求 36（v0.11_i 修二）：標記線同上。 */
-  if(m.projectCode == null) m.projectCode = CLOUD.code || null;
-  m.updatedAt   = nowISO();
-  if(CLOUD.code && !m.synced) m.pending = true;
-  await lPut('markers',m);
-  if(CLOUD.on) cloudPushMarker(m.id).catch(e=>cloudErr(e));
-  return m.id;
-}
-async function listMarkers(){ return lAll('markers'); }
-async function deleteMarker(id){
-  const m=await lGet('markers',id);
-  await lDel('markers',id);
-  if(CLOUD.on && m && m.projectCode===CLOUD.code) cloudDelMarker(m).catch(e=>cloudErr(e));
-}
+/* 🗂 v0.1.9 批 10（O-37／R-19）：舊的 deletePhoto（照片物理刪除：本機 lDel＋雲端硬刪）、saveMarker／listMarkers／deleteMarker
+   整族拿掉 —— 全檔已沒有任何呼叫者。
+   · 舊註解寫「照片是物理刪除（照片線刻意如此，不要統一）」—— v0.1.9【刻意統一】了：照片可以同時在好幾本相簿，
+     刪除改發生在 album_photo 層、進垃圾桶（半年）；真正的永久刪除只走批 7 的 purgeGroups → RPC purge_photo（先查引用）。
+   · markers：v0.1.9 只讀（搬家用，直接讀 IndexedDB）。舊資料裡還沒推上去的標記仍由 cloudPull ③ 的 cloudPushMarker 補推（原樣保留）。 */
 
 /* ══════════════════════════════════════════════════════════════
    🔴 v0.1.9 批 4｜JPEG 的區段與 EXIF（讀＋清 GPS）
@@ -5856,6 +6247,8 @@ async function refreshUsage(){
   if(fake!=null && isFinite(Number(fake))) total=Number(fake);
   S.usage={total, orig:orig||0, fake:(fake!=null), at:Date.now()};
   refreshDiag();
+  /* 用量常常比畫面晚到（開 App 時同步還在跑）⇒ 相簿頁開著就重畫一次，用量條才不會停在「讀取中」 */
+  if(S.tab==='photo') renderAlbums();
   return S.usage;
 }
 /* 'unknown'（還不知道／未連線）／'ok'／'warn'（≥70%）／'full'（≥95%） */
@@ -5939,37 +6332,70 @@ function touchRecentAlbum(id){
    新照片排在那本最後（sort＝目前最大＋1）。回傳 {made, albumId, msgs}。 ╚═══════════════════╝ */
 async function uploadFiles(files, source, target){
   const list=[...(files||[])];
-  const res={made:0, albumId:(target && target!=='new') ? target : null, msgs:[]};
+  const res={made:0, albumId:(target && target!=='new') ? target : null, msgs:[], apIds:[]};
   if(!list.length) return res;
   if(usageLevel()==='full'){
     res.msgs.push('雲端用量已超過 95%，暫停上傳（可以先刪除雲端的原檔或永久刪除垃圾桶裡的照片）。');
     return res;
   }
+  /* ╔═ 🔴 v0.1.10 P1（§1、§0d #5）｜每一張：三筆【先全部寫進本機】，全部成功才推雲端 ═══════════╗
+     v0.1.9 的做法是「先 saveAlbum（建新相簿、立刻背景推上雲）→ savePhoto（丟錯沒人接）」
+     ⇒ iPhone 無痕視窗（IndexedDB 存不了 Blob）：照片存不進去、onPickFiles 中斷、畫面沒有任何訊息，
+       而雲端已經多了一本空相簿（每選一次一本）。
+     新順序：照片（noPush）→ 新相簿（第一張成功才建，noPush）→ album_photo（noPush）
+       任一步丟錯 ⇒ 收回這一張剛寫的本機紀錄（照片、這一張順帶建的新相簿），訊息寫原因，繼續下一張
+       ⇒ 一張都沒成功 ⇒ 本機與雲端都不會有新相簿；也不會有「不屬於任何相簿的照片」（v0.22_i §1）。
+     全部寫完才依「照片 → 相簿 → album_photo」的順序在背景推（pushUploaded）。 ╚═══════════════════╝ */
+  const toPush=[];
   for(const f of list){
+    const fname=f.name||'(無檔名)';
     let rec;
     try{ rec=await intake(f, source); }
-    catch(e){ res.msgs.push(`「${f.name||'(無檔名)'}」${(e&&e.message)||e}`); continue; }
-    if(!res.albumId){
-      const all=await lAllObj('albums');
-      const a=newObj({ id:uid(), name:`新相簿(${maxNewAlbumNo(all)+1})`, locX:null, locY:null,
+    catch(e){ res.msgs.push(`「${fname}」${(e&&e.message)||e}`); continue; }
+    let wrote=false, made=null;
+    try{
+      await savePhoto(rec, {noPush:true}); wrote=true;
+      if(!res.albumId){
+        const all=await lAllObj('albums');
+        made=newObj({ id:uid(), name:`新相簿(${maxNewAlbumNo(all)+1})`, locX:null, locY:null,
+          deletedAt:null, batchId:null, restoredAt:null, purgedAt:null });
+        await saveAlbum(made, {noPush:true});
+      }
+      const albumId = res.albumId || made.id;
+      const sorts=(await lAllObj('album_photos'))
+        .filter(x=>x.albumId===albumId && !x.purgedAt).map(x=>Number(x.sort)||0);
+      const ap=newObj({ id:uid(), albumId, photoId:rec.id,
+        name: rec.name==='(無檔名)' ? '' : rec.name, note:'',
+        sort:(sorts.length? Math.max(...sorts) : 0)+1,
         deletedAt:null, batchId:null, restoredAt:null, purgedAt:null });
-      await saveAlbum(a);
-      res.albumId=a.id;
+      await saveAlbumPhoto(ap, {noPush:true});
+      if(made) res.albumId=made.id;
+      res.made++; res.apIds.push(ap.id);
+      toPush.push({photoId:rec.id, albumId:made ? made.id : null, apId:ap.id});
+    }catch(e){
+      /* 收回（每一步各自 try：收回本身失敗也不可以蓋掉原本的錯誤訊息） */
+      if(wrote){ try{ await lDel('photos', rec.id); }catch(_){} }
+      if(made){  try{ await lDel('albums', made.id); }catch(_){} }
+      res.msgs.push(`「${fname}」存不進這支手機（瀏覽器儲存失敗：${(e&&e.name)||'Error'}）。無痕視窗或空間不足時會這樣。`);
     }
-    await savePhoto(rec);
-    const sorts=(await lAllObj('album_photos'))
-      .filter(x=>x.albumId===res.albumId && !x.purgedAt).map(x=>Number(x.sort)||0);
-    const ap=newObj({ id:uid(), albumId:res.albumId, photoId:rec.id,
-      name: rec.name==='(無檔名)' ? '' : rec.name, note:'',
-      sort:(sorts.length? Math.max(...sorts) : 0)+1,
-      deletedAt:null, batchId:null, restoredAt:null, purgedAt:null });
-    await saveAlbumPhoto(ap);
-    res.made++;
   }
   if(res.albumId && res.made) touchRecentAlbum(res.albumId);
   await reloadObjects();
-  kickOrigQueue();
+  if(toPush.length) pushUploaded(toPush).catch(e=>cloudErr(e));
   return res;
+}
+/* 背景推：一張一張、照「照片 → 相簿（這一張順帶建的）→ album_photo」的順序。
+   失敗只留 pending（v0.1.10 P7：回前景／下一次同步的 pushPending 會接著推）。 */
+async function pushUploaded(items){
+  if(!CLOUD.on) return;
+  for(const it of items){
+    try{
+      await cloudPushPhoto(it.photoId);
+      if(it.albumId && ALBUM_CLOUD) await cloudPushObj('albums', it.albumId);
+      if(ALBUM_CLOUD) await cloudPushObj('album_photos', it.apId);
+    }catch(e){ cloudErr(e); if(e && e.transient) break; }
+  }
+  kickOrigQueue();
 }
 
 /* ╔═ 🔴🔴 v0.1.9 §9-2／§9-3／§9-5｜原檔上傳佇列 ══════════════════════════════════════════╗
@@ -5985,7 +6411,7 @@ async function uploadFiles(files, source, target){
      ⑥ 推回來是 []（剛好在 ④⑤ 之間被永久刪除）⇒ 把剛傳的檔刪掉（沒有列指著它，雲端政策允許）
    失敗 ⇒ failed＋原因（不可安靜；畫面點一下重試是批 5）。App 關掉再開 ⇒ 下次同步接著傳（以照片 id 判）。
    🔴 busy 旗標一律 finally 清（⑧-b 成對機制）。 ╚═══════════════════════════════════════════╝ */
-let _origBusy=false, _origAgain=false;
+let _origBusy=false, _origAgain=false, _origStalled=false;   // _origStalled：這一輪因為暫時性錯誤停下（給自驗與診斷看）
 function kickOrigQueue(){
   if(_origBusy){ _origAgain=true; return; }
   processOrigQueue().catch(e=>cloudErr(e));
@@ -5993,9 +6419,14 @@ function kickOrigQueue(){
 async function processOrigQueue(){
   if(!CLOUD.on || !CLOUD.code || CLOUD.frozen || _origBusy) return;
   _origBusy=true;
+  let done=0;
   try{
     do{
       _origAgain=false;
+      /* 🔴 v0.1.10 P7：迴圈外層那一次 try —— 暫時性錯誤（網路斷、逾時、5xx）⇒ 這張留 pending、整輪停
+         （網路斷了，後面的一定也失敗，不要連打）；回前景／online／下次同步會再 kick。
+         v0.1.9 是「丟錯跳出整個 for、沒人再 kick」。 */
+      try{
       for(const r0 of await lAll('photos')){
         if(r0.projectCode!==CLOUD.code || !r0.orig) continue;
         const legacy = (r0.albumVer===0) && (r0.origStatus==null) && !r0.origClean;
@@ -6015,51 +6446,52 @@ async function processOrigQueue(){
           r.origStatus='skipped'; r.origErr=null; await savePhoto(r); continue;
         }
         const chk=await sbFetch('/rest/v1/photos?select=id&id=eq.'+r.id);   // ④
-        if(!chk.ok){ throw new Error('確認照片失敗：'+(await chk.text()).slice(0,160)); }
+        if(!chk.ok){ const er=new Error('確認照片失敗：'+(await chk.text()).slice(0,160)); er.transient=isTransientStatus(chk.status); throw er; }
         const exists=await chk.json();
         if(!Array.isArray(exists) || !exists.length) continue;
         const path=`${CLOUD.code}/${r.id}_orig.jpg`;                      // ⑤
         const up=await sbFetch('/storage/v1/object/photos/'+path,{method:'POST',
           headers:{'Content-Type':'image/jpeg','x-upsert':'true'}, body:r.orig});
         if(!up.ok){
-          r.origStatus='failed'; r.origErr='上傳原檔失敗：'+(await up.text()).slice(0,160);
+          const msg='上傳原檔失敗：'+(await up.text()).slice(0,160);
+          /* 🔴 v0.1.10 §0d #4：5xx／408／429 是暫時的 ⇒ 留 pending（v0.1.9 一律記 failed，failed 不會自己重試） */
+          if(isTransientStatus(up.status)){ const er=new Error(msg); er.transient=true; throw er; }
+          r.origStatus='failed'; r.origErr=msg;
           await savePhoto(r); continue;
         }
         r.origPath=path; r.origStatus='has'; r.origErr=null;
+        r.origSize=r.orig.size;                                          // 🔴 批 7：送得出 orig_size（上面那個洗成 null 的坑的第二道）
         const how=await savePhoto(r,{wait:true});
         if(how==='purged'){                                              // ⑥
-          await sbFetch('/storage/v1/object/photos/'+path,{method:'DELETE'}).catch(()=>{});
+          /* 🔴 v0.1.10 §0d #3：改走待刪清單（v0.1.9 是直接刪＋吞掉錯誤 ⇒ 中斷時會留下孤兒檔） */
+          setPendingDel(pendingDelList().concat([path]));
+          flushPendingDel().catch(e=>cloudErr(e));
         }
         if(S.usage && S.usage.total!=null && !S.usage.fake){ S.usage.total+=r.origSize||0; S.usage.orig+=r.origSize||0; }
+        done++;
+      }
+      }catch(e){
+        if(e && e.transient){ _origStalled=true; break; }          // 留 pending；等下一次 kick
+        throw e;
       }
     }while(_origAgain);
   }finally{
     _origBusy=false;
+    /* 🔴 v0.1.10 P7-a：「橘條最後會消失」——傳完要讓畫面知道（v0.1.9 要等下一次同步才重畫） */
+    if(done){ try{ await reloadObjects(); if(S.tab==='photo') renderAlbums(); }catch(e){} }
   }
 }
 
-/* ── 舊的照片分頁仍然在（批 5 換成相簿清單頁）：選檔 ⇒ 放進一本新相簿 ── */
-S.photoMsg='';
-async function onPick(e, source){
-  const files=[...e.target.files||[]];
-  e.target.value='';
-  if(!files.length) return;                          // 🔴 R-37：取消選檔 ⇒ 什麼都不做
-  const res=await uploadFiles(files, source, 'new');
-  /* 🔴 R-13：做不出壓縮版的那幾張，在頁面上說原因（不跳視窗）。 */
-  S.photoMsg = res.msgs.join('\n');
-  renderPhotos(); render();
-}
 /* 🔴 O-13：這一筆是舊版存的嗎？判準用 rawW（舊紀錄一定沒有）。 */
 const isLegacy = r => (r.rawW===undefined || r.rawW===null);
 const verOf = r => r.appVer || (isLegacy(r)? 'v0.1.2（舊）' : 'v0.1.2.1');
 
-/* ── 畫面：照片分頁 ── */
 let _urls=[];
 function revokeAll(){ _urls.forEach(u=>URL.revokeObjectURL(u)); _urls=[]; }
 function objURL(b){ const u=URL.createObjectURL(b); _urls.push(u); return u; }
 
 /* ⚠️ 環境偵測：某些情境下 IndexedDB 會被【整個擋掉】，且錯誤訊息看起來像程式壞了。
-   → 要先講清楚「這是環境，不是程式」（留什麼：整段一字不動）。 */
+   → 要先講清楚「這是環境，不是程式」（留什麼：整段一字不動；v0.1.9 R-40：搬到相簿清單頁最上面）。 */
 function envNote(){
   const bad = (location.protocol==='data:' || location.origin==='null');
   return bad ? `<div class="pstat" style="border-color:var(--warnB)">
@@ -6067,171 +6499,1797 @@ function envNote(){
       IndexedDB 與 localStorage 都用不了 → <b>照片存不進去，這不是程式的問題。</b><br>
       ⚠️ 請改用 <b>正式網址</b>（有正式的來源）開啟本頁再測。</div>` : '';
 }
-async function renderPhotos(){
-  const box=$('plist'); if(!box) return;
-  revokeAll(); box.innerHTML='';
-  const warn=envNote();
-  let recs=[];
-  try{ recs=await listPhotos(); }
+
+/* ══════════════════════════════════════════════════════════════
+   🔴🔴 v0.1.9 批 5｜相簿畫面（_i §3 清單頁、§4 內頁、§6 多選、§7 轉移／複製、§9-1 上傳入口）
+   ── R-40 舊照片分頁控制項的處置（O-27：沒有「沒提到」這個選項）───────────────
+     〔📷 拍照〕〔🖼️ 從相簿選〕　🔁 換成〔📷〕＋〔＋ 上傳到：… ▾〕（R-36；#fCam／#fLib 兩個 input 留著）
+     〔改名〕　　　　　　　　　 🔁 點名字改（album_photo 的名字，不是 photos.name —— photos.name 凍結，舊版在讀）
+     〔標到平面圖／重新標位置〕 🔁 內頁〔📍 指定位置〕／〔📍 在平面圖上看位置〕（定位模式＝批 8）
+     〔刪除〕（沒有確認框）　　 🔁 放大畫面／多選的〔刪除〕＋勾選清單框（批 6）
+     卡片上的診斷文字　　　　　 ✅ 搬到放大畫面最下面一行小字（批 6）
+     pstat（張數／本機配額）　　✅ 本機配額搬到放大畫面最下面；張數不再顯示（「張數不是資訊」）
+     envNote（儲存被擋的警告） ✅ 搬到相簿清單頁最上面
+     「還沒有照片」空狀態　　　 🔁「還沒有相簿」
+   ══════════════════════════════════════════════════════════════ */
+S.alb = { open:null, multi:null, flash:null };   // open＝打開中的相簿 id；multi＝多選中的 album_photo id 集合
+S.dbNote = '';
+S.photoMsg = '';
+let PHOTOS = new Map();                           // 照片本身（reloadObjects 載入；含 Blob）
+const albumOf = id => ALBUMS.find(a=>a.id===id) || null;
+const byApSort = (a,b)=> (Number(a.sort)||0)-(Number(b.sort)||0)
+  || String(a.createdAt||'').localeCompare(String(b.createdAt||'')) || String(a.id).localeCompare(String(b.id));
+function apsOf(albumId){ return APHOTOS.filter(x=>x.albumId===albumId).sort(byApSort); }
+/* 這張照片在哪幾本【活的】相簿裡（活的 album_photo 且相簿本身沒被刪） */
+function albumsOfPhoto(photoId){ return APHOTOS.filter(x=>x.photoId===photoId && albumOf(x.albumId)); }
+const hasCloudOrig = p => !!(p && p.origStatus==='has');
+const albName = a => (a && a.name) ? a.name : '（沒有名字的相簿）';
+/* ╔═ 🔴 v0.1.10 P9（§0d ⑦）｜相簿序號與顏色（雲端發、App 只讀）═══════════════════════════════╗
+   PAL＝40 個淡色（CIELAB L* 78～90）。🔴 長度與雲端 SQL 的 `color < 40`、`generate_series(0, 39)` 一致（O-37：三處一起改）。
+   算法與對比結果見施工紀錄批 4：
+     深色外框 #3a3a3a 對淺色平面圖底色 ≥ 10.4:1；淡色機身對深色主題底色 ≥ 9.3:1；外框對機身 ≥ 6.3:1；
+     深字 #222 對白鏡頭 15.9:1；相鄰號碼 ΔE2000 ≥ 20.2；任兩色 ≥ 7.4（前 12 色兩兩 ≥ 12.4）。
+   排序＝「先挑離已選最遠的」（maximin），再調成相鄰號碼差 ≥ 20 ⇒ 同一專案先發的號（前面幾色）最分得開。 ╚═╝ */
+const PAL = ["#f7bebf", "#32d4de", "#e5e799", "#adbffe", "#f1b57d", "#7dd2a1", "#e9aded", "#bfe9fa", "#e8defc", "#bac5a8", "#7bc9fc", "#f4e0c5", "#b1efe2", "#d7bf76", "#d7b8cd", "#c3eeb4", "#dbbaa9", "#9ac9cc", "#f9aacb", "#56d5c0", "#faaf96", "#b3ca7f", "#bcbfdd", "#e5e4c5", "#ccb5fe", "#96f1fa", "#ccc0a3", "#37d1f7", "#d0e9d0", "#c3d9f5", "#8cf6d1", "#fcdfa2", "#97ccb8", "#fed8e9", "#a1c6da", "#71f7ec", "#ffdbcb", "#edccfc", "#ffcea8", "#a8cb9c"];
+const PIN_OUTLINE = '#3a3a3a', PIN_TEXT = '#222', NO_COLOR = '#e4e4e4';   // 還沒拿到顏色（未連線／還沒同步）＝淡灰
+const albColor  = a => (a && a.color!=null && PAL[a.color]) ? PAL[a.color] : NO_COLOR;
+const albNoText = a => (a && a.no!=null) ? '#'+a.no : '#—';               // 還沒拿到序號 ⇒「#—」（Ali 10-01：可以）
+function recentAlbumIds(){
+  try{ const a=JSON.parse(LS.get(RECENT_ALBUMS_KEY)||'[]'); return Array.isArray(a)? a : []; }catch(e){ return []; }
+}
+/* §3：最近有變動的相簿排最上（R-16 推算，不存） */
+async function sortedAlbums(){
+  const rec=await albumRecency();
+  return ALBUMS.slice().sort((a,b)=> String(rec.get(b.id)||'').localeCompare(String(rec.get(a.id)||''))
+                                   || String(a.id).localeCompare(String(b.id)));
+}
+/* ▾ 選單與轉移目標選單「同一份清單、同樣排序」（§7）：最近用過 3 本置頂，其餘照最近變動 */
+function targetOrder(sorted){
+  const rec=recentAlbumIds().filter(id=>sorted.some(a=>a.id===id));
+  return rec.map(id=>sorted.find(a=>a.id===id)).concat(sorted.filter(a=>!rec.includes(a.id)));
+}
+
+/* ── 選單（▾／轉移目標／⋯）──
+   🔴 R-37：選單項目的 onClick 在【同一個點擊事件】裡同步執行（中間不 await）⇒ 要開選檔時 iPhone 不會擋。 */
+let _menuUrls=[];
+function openMenu(title, items){
+  _menuUrls.forEach(u=>URL.revokeObjectURL(u)); _menuUrls=[];
+  const box=$('menuBox'); box.innerHTML='';
+  if(title){ const t=document.createElement('div'); t.className='mt'; t.textContent=title; box.appendChild(t); }
+  for(const it of items){
+    const b=document.createElement('button'); b.className='mi'+(it.cls?' '+it.cls:'');
+    b.textContent=it.label;
+    if(it.thumb){ const u=URL.createObjectURL(it.thumb); _menuUrls.push(u);   // R-35：封面小縮圖
+      const im=document.createElement('img'); im.src=u; im.alt=''; b.prepend(im); }
+    if(it.swatch){ const s=document.createElement('span'); s.className='csw'; s.style.background=it.swatch; b.prepend(s); }   // 🔴 v0.1.10 P9
+    if(it.sub){ const s=document.createElement('span'); s.className='ms'; s.textContent=it.sub; b.appendChild(s); }
+    b.disabled=!!it.disabled;
+    b.onclick=e=>{ e.stopPropagation(); closeMenu(); it.onClick && it.onClick(); };
+    box.appendChild(b);
+  }
+  const c=document.createElement('button'); c.className='mi'; c.textContent='取消';
+  c.onclick=()=>closeMenu(); box.appendChild(c);
+  $('ovMenu').hidden=false;
+}
+function closeMenu(){ $('ovMenu').hidden=true; }
+$('ovMenu').addEventListener('click', e=>{ if(e.target.id==='ovMenu') closeMenu(); });
+
+/* ── 上傳入口（§9-1、R-36、R-37）── */
+let _pickTarget='new';
+function pickUpload(kind, target){
+  _pickTarget = target || 'new';
+  const inp=$(kind==='cam' ? 'fCam' : 'fLib');
+  inp.value='';
+  inp.click();                                  // 🔴 同步呼叫（在使用者的點擊裡）
+}
+async function onPickFiles(e, source){
+  const files=[...(e.target.files||[])];
+  e.target.value='';
+  if(!files.length) return;                     // 🔴 R-37／相-29：取消選檔 ⇒ 什麼都不做（不會多出空相簿）
+  S.photoMsg='';
+  /* 🔴 v0.1.10 P1：整批結束【一定】走到「寫訊息＋重畫」（v0.1.9 丟錯時整段中斷、畫面什麼都沒有） */
+  try{
+    const res=await uploadFiles(files, source, _pickTarget);
+    S.photoMsg=res.msgs.join('\n');             // 🔴 R-13：存不進去／做不出壓縮版的那幾張，頁面上說原因（不跳視窗）
+    /* 🔴 v0.1.10 P2：內頁 ⇒ 這一批每一張都閃、捲到第一張；首頁（新相簿）⇒ 閃整本卡片（照舊） */
+    if(res.made && res.albumId) S.alb.flash={albumId:res.albumId, last:true, apIds:res.apIds};
+  }catch(err){
+    S.photoMsg='這次加照片中途出錯：'+((err&&err.name)||'Error')+'｜'+((err&&err.message)||err);
+  }finally{
+    await renderAlbums(); render();
+  }
+}
+$('fCam').onchange=e=>onPickFiles(e,'拍照');
+$('fLib').onchange=e=>onPickFiles(e,'相簿');
+function uploadRow(target, sorted){
+  const row=document.createElement('div'); row.className='atop';
+  const full = usageLevel()==='full';           // 🔴 §9-4：≥ 95% ⇒〔📷〕〔上傳到〕變灰
+  const cam=document.createElement('button'); cam.className='abtn'; cam.textContent='📷';
+  cam.title='拍照'; cam.disabled=full; cam.onclick=()=>pickUpload('cam', target);
+  const up=document.createElement('span'); up.className='upl';
+  const main=document.createElement('button'); main.className='abtn pri';
+  main.textContent = `＋ 上傳到：${target==='new' ? '新相簿' : '這本'}`;
+  main.disabled=full; main.onclick=()=>pickUpload('lib', target);
+  const dd=document.createElement('button'); dd.className='abtn pri dd'; dd.textContent='▾';
+  dd.title='換一本'; dd.disabled=full;
+  dd.onclick=()=>{
+    const items=[];
+    if(target!=='new'){
+      const cur=albumOf(target);
+      items.push({label:`✓ 這本（${albName(cur)}）`, cls:'cur', onClick:()=>pickUpload('lib', target)});
+    }
+    items.push({label: target==='new' ? '✓ 新相簿' : '新相簿', cls: target==='new'?'cur':'', onClick:()=>pickUpload('lib','new')});
+    for(const a of targetOrder(sorted)){
+      if(a.id===target) continue;
+      items.push({label:albName(a), onClick:()=>pickUpload('lib', a.id)});
+    }
+    openMenu('上傳到哪一本？（選了就開始選照片）', items);
+  };
+  up.appendChild(main); up.appendChild(dd);
+  row.appendChild(cam); row.appendChild(up);
+  return row;
+}
+/* ── 用量條（§9-4：常駐、同一條、不跳視窗；滿格＝1 GB） ── */
+function usageBox(thin){
+  const d=document.createElement('div');
+  if(!CLOUD.on){ if(thin) return null; d.className='usage'; d.textContent='未連線：照片只存這台'; return d; }
+  const U=S.usage, lv=usageLevel();
+  if(thin && lv!=='warn' && lv!=='full') return null;   // 內頁的細條只在 ≥ 70% 出現（B7-c，建造者定）
+  d.className='usage'+(lv==='warn'?' warn':lv==='full'?' full':'')+(thin?' thin':'');
+  if(!U || U.total==null){ d.textContent='雲端用量：讀取中'; return d; }
+  const head = lv==='full' ? `🔴 雲端用量 ${fmtBytes(U.total)} / 1 GB ⇒ 暫停上傳`
+             : lv==='warn' ? `⚠️ 雲端用量 ${fmtBytes(U.total)} / 1 GB ⇒ 新照片只存壓縮版`
+             : `雲端用量 ${fmtBytes(U.total)} / 1 GB`;
+  const h=document.createElement('div'); h.textContent=head+(U.fake?'（測試值）':''); d.appendChild(h);
+  const bar=document.createElement('div'); bar.className='ubar';
+  const i=document.createElement('i'); i.style.width=Math.min(100, U.total/USAGE_CAP*100).toFixed(1)+'%';
+  bar.appendChild(i); d.appendChild(bar);
+  if(!thin){
+    const s=document.createElement('div'); s.className='scrubt'; s.style.margin='3px 0 0';
+    s.textContent=`其中原檔 ${fmtBytes(U.orig||0)}`; d.appendChild(s);
+    if(lv==='warn' || lv==='full'){
+      const acts=document.createElement('div'); acts.className='uacts';
+      /* 🔴 v0.1.9 批 7（B7-c）：〔備份原檔〕＝相簿清單一次一本 ⇒ 批 9 的 exportAlbumZip；〔刪除雲端的原檔〕＝勾選 ⇒ 確認 ⇒ 先改列再刪檔 */
+      for(const [t,fn,id] of [['備份原檔',openBackupOrig,'btnBackupOrig'],['刪除雲端的原檔',openPurgeOrig,'btnPurgeOrig']]){
+        const b=document.createElement('button'); b.className='abtn sm'; b.textContent=t; b.id=id;
+        b.onclick=()=>fn();
+        acts.appendChild(b);
+      }
+      d.appendChild(acts);
+    }
+  }
+  return d;
+}
+/* 頁面上方的狀態（環境、資料庫錯誤、搬家進度、上傳結果） */
+function albNotes(){
+  const d=document.createElement('div');
+  let h=envNote();
+  if(S.dbNote) h+=`<div class="pstat" style="border-color:var(--warnB)">🔴 ${esc(S.dbNote)}</div>`;
+  h+=`<div class="pstat" id="albMig"${S.migrate?'':' hidden'}>${S.migrate?`正在整理舊照片（${S.migrate.done} / ${S.migrate.total}）`:''}</div>`;
+  if(S.photoMsg) h+=`<div class="pstat"><span class="bad">${esc(S.photoMsg).split(String.fromCharCode(10)).join('<br>')}</span></div>`;
+  d.innerHTML=h;
+  return d;
+}
+function showAlbMsg(t){ S.photoMsg=t; renderAlbums(); }
+
+/* ── 畫面：相簿分頁的進入點（舊名 renderPhotos 保留：cloudSync／cloudLeave／setTab 都叫它）── */
+/* 下一幀做一次（rAF 在分頁被藏起來時不會跑 ⇒ 另掛一個 setTimeout 保底，兩個之中先到的那個做，只做一次） */
+function nextFrame(fn){
+  let done=false; const go=()=>{ if(done) return; done=true; fn(); };
+  requestAnimationFrame(go); setTimeout(go, 50);
+}
+let _albSeq=0;
+async function renderAlbums(){
+  const box=$('albView'); if(!box) return;
+  /* 🔴 正在打字（改名／備註）時不重畫：同步、用量這類背景事件會在任何時候叫 renderAlbums，
+     重畫會把輸入框整個換掉 ＝ 吃掉她打的字。存完（startEdit 的 finish）自己會再畫一次。 */
+  if(_albEdit) return;
+  const seq=++_albSeq;
+  let sorted=[];
+  try{ sorted=await sortedAlbums(); }
   catch(e){
-    box.innerHTML = warn || `<div class="pstat" style="border-color:var(--warnB)">
+    box.innerHTML = envNote() || `<div class="pstat" style="border-color:var(--warnB)">
       🔴 瀏覽器儲存讀取失敗：${esc(e.name)}｜${esc(e.message)}<br>
       常見原因：無痕視窗、瀏覽器設定擋網站資料、或裝置空間不足。</div>`;
-    $('pstat').innerHTML='張數：<b>—</b>（儲存不可用）';
     return;
   }
-  if(warn) box.innerHTML=warn;
-  recs.sort((a,b)=>String(a.dateTaken||a.addedAt).localeCompare(String(b.dateTaken||b.addedAt)));
-  const mk=await listMarkers().catch(()=>[]);
-  recs.forEach(r=>{
-    const c=document.createElement('div'); c.className='pcard';
-    const th=document.createElement('div'); th.className='thumbs';
-    if(r.small||r.orig){
-      const im=document.createElement('img'); im.src=objURL(r.small||r.orig);
-      im.title='點縮圖看全圖';
-      im.onclick=()=>openViewer(r.id);
-      const l1=document.createElement('div'); l1.className='tlab'; l1.textContent='👆 點看全圖';
-      th.appendChild(im); th.appendChild(l1);
-    }else{
-      const d=document.createElement('div'); d.className='tlab bad'; d.textContent='無法顯示';
-      th.appendChild(d);
+  if(seq!==_albSeq) return;                      // 期間又被叫了一次 ⇒ 讓新的那一次畫
+  revokeAll(); box.innerHTML='';
+  if(S.tab==='photo') renderLayerBar();          // 🔴 v0.1.9 §3：清單頁／內頁切換時，圖層列那一條（搜尋佔位框）跟著換
+  if(S.alb.open) renderAlbumInner(box, sorted);
+  else renderAlbumList(box, sorted);
+}
+function renderPhotos(){ return renderAlbums(); }
+
+/* ── 清單頁（圖 1）── */
+function renderAlbumList(box, sorted){
+  box.appendChild(albNotes());
+  box.appendChild(uploadRow('new', sorted));
+  const u=usageBox(false); if(u) box.appendChild(u);
+  /* 🗂 _d §13-108：搜尋框的位置預留在這裡（本批不做功能、不畫元素）。 */
+  if(!sorted.length){
+    const e=document.createElement('div'); e.className='empty';
+    e.innerHTML='<span class="ic">📷</span>還沒有相簿';
+    box.appendChild(e); return;
+  }
+  for(const a of sorted){
+    const aps=apsOf(a.id);
+    const card=document.createElement('div'); card.className='alb'; card.dataset.album=a.id;
+    const h=document.createElement('div'); h.className='ah';
+    const n=document.createElement('span'); n.className='an'; n.textContent=albName(a);
+    const no=document.createElement('span'); no.className='ano'; no.textContent=albNoText(a);   // 🔴 v0.1.10 P9：#3 在名稱左邊
+    /* 🔴 §3：不寫張數（「分類才是資訊，張數不是資訊」）；R-35：「📍 已定位」只是文字、不能點 */
+    const m=document.createElement('span'); m.className='am';
+    m.textContent = (a.locX!=null && a.locY!=null) ? '📍 已定位' : '未定位';
+    if(!aps.length){ const d=document.createElement('span'); d.className='csw'; d.style.background=albColor(a); h.appendChild(d); }   // 空相簿沒有拖曳條 ⇒ 色點
+    h.appendChild(no); h.appendChild(n); h.appendChild(m);
+    if(!aps.length){ const e=document.createElement('span'); e.className='am'; e.textContent='空相簿'; h.appendChild(e); }   // R-33
+    const go=document.createElement('button'); go.className='abtn sm'; go.textContent='進入相簿';
+    h.appendChild(go);
+    h.onclick=()=>openAlbum(a.id);                 // 點名稱那一行或〔進入相簿〕⇒ 內頁
+    card.appendChild(h);
+    const strip=document.createElement('div'); strip.className='astrip';
+    if(!aps.length){ const e=document.createElement('div'); e.className='empty1'; strip.appendChild(e); }
+    for(const ap of aps){
+      const p=PHOTOS.get(ap.photoId);
+      const t=document.createElement('div'); t.className='tn'; t.dataset.ap=ap.id;
+      if(p && p.small){ const im=document.createElement('img'); im.src=objURL(p.small); im.alt=''; im.draggable=false; t.appendChild(im); }
+      else { t.classList.add('ph'); t.textContent = p ? '還沒下載' : '已不在'; }   // R-50 🟡-15
+      if(p && !hasCloudOrig(p)){ const o=document.createElement('span'); o.className='origbar'; t.appendChild(o); }
+      /* 🔴 v0.1.10 P6（§5）：首頁縮圖【短按＝進入那本相簿，那一張捲到畫面中並閃一下】、【長按 0.8 秒＝放大那一張】。
+         原生橫捲：有滑動就不會發 click；一開始橫捲瀏覽器會發 pointercancel ⇒ bindLongPress 清掉計時器。
+         🔴 iOS 慣性捲動中「點一下讓它停」可能發 click ⇒ 捲動停下 150 ms 內的 click 不算（_stripScrollAt）。
+         長按觸發之後 _suppressClickUntil 擋掉緊接的 click（clickOk）。 */
+      t.onclick=e=>{ if(!clickOk() || Date.now()-(strip._scrollAt||0) < 150) return;
+        S.alb.flash={albumId:a.id, apId:ap.id}; openAlbum(a.id); };
+      if(p && p.small) bindLongPress(t, ()=>openAlbumViewer(a.id, ap.id));
+      strip.appendChild(t);
     }
-    c.appendChild(th);
-    const m=document.createElement('div'); m.className='meta';
-    const pinned=mk.find(x=>x.photoId===r.id);
-    m.innerHTML=
-      /* 🔴 §下-8 邊界：留空 ⇒ 顯示「未命名」 */
-      `<b>${esc(r.name||'未命名')}</b><br>`+
-      `來源：${esc(r.source)}｜格式：${esc(r.mime)}<br>`+
-      `原始：${fmtBytes(r.origSize)}`+(r.decoded?`（${r.rawW??r.w}×${r.rawH??r.h}）`:'')+
-      (r.smallSize?`　→ 壓縮後：${fmtBytes(r.smallSize)}`+
-        ((!isLegacy(r) && r.w)?`（${r.w}×${r.h}）`:''):'')+`<br>`+
-      `解碼：${r.decoded?'<span class="good">成功</span>':'<span class="bad">失敗</span>'}`+
-      `｜EXIF 方向：${r.orientation??'<span class="bad">無</span>'}`+
-      (isLegacy(r) ? `<br><span class="bad">⚠️ 舊版存的，方向未處理</span>`+
-                     `<span style="opacity:.8">（請刪掉重新加入）</span>`
-        : (r.rotated? `　<span class="good">✅ 已轉正（${esc(r.oriBy||'?')}）</span>`
-                    : (r.decoded? `　（不需轉）`:'')))+`<br>`+
-      `🕐 <b>時間軸用</b>：`+
-      (r.dateTaken? `<span class="good">拍攝時間 ${esc(r.dateTaken)}</span>`
-                  : `<span class="bad">加入時間 ${esc(fmtLocal(r.addedAt))}</span>（取不到拍攝時間）`)+
-      (r.err? `<br><span class="bad">⚠️ ${esc(r.err)}</span>`:'')+
-      /* 🔴 v0.1.9 批 4（真機探針用；批 5 換成相簿畫面時搬到放大畫面的診斷列）：原檔狀態一行 */
-      `<br>原檔：${esc(origStatusText(r))}`+
-      /* 🔴 v0.19_i §下-2：照片分頁的 📍 移除（文字留著）
-         ⇒ 之後 📍 在這個 App 裡只有一個意思：**在地圖上定位**。 */
-      (pinned? `<br>已標在平面圖上`:'')+
-      `<br><span style="opacity:.65">存於 ${esc(verOf(r))}</span>`;
-    const acts=document.createElement('div'); acts.className='acts';
-    const b1=document.createElement('button'); b1.className='btn';
-    b1.textContent=pinned?'重新標位置':'標到平面圖';   // 🔴 §下-2：去掉 📍，文字留著
-    b1.onclick=()=>startPin(r.id);
-    /* ╔═ 🔴 v0.19_i §下-8｜照片清單能改名 ══════════════════════════════════════╗
-       沿用房間改名那一套（askDialog + input + savePhoto），資料層免動（photos.name 已存在）。
-       🔴 落點選在【現成的 .acts 按鈕列】，不去拆上面那塊 18 行的 innerHTML
-          —— 字面上的「名字旁」要重做一整套 esc() 拼接，風險不小、收益是零。
-       ⚠️ askDialog 有 input 時回傳字串、沒有 input 時回傳 true
-          ⇒ 本條【有】input，不受那個陷阱影響；也不要把 askDialog 改成第三種模式。 */
-    const bRe=document.createElement('button'); bRe.className='btn'; bRe.textContent='改名';
-    bRe.onclick=async()=>{
-      const v=await askDialog({title:'照片改名', body:'名稱可以留空（會顯示「未命名」）。',
-        input:r.name||'', okText:'儲存'});
-      if(v===false) return;
-      r.name=(v==null?'':String(v)).trim();   // 邊界：留空 ⇒ 顯示「未命名」（與房間改名同一個處理）
-      await savePhoto(r);
-      renderPhotos();
-    };
-    const b2=document.createElement('button'); b2.className='btn'; b2.textContent='刪除';
-    b2.onclick=async()=>{ await deletePhoto(r.id);
-      const ms=await listMarkers(); for(const x of ms) if(x.photoId===r.id) await deleteMarker(x.id);
-      await loadMarkers(); renderPhotos(); render(); };
-    acts.appendChild(bRe); acts.appendChild(b1); acts.appendChild(b2);   // 🔴 §下-8：〔改名〕
-    m.appendChild(acts); c.appendChild(m); box.appendChild(c);
+    strip.addEventListener('scroll', ()=>{ strip._scrollAt=Date.now(); }, {passive:true});   // P6：慣性捲動點停不算點
+    card.appendChild(strip);
+    /* 🔴 v0.1.10 P5：拿掉「1 / N」（Ali：「這個是看容量不是看張數的」）⇒ 只放拖曳條；P8：滑塊＝相簿色 */
+    if(aps.length){ const sc=scrubber(strip, aps.length, albColor(a)); card.appendChild(sc.el); }
+    box.appendChild(card);
+  }
+  applyFlash(box);
+}
+/* ╔═ 🔴 §3｜可拖的進度條（v0.1.10 P5：「1 / N」不再放上畫面；label 仍回傳，沒有人接）（取代 ● ○ ○）═══════════════════════════════════════╗
+   橫排本身用【原生】橫向捲動（手勢、慣性、pointercancel 都由瀏覽器處理，少一套自己的手勢）；
+   進度條是自己的拖曳 ⇒ 🔴 R-39：pointerup／pointercancel／lostpointercapture 走同一支收尾。 ╚═══╝ */
+function scrubber(strip, n, color){
+  const el=document.createElement('div'); el.className='scrub';
+  const tr=document.createElement('div'); tr.className='tr';
+  const th=document.createElement('div'); th.className='th'+(color?' col':'');
+  if(color) th.style.background=color;              // 🔴 v0.1.10 P8：滑塊＝該相簿的顏色
+  el.appendChild(tr); el.appendChild(th);
+  const label=document.createElement('div'); label.className='scrubt';
+  const sync=()=>{
+    const W=el.clientWidth||1, max=Math.max(0, strip.scrollWidth-strip.clientWidth);
+    const ratio = strip.scrollWidth ? Math.min(1, strip.clientWidth/strip.scrollWidth) : 1;
+    const tw=Math.max(14, W*ratio);
+    th.style.width=tw+'px';
+    th.style.left=(max? (strip.scrollLeft/max)*(W-tw) : 0)+'px';
+    const tns=[...strip.querySelectorAll('.tn')];
+    let idx=0;
+    for(let i=0;i<tns.length;i++){ if(tns[i].offsetLeft+tns[i].offsetWidth/2 >= strip.scrollLeft){ idx=i; break; } }
+    if(max && strip.scrollLeft>=max-1) idx=tns.length-1;
+    label.textContent=`${idx+1} / ${n}`;
+  };
+  strip.addEventListener('scroll', sync, {passive:true});
+  let drag=null;
+  const setFromX=(x)=>{
+    const r=el.getBoundingClientRect(), max=Math.max(0, strip.scrollWidth-strip.clientWidth);
+    const f=Math.min(1, Math.max(0, (x-r.left)/Math.max(1,r.width)));
+    strip.scrollLeft=f*max;
+  };
+  el.addEventListener('pointerdown', e=>{
+    e.stopPropagation();
+    try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    drag={id:e.pointerId}; setFromX(e.clientX);
   });
-  if(!recs.length) box.innerHTML=warn+'<div class="pstat">還沒有照片。按上面兩顆鈕的其中一個。</div>';
-  let est='（此瀏覽器不支援容量查詢）';
-  try{ const e=await navigator.storage.estimate();
-    est=`已用 <b>${fmtBytes(e.usage||0)}</b> / 可用上限約 <b>${fmtBytes(e.quota||0)}</b>`;
-  }catch(e){}
-  /* 🔴 v0.1.9（批 5 之前的暫時落點）：上傳結果訊息（R-13）與雲端用量一行。 */
-  const U=S.usage;
-  const uline = !CLOUD.on ? '未連線：照片只存這台'
-    : (U && U.total!=null) ? `雲端用量 <b>${fmtBytes(U.total)}</b> / 1 GB（其中原檔 ${fmtBytes(U.orig||0)}）`
-        + ({warn:'　⚠️ 已過 70%，新照片只存壓縮版', full:'　🔴 已過 95%，暫停上傳'}[usageLevel()]||'')
-    : '雲端用量：讀取中';
-  $('pstat').innerHTML=`張數：<b>${recs.length}</b>　｜　${est}<br>${uline}`
-    + (S.photoMsg ? `<br><span class="bad">${esc(S.photoMsg).split(String.fromCharCode(10)).join('<br>')}</span>` : '');
+  el.addEventListener('pointermove', e=>{ if(drag && drag.id===e.pointerId) setFromX(e.clientX); });
+  const end=e=>{ if(drag && drag.id===e.pointerId){ drag=null; sync(); } };
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,end));
+  label.textContent=`1 / ${n}`;                   // 先給字（量不到寬度時也不會是一片空白）
+  nextFrame(sync);                                // O-1：排版之後才量得到寬度
+  return {el, label};
 }
-$('fCam').onchange=e=>onPick(e,'拍照');
-$('fLib').onchange=e=>onPick(e,'相簿');
+function applyFlash(box){
+  const f=S.alb.flash; if(!f) return;
+  S.alb.flash=null;
+  nextFrame(()=>{
+    if(S.alb.open){
+      const cards=[...box.querySelectorAll('.apc')];
+      /* 🔴 v0.1.10 P2：一次上傳多張 ⇒ 這一批每一張都閃（同一次），畫面捲到這一批的【第一張】 */
+      if(f.apIds && f.apIds.length){
+        const cs=f.apIds.map(id=>box.querySelector(`.apc[data-ap="${id}"]`)).filter(Boolean);
+        if(cs.length){ try{ cs[0].scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){} cs.forEach(c=>c.classList.add('flash')); }
+        return;
+      }
+      const c = f.apId ? box.querySelector(`.apc[data-ap="${f.apId}"]`) : (f.last ? cards[cards.length-1] : null);
+      if(c){ try{ c.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){} c.classList.add('flash'); }
+    }else{
+      const c=box.querySelector(`.alb[data-album="${f.albumId}"]`);
+      if(c){
+        try{ c.scrollIntoView({block:'nearest', behavior:'smooth'}); }catch(e){}
+        const st=c.querySelector('.astrip'); if(st && f.last) st.scrollLeft=st.scrollWidth;   // 新照片在最後 ⇒ 滑過去
+        c.classList.add('flash');
+      }
+    }
+  });
+}
 
-/* ── 標到平面圖 ── */
-function startPin(photoId){
-  /* 🔴 v0.19_i §1-3c：按〔標到平面圖〕時，若照片層是熄的 ⇒ **自動把它點亮**。
-     她的意圖很明確；不點亮的話標記【真的會被建立】卻畫不出來
-     ⇒ 她以為沒成功、再點一次 ⇒ 標記亂跑（obs O-18 的又一次變形）。
-     🔴 不可以用「擋住不讓標」的方式解 —— 那會變成一個沒有解釋的死路。 */
-  /* 🔴🔴 v0.20_i 下-14（obs O-30）：這裡【不可以用 L('photo')】。
-     根因　L() 回答的是「在我現在這一頁，這一層開不開」（見上方 L 的定義）；
-           而 startPin 是在【照片分頁】執行的 ⇒ S.layers['photo'] 這個分頁沒有 photo 這一層
-           ⇒ 回退到 def(true) ⇒ `if(!L('photo'))` 【永遠不成立】
-           ⇒ 這段自動點亮【從來沒有執行過】⇒ Ali 真機看到「照片圖層是暗的」。
-     🔑 通則：L(key) 是【相對於目前分頁】的。
-        任何要跨頁下的決定，都必須直接指名那一頁。 */
+/* ── 打開／離開一本相簿 ── */
+function openAlbum(id){
+  commitAlbumEdits();
+  S.alb.open=id; S.alb.multi=null;
+  renderAlbums().then(()=>{ try{ $('photoPage').scrollTop=0; }catch(e){} });
+}
+function closeAlbum(){
+  commitAlbumEdits();
+  S.alb.open=null; S.alb.multi=null;
+  renderAlbums();
+}
+
+/* ── 就地編輯（名字／備註／相簿名）：存檔顆粒度沿用 cardInput（即時改記憶體、blur／Enter 才存）──
+   🔴 同時只會有一個編輯中的欄位；commitAlbumEdits() 是唯一的收尾（blur、Enter、切分頁、
+      visibilitychange、進多選、開放大、離開相簿 —— 七條入口都走它，比照 commitAngEdit 的做法）。 */
+let _albEdit=null;
+function commitAlbumEdits(){
+  if(!_albEdit) return;
+  const f=_albEdit; _albEdit=null;
+  return f();
+}
+function startEdit(host, opts){
+  commitAlbumEdits();
+  const ta = opts.multiline;
+  const ed=document.createElement(ta ? 'textarea' : 'input');
+  ed.className='ed'; ed.value=opts.value||'';
+  if(opts.placeholder) ed.placeholder=opts.placeholder;
+  host.replaceWith(ed);
+  let done=false;
+  const finish=async(save)=>{
+    if(done) return; done=true;
+    if(_albEdit===commit) _albEdit=null;
+    if(save) await opts.save(ed.value);
+    await reloadObjects(); renderAlbums();
+  };
+  const commit=()=>finish(true);
+  _albEdit=commit;
+  ed.addEventListener('blur', ()=>finish(true));
+  ed.addEventListener('keydown', e=>{
+    /* Enter ⇒ 直接存（不靠 blur：視窗沒有焦點時 blur 不會發，O-17 ②） */
+    if(e.key==='Enter' && !(ta && e.shiftKey)){ e.preventDefault(); finish(true); }
+    if(e.key==='Escape'){ e.preventDefault(); finish(false); }
+  });
+  ed.onclick=e=>e.stopPropagation();
+  setTimeout(()=>{ ed.focus(); try{ ed.select && !ta && ed.select(); }catch(e){} }, 20);
+  return ed;
+}
+
+/* ── 內頁（圖 2）＋ 多選（圖 3）── */
+function renderAlbumInner(box, sorted){
+  const a=albumOf(S.alb.open);
+  if(!a){
+    /* 🔴 R-34：開著的時候被刪（含另一台同步刪）⇒ 講出來，給一個回去的路 */
+    const g=document.createElement('div'); g.className='gonebox';
+    g.innerHTML='這本相簿已被刪除（可能是另一台刪的，可以到垃圾桶還原）。<br><br>';
+    const b=document.createElement('button'); b.className='abtn'; b.textContent='← 相簿'; b.onclick=closeAlbum;
+    g.appendChild(b); box.appendChild(g); S.alb.multi=null; return;
+  }
+  const aps=apsOf(a.id);
+  const multi=S.alb.multi;
+  if(multi){ for(const id of [...multi]) if(!aps.some(x=>x.id===id)) multi.delete(id); }
+  box.appendChild(albNotes());
+  /* 第一排 */
+  const top=document.createElement('div'); top.className='atop';
+  if(multi){
+    const c=document.createElement('button'); c.className='abtn'; c.textContent='取消';
+    c.onclick=()=>{ S.alb.multi=null; renderAlbums(); };
+    const t=document.createElement('span'); t.className='ttl2'; t.textContent=`已選 ${multi.size} 張`;
+    const all=document.createElement('button'); all.className='abtn'; all.textContent='全選';
+    all.onclick=()=>{ aps.forEach(x=>multi.add(x.id)); renderAlbums(); };
+    top.appendChild(c); top.appendChild(t); top.appendChild(all);
+  }else{
+    const back=document.createElement('button'); back.className='abtn'; back.textContent='← 相簿'; back.onclick=closeAlbum;
+    const tno=document.createElement('span'); tno.className='ano'; tno.textContent=albNoText(a);   // 🔴 v0.1.10 P9：另一個 span（startEdit 只動 t）
+    const t=document.createElement('span'); t.className='ttl2 edit'; t.textContent=albName(a);
+    t.title='點一下改名稱';
+    const rename=(el)=>startEdit(el||t, {value:a.name||'', placeholder:'相簿名稱',
+      save: async v=>{ a.name=String(v).trim(); await saveAlbum(a); }});
+    t.onclick=()=>rename(t);
+    const more=document.createElement('button'); more.className='abtn'; more.textContent='⋯';
+    more.onclick=()=>openMenu(albName(a), [
+      {label:'改相簿名稱', onClick:()=>{ const tt=box.querySelector('.ttl2.edit'); if(tt) rename(tt); }},
+      {label:'多選', disabled:!aps.length, onClick:()=>enterMulti(null)},
+      {label:'刪除這本相簿（進垃圾桶）', cls:'danger', onClick:()=>confirmDeleteAlbum(a)}
+    ]);
+    top.appendChild(back); top.appendChild(tno); top.appendChild(t); top.appendChild(more);
+  }
+  box.appendChild(top);
+  /* 🔴 v0.1.10 P9：標題下一條細色線（內頁沒有拖曳條）；還沒拿到顏色就不畫 */
+  if(a.color!=null){ const ln=document.createElement('div'); ln.className='acline'; ln.style.background=albColor(a); box.appendChild(ln); }
+  /* 第二排 */
+  if(!multi){
+    const row=uploadRow(a.id, sorted);
+    const located=(a.locX!=null && a.locY!=null);
+    const loc=document.createElement('button'); loc.className='abtn';
+    loc.textContent = located ? '📍 在平面圖上看位置' : '📍 指定位置';
+    loc.onclick=()=>albumLocateEntry(a, located);
+    const zip=document.createElement('button'); zip.className='abtn'; zip.textContent='匯出 zip';
+    zip.onclick=()=>albumExportEntry(a);
+    row.appendChild(loc); row.appendChild(zip);
+    box.appendChild(row);
+    const u=usageBox(true); if(u) box.appendChild(u);
+  }
+  if(!aps.length){
+    const e=document.createElement('div'); e.className='empty'; e.textContent='空相簿';
+    box.appendChild(e);
+  }
+  const list=document.createElement('div'); list.className='aplist';
+  for(const ap of aps) list.appendChild(photoCard(a, ap, multi));
+  box.appendChild(list);
+  if(multi){
+    const tool=document.createElement('div'); tool.className='atool';
+    const mk=(t,fn)=>{ const b=document.createElement('button'); b.className='abtn'; b.textContent=t;
+      b.disabled=!multi.size; b.onclick=fn; tool.appendChild(b); };
+    mk('➡️ 轉移', ()=>openTargetMenu('move', [...multi], a.id, ()=>{ S.alb.multi=null; }));
+    mk('⧉ 複製', ()=>openTargetMenu('copy', [...multi], a.id, ()=>{ S.alb.multi=null; }));
+    mk('🗑 刪除', ()=>multiDelete(a, [...multi]));
+    box.appendChild(tool);
+  }
+  applyFlash(box);
+}
+function enterMulti(firstId){
+  commitAlbumEdits();
+  S.alb.multi=new Set(firstId ? [firstId] : []);
+  renderAlbums();
+}
+/* 長按進多選（🔴 ✋1：≡ 只做排序，卡片其他地方長按才進多選） */
+let _suppressClickUntil=0;
+const LONG_PRESS_MS = 800;       // 🔴 v0.1.10 P4：500 → 800 ms（內頁進多選、首頁縮圖長按＝放大，共用這一支）
+function bindLongPress(el, onLong){
+  let t=null, sx=0, sy=0, pid=null;
+  const clear=()=>{ if(t){ clearTimeout(t); t=null; } pid=null; };
+  el.addEventListener('pointerdown', e=>{
+    if(e.target.closest('.grip,button,input,textarea')) return;
+    pid=e.pointerId; sx=e.clientX; sy=e.clientY;
+    t=setTimeout(()=>{ t=null; _suppressClickUntil=Date.now()+600; onLong(); }, LONG_PRESS_MS);
+  });
+  el.addEventListener('pointermove', e=>{ if(e.pointerId===pid && Math.hypot(e.clientX-sx, e.clientY-sy)>8) clear(); });
+  ['pointerup','pointercancel','lostpointercapture','pointerleave'].forEach(ev=>el.addEventListener(ev, clear));
+  el.addEventListener('contextmenu', e=>e.preventDefault());   // Android 長按選單
+}
+const clickOk = ()=> Date.now() >= _suppressClickUntil;
+function photoCard(a, ap, multi){
+  const p=PHOTOS.get(ap.photoId);
+  const c=document.createElement('div'); c.className='apc'+(multi?' multi':'')+(multi&&multi.has(ap.id)?' sel':'');
+  c.dataset.ap=ap.id;
+  if(multi){
+    const ck=document.createElement('span'); ck.className='ck'+(multi.has(ap.id)?' on':''); c.appendChild(ck);
+    c.onclick=()=>{ if(!clickOk()) return; multi.has(ap.id)? multi.delete(ap.id) : multi.add(ap.id); renderAlbums(); };
+  }
+  const tb=document.createElement('div'); tb.className='tbox';
+  if(p && p.small){ const im=document.createElement('img'); im.src=objURL(p.small); im.alt=''; im.draggable=false; tb.appendChild(im); }
+  else tb.textContent = p ? '還沒下載' : '已不在';
+  if(p && !hasCloudOrig(p)){ const o=document.createElement('span'); o.className='origbar'; tb.appendChild(o); }
+  if(!multi) tb.onclick=e=>{ e.stopPropagation(); if(!clickOk()) return; if(p && p.small) openAlbumViewer(a.id, ap.id); };
+  c.appendChild(tb);
+  const tx=document.createElement('div'); tx.className='tx';
+  const l1=document.createElement('div'); l1.className='l1';
+  const nm=document.createElement('span'); nm.className='nm2'+(ap.name?'':' ph'); nm.textContent=ap.name||'未命名';
+  l1.appendChild(nm);
+  const nt=document.createElement('div'); nt.className='nt'+(ap.note?'':' noval');
+  nt.textContent = ap.note || '（沒有備註）';
+  if(!multi){
+    nm.onclick=e=>{ e.stopPropagation(); if(!clickOk()) return;
+      startEdit(nm, {value:ap.name||'', placeholder:'照片名稱',
+        save: async v=>{ ap.name=String(v).trim(); await saveAlbumPhoto(ap); }}); };
+    const nb=document.createElement('button'); nb.className='nbtn'; nb.textContent='修改備註';
+    nb.onclick=e=>{ e.stopPropagation();
+      nb.textContent='修改中'; nb.classList.add('on');
+      startEdit(nt, {value:ap.note||'', multiline:true, placeholder:'備註',
+        save: async v=>{ ap.note=String(v); await saveAlbumPhoto(ap); }}); };
+    l1.appendChild(nb);
+  }
+  tx.appendChild(l1); tx.appendChild(nt);
+  const st=statusLine(p);
+  if(st) tx.appendChild(st);
+  c.appendChild(tx);
+  if(!multi){
+    const g=document.createElement('span'); g.className='grip'; g.textContent='≡'; g.title='按住拖＝改順序';
+    bindGrip(g, c, a, ap);
+    c.appendChild(g);
+    bindLongPress(c, ()=>enterMulti(ap.id));
+  }
+  return c;
+}
+/* §9-3：每張卡片的上傳狀態（排隊／上傳中／失敗（點一下重試））—— 外觀建造者定：一行小字 */
+function statusLine(p){
+  const d=document.createElement('div'); d.className='st';
+  if(!p){ d.textContent='這張照片已不在（可能在另一台被永久刪除）'; return d; }
+  const parts=[];
+  if(!p.storagePath) parts.push(CLOUD.on ? '⏳ 排隊中（還沒上雲端）' : '只存在這台');
+  if(p.origStatus==='pending' && p.orig) parts.push(CLOUD.on ? '⬆ 原檔排隊中' : '原檔等連線後上傳');
+  if(p.origStatus==='skipped') parts.push('雲端已滿，只存壓縮版');
+  if(!parts.length && p.origStatus!=='failed') return null;
+  d.textContent=parts.join('　');
+  if(p.origStatus==='failed'){
+    const r=document.createElement('span'); r.className='retry';
+    r.textContent=(parts.length?'　':'')+'⚠️ 原檔上傳失敗（點一下重試）';
+    r.title=p.origErr||'';
+    r.onclick=async e=>{ e.stopPropagation();
+      const q=await lGet('photos',p.id); if(!q) return;
+      q.origStatus = q.orig ? 'pending' : 'failed'; q.origErr = q.orig ? null : '這台沒有原檔';
+      await savePhoto(q); await reloadObjects(); renderAlbums(); kickOrigQueue(); };
+    d.appendChild(r);
+  }
+  return d;
+}
+/* ╔═ ≡ 按住拖＝改順序（§4；第一張＝封面）═══════════════════════════════════════════════╗
+   🔴 R-39：放手三條路同一支收尾；排序拖到邊緣自動捲（requestAnimationFrame，收尾時一定取消）。
+   只寫被拖的那一筆（sort 取前後兩筆的中間值，Q：「拖一次只改一列」）。 ╚═════════════════════════╝ */
+let _grip=null;
+function bindGrip(grip, card, a, ap){
+  grip.addEventListener('pointerdown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    commitAlbumEdits();
+    try{ grip.setPointerCapture(e.pointerId); }catch(err){}
+    const page=$('photoPage');
+    const st={pid:e.pointerId, y0:e.clientY, lastY:e.clientY, st0:page.scrollTop, page,
+              cards:[...card.parentNode.querySelectorAll('.apc')], raf:0};
+    card.classList.add('dragging');
+    st.apply=()=>{ card.style.transform=`translateY(${(st.lastY-st.y0)+(page.scrollTop-st.st0)}px)`; };
+    const loop=()=>{
+      const r=page.getBoundingClientRect(); let v=0;
+      if(st.lastY < r.top+56) v=-9; else if(st.lastY > r.bottom-56) v=9;
+      if(v){ page.scrollTop+=v; st.apply(); }
+      st.raf=requestAnimationFrame(loop);
+    };
+    st.raf=requestAnimationFrame(loop);
+    _grip=st;
+  });
+  grip.addEventListener('pointermove', e=>{ const st=_grip; if(!st || st.pid!==e.pointerId) return; st.lastY=e.clientY; st.apply(); });
+  const end=async e=>{
+    const st=_grip; if(!st || st.pid!==e.pointerId) return;
+    _grip=null; cancelAnimationFrame(st.raf);
+    const r=card.getBoundingClientRect(), cy=r.top+r.height/2;
+    card.style.transform=''; card.classList.remove('dragging');
+    const others=st.cards.filter(x=>x!==card);
+    let ins=others.length;
+    for(let i=0;i<others.length;i++){ const q=others[i].getBoundingClientRect(); if(cy < q.top+q.height/2){ ins=i; break; } }
+    await moveApTo(a.id, ap.id, ins);
+  };
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>grip.addEventListener(ev, end));
+}
+async function moveApTo(albumId, apId, ins){
+  const all=apsOf(albumId), me=all.find(x=>x.id===apId); if(!me) return;
+  const rest=all.filter(x=>x.id!==apId);
+  if(ins===all.indexOf(me)){ renderAlbums(); return; }   // 放回原位 ⇒ 不存（拿掉自己之後，原位的插入點就是原索引）
+  const prev=rest[ins-1], next=rest[ins];
+  const ps=prev? Number(prev.sort)||0 : null, ns=next? Number(next.sort)||0 : null;
+  me.sort = (ps!=null && ns!=null) ? (ps+ns)/2 : (ps!=null ? ps+1 : (ns!=null ? ns-1 : 1));
+  await saveAlbumPhoto(me);
+  await reloadObjects(); renderAlbums();
+}
+
+/* ╔═ §7｜轉移／複製 ════════════════════════════════════════════════════════════════════╗
+   目標選單＝與「上傳到 ▾」同一份清單、同樣排序；🛑 不放〔＋ 新相簿〕（B5）。
+   R-30：全部都已在 ⇒ 那本灰（寫「已在此相簿」）；部分已在 ⇒ 可選，已在的略過並說一句。
+   轉移＝那筆 album_photo 改掛到目標（名字、備註跟著走），排到最後；複製＝目標多一筆，名字備註抄一份。
+   §0c（🟠-10）：只有【轉入】那本跳到最上面（轉出那本沒有列變動，推算不到，接受）。 ╚═══════════╝ */
+async function openTargetMenu(mode, apIds, fromAlbumId, after){
+  const sorted=await sortedAlbums();
+  const aps=apIds.map(id=>APHOTOS.find(x=>x.id===id)).filter(Boolean);
+  const items=[];
+  for(const t of targetOrder(sorted)){
+    if(t.id===fromAlbumId) continue;
+    const inT=new Set(apsOf(t.id).map(x=>x.photoId));
+    const already=aps.filter(x=>inT.has(x.photoId)).length;
+    items.push({ label:albName(t),
+      sub: already===aps.length ? '已在此相簿' : (already ? `${already} 張已在，會略過` : ''),
+      disabled: already===aps.length,
+      onClick: ()=>doTransfer(mode, aps, t.id).then(()=>{ after && after(); renderAlbums(); }) });
+  }
+  if(!items.length) items.push({label:'沒有別的相簿可以選', disabled:true});
+  openMenu(mode==='move' ? `轉移 ${aps.length} 張到哪一本？` : `複製 ${aps.length} 張到哪一本？`, items);
+}
+async function doTransfer(mode, aps, targetId){
+  const t=albumOf(targetId); if(!t) return 0;
+  const inT=new Set(apsOf(targetId).map(x=>x.photoId));
+  let sort=Math.max(0, ...apsOf(targetId).map(x=>Number(x.sort)||0));
+  let done=0, skip=0;
+  for(const ap of aps){
+    if(inT.has(ap.photoId)){ skip++; continue; }
+    sort+=1;
+    if(mode==='move'){ ap.albumId=targetId; ap.sort=sort; await saveAlbumPhoto(ap); }
+    else{
+      await saveAlbumPhoto(newObj({ id:uid(), albumId:targetId, photoId:ap.photoId,
+        name:ap.name||'', note:ap.note||'', sort, deletedAt:null, batchId:null, restoredAt:null, purgedAt:null }));
+    }
+    inT.add(ap.photoId); done++;
+  }
+  touchRecentAlbum(targetId);
+  await reloadObjects();
+  S.photoMsg = (done ? `${mode==='move'?'轉移':'複製'}了 ${done} 張到「${albName(t)}」。` : '')
+             + (skip ? `${skip} 張已經在「${albName(t)}」裡，略過。` : '');
+  return done;
+}
+
+/* 內頁的兩顆：〔📍 指定位置／在平面圖上看位置〕（批 8）、〔匯出 zip〕（批 9） */
+function albumLocateEntry(a, located){ return startAlbumLocate(a.id, located); }
+function albumExportEntry(a){ return exportAlbumZip(a.id); }
+
+/* 🗂 v0.1.9 R-23：舊的〔標到平面圖〕整族（startPin／#pinning 的繫結／dropMarker／MARKERS／loadMarkers／showMarker）拿掉。
+   markers 表 v0.1.9 只讀（搬家用，直接讀 IndexedDB），平面圖不再畫它。 */
+/* ══════════════════════════════════════════════════════════════
+   🔴🔴 v0.1.9 批 8｜平面圖上的相簿釘子＋預覽卡＋定位模式（_i §10、§0b R-20～R-28、R-34、R-35、§0c R-50）
+   狀態（三個，互斥由呼叫端維護）：
+     S.loc     ＝ 定位模式 {albumId, phase:'locating'|'done', x, y}（x／y 公分；第一次進來還沒點 ⇒ null）
+     S.pinSel  ＝ 選中的那根釘子（相簿 id）　S.pinCard ＝ 預覽卡開著
+   🔴 R-20：家具選取（S.selId）與釘子【互斥】—— 進定位、點釘子都先 select(null)；select(有值) 會清掉釘子。
+   🔴 R-20：定位面板是【另一個元素】#pinSel（共用 .sel 的 CSS，不共用 #sel）；判準 pinPanelShown()。
+   ══════════════════════════════════════════════════════════════ */
+function pinPanelShown(){ return !!(S.loc && S.tab==='plan' && S.loc.x!=null && albumOf(S.loc.albumId)); }
+function pinCardShown(){ return !!(S.pinCard && S.pinSel && !S.loc && S.tab==='plan' && albumOf(S.pinSel)); }
+/* 清掉釘子這一邊的狀態（家具被選中、點空白處、換分頁時） */
+function clearPinState(){
+  S.loc=null; S.pinSel=null; S.pinCard=false;
+}
+/* 🔴 R-24：兩個入口都自動點亮平面圖的 📷 層 —— 🔴 寫 S.layers.plan，不可用 L()（O-30：L() 相對於目前分頁）；
+   key 'photo' 不改（改了會把她存的圖層狀態丟掉，A-11）。 */
+function lightPhotoLayer(){
   if(!S.layers.plan) S.layers.plan = {};
-  if(S.layers.plan.photo !== true){
-    /* 🔴 用 `!== true` 不用 `!...`：兩者在 undefined 時同值，
-       但前者把「明確是 false」與「根本沒有這個 key」都涵蓋了，語意更準。 */
-    S.layers.plan.photo = true;
-    saveLayers();
+  if(S.layers.plan.photo !== true){ S.layers.plan.photo = true; saveLayers(); }
+}
+/* 釘子的世界座標：定位中的那一根用暫存位置 */
+function pinWorld(a){
+  if(S.loc && S.loc.albumId===a.id) return (S.loc.x!=null) ? {x:S.loc.x, y:S.loc.y} : null;
+  return (a.locX!=null && a.locY!=null) ? {x:a.locX, y:a.locY} : null;
+}
+/* ╔═ §10-1｜畫釘子（R-22：畫在畫面座標 _uiLayer；尺寸固定、不隨縮放）══════════════════════╗
+   圖示＝相機（方框＋快門鈕＋白色鏡頭）。🔄 v0.1.10 P9：機身＝相簿色（淡色＋深框）、鏡頭裡＝序號；選中＝粗框＋白光環（見下方）。
+   📷 層管釘子、🅰 層管相簿名稱；🔴 定位中那一根不受 📷 控制（R-50 🟡-8）。
+   錯開：兩根太近（螢幕距離 < PIN_GAP_PX）⇒ 畫面上錯開、細線連回真正位置；
+         🔴 定位中／選中的那一根不參與錯開（固定在真位置），定位中時它附近的其他釘子變淡。
+   _uiLayer 內順序（R-22）：房間名 → 家具名 → 釘子 → HUD。 ╚═══════════════════════════════════╝ */
+const PIN_HIT_PX = 22, PIN_GAP_PX = 30;
+let _pinScreen = [];           // 最近一次畫出來的位置（相對 svg 的畫面座標）＝命中判斷的唯一來源
+function drawPins(){
+  _pinScreen=[];
+  const locId = S.loc ? S.loc.albumId : null;
+  const all = shown('photo');
+  const list=[];
+  for(const a of ALBUMS){
+    const w=pinWorld(a); if(!w) continue;
+    if(!all && a.id!==locId) continue;
+    const s=w2s(w.x, w.y);
+    list.push({a, rx:s.x, ry:s.y, fixed:(a.id===locId || a.id===S.pinSel)});
   }
-  S.pinPhoto=photoId; $('pinning').hidden=false; setTab('plan');
+  list.sort((p,q)=> (q.fixed-p.fixed) || String(p.a.id).localeCompare(String(q.a.id)));   // 決定性：兩台畫法一樣
+  const placed=[];
+  const clash=(x,y)=>placed.some(q=>Math.hypot(q.x-x, q.y-y) < PIN_GAP_PX);
+  for(const p of list){
+    let x=p.rx, y=p.ry;
+    if(!p.fixed && clash(x,y)){
+      for(let k=0;k<18;k++){
+        const r=PIN_GAP_PX*(1+Math.floor(k/6)), ang=(k%6)*Math.PI/3 - Math.PI/2;
+        const nx=p.rx+Math.cos(ang)*r, ny=p.ry+Math.sin(ang)*r;
+        if(!clash(nx,ny)){ x=nx; y=ny; break; }
+      }
+    }
+    p.x=x; p.y=y; placed.push(p);
+  }
+  const {w:W,h:H}=svgSize();
+  const locP = locId ? placed.find(p=>p.a.id===locId) : null;
+  for(const p of placed){
+    if(p.x<-30 || p.y<-30 || p.x>W+30 || p.y>H+30) continue;       // 畫面外：不畫、也點不到
+    const sel = (p.a.id===locId || p.a.id===S.pinSel);
+    const dim = !!(locP && p!==locP && Math.hypot(p.x-locP.x, p.y-locP.y) < 70);
+    const g=el('g',{'data-pin':p.a.id, 'pointer-events':'none', opacity: dim ? .35 : 1});
+    if(Math.abs(p.x-p.rx)>0.5 || Math.abs(p.y-p.ry)>0.5){
+      g.appendChild(el('line',{x1:p.rx,y1:p.ry,x2:p.x,y2:p.y, stroke:'var(--sub)','stroke-width':1}));
+      g.appendChild(el('circle',{cx:p.rx,cy:p.ry,r:2.5, fill:'var(--sub)'}));
+    }
+    /* ╔═ 🔴 v0.1.10 P9｜相機＝淡色機身＋深色外框；白鏡頭裡是【序號】（不再是張數；v0.22 R-33「空相簿寫 0」作廢）═╗
+       選中（定位中／預覽卡那一根，同一個 sel）：不靠顏色 ⇒ 外框加粗＋外圈白光環＋深色細圈（藍色系相簿也看得出來）。 ╚═╝ */
+    const col=albColor(p.a);
+    const b=el('g',{transform:`translate(${p.x},${p.y})`});
+    if(sel){
+      b.appendChild(el('rect',{x:-21,y:-16,width:42,height:33,rx:8, fill:'none', stroke:PIN_OUTLINE, 'stroke-width':1.5, opacity:.55}));
+      b.appendChild(el('rect',{x:-19.5,y:-14.5,width:39,height:30,rx:7, fill:'none', stroke:'#fff', 'stroke-width':3}));
+    }
+    b.appendChild(el('rect',{x:-16,y:-11,width:32,height:23,rx:4, fill:col,
+      stroke:PIN_OUTLINE, 'stroke-width': sel ? 3 : 1.5}));
+    b.appendChild(el('rect',{x:6,y:-16,width:7,height:5,rx:1.5, fill:col, stroke:PIN_OUTLINE, 'stroke-width':1}));
+    b.appendChild(el('circle',{cx:0,cy:1,r:8, fill:'#fff', stroke:PIN_OUTLINE, 'stroke-width':1}));
+    const ns = p.a.no!=null ? String(p.a.no) : '—';
+    const t=el('text',{x:0,y:5,'text-anchor':'middle','font-size': ns.length>=3 ? 8.5 : 11,'font-weight':700, fill:PIN_TEXT});
+    t.textContent=ns; b.appendChild(t);
+    g.appendChild(b);
+    _uiLayer.appendChild(g);
+    if(shown('name')) uiText(p.x+20, p.y+4, albName(p.a), {size:11, fill:'var(--ink)', clamp:false});
+    _pinScreen.push({albumId:p.a.id, x:p.x, y:p.y});
+  }
 }
-/* 🔴 v0.21_i B-4：取消標記時要重畫一次 —— HUD 在 S.pinPhoto 有值時是藏起來的，
-   這裡原本只收起提示列、不重畫 ⇒ 左下角會空著，直到下一次別的東西觸發重畫（與 N-606 同形）。 */
-$('pinning').onclick=()=>{ S.pinPhoto=null; $('pinning').hidden=true; render(); };
-async function dropMarker(wx,wy){
-  const ms=await listMarkers();
-  for(const x of ms) if(x.photoId===S.pinPhoto) await deleteMarker(x.id);
-  await saveMarker({photoId:S.pinPhoto, x:wx, y:wy});
-  S.pinPhoto=null; $('pinning').hidden=true;
-  await loadMarkers(); render();
+/* 🔴 R-22：命中【收集全部】（舊碼的 .find 只回第一根） */
+function pinsAt(sx, sy){
+  return _pinScreen.filter(p=>Math.hypot(p.x-sx, p.y-sy) <= PIN_HIT_PX);
 }
-let MARKERS=[];
-async function loadMarkers(){ try{ MARKERS=await listMarkers(); }catch(e){ MARKERS=[]; } }
-/* 🔴 O-11：不開新分頁，改頁內檢視層（與「點縮圖看全圖」共用同一個入口）。 */
-async function showMarker(mk){ openViewer(mk.photoId); }
 
-let _vURL=null;
-async function openViewer(photoId){
-  let r=null;
-  try{ r=await loadPhoto(photoId); }
-  catch(e){ $('vBar').textContent='讀取失敗：'+e.name+'｜'+e.message; }
-  const v=$('viewer'), im=$('vImg');
-  if(!r){
-    im.removeAttribute('src');
-    $('vBar').innerHTML='<b>這張照片已被刪除</b>（平面圖上的標記可以直接刪掉）';
-    v.hidden=false; return;
+/* ── 預覽卡（§10-2）── */
+let _cardFor=null, _cardUrls=[];
+function buildPinCard(albumId){
+  _cardUrls.forEach(u=>URL.revokeObjectURL(u)); _cardUrls=[];
+  _cardFor=albumId;
+  const a=albumOf(albumId); if(!a) return;
+  /* 🔴 v0.1.10 P9：名稱旁放同色小方塊＋序號（顏色一路對得起來） */
+  $('pcName').innerHTML=`<span class="csw" style="background:${albColor(a)}"></span>${esc(albNoText(a))} ${esc(albName(a))}`;
+  const st=$('pcStrip'); st.innerHTML='';
+  const aps=apsOf(albumId);
+  if(!aps.length){ const e=document.createElement('div'); e.className='empty1'; st.appendChild(e); }
+  for(const ap of aps){
+    const p=PHOTOS.get(ap.photoId);
+    const t=document.createElement('div'); t.className='tn';
+    if(p && p.small){ const u=URL.createObjectURL(p.small); _cardUrls.push(u);
+      const im=document.createElement('img'); im.src=u; im.alt=''; im.draggable=false; t.appendChild(im);
+      /* §10-2：手指【沒滑動就放開】＝點一下 ⇒ 放大那一張（原生橫捲：有滑動就不會發 click） */
+      t.onclick=()=>openAlbumViewer(albumId, ap.id);
+    }else{ t.classList.add('ph'); t.textContent = p ? '還沒下載' : '已不在'; }
+    if(p && !hasCloudOrig(p)){ const o=document.createElement('span'); o.className='origbar'; t.appendChild(o); }
+    st.appendChild(t);
   }
-  if(_vURL) URL.revokeObjectURL(_vURL);
-  _vURL = URL.createObjectURL(r.small||r.orig);
-  im.src=_vURL;
-  $('vBar').innerHTML=`<b>${esc(r.name)}</b>　${esc(r.source)}<br>`+
-    ((!isLegacy(r) && r.w)? `顯示尺寸 ${r.w}×${r.h}`:'')+
-    (r.orientation!=null? `　｜EXIF 方向 ${r.orientation}`:'　｜EXIF 方向：無')+
-    (isLegacy(r)? `　<b style="color:#ff8a8a">⚠️ 舊版存的，方向未處理</b>`
-                : (r.rotated? `　<b>✅ 已轉正（${esc(r.oriBy||'?')}）</b>`:''))+`<br>`+
-    (r.dateTaken? `🕐 拍攝 ${esc(r.dateTaken)}` : `🕐 加入 ${esc(fmtLocal(r.addedAt))}（取不到拍攝時間）`)+
-    `　<span style="opacity:.7">存於 ${esc(verOf(r))}</span>`;
-  v.hidden=false;
+}
+function openPinCard(albumId){
+  select(null);
+  S.loc=null; S.pinSel=albumId; S.pinCard=true;
+  buildPinCard(albumId);
+  render(); syncSel();
+  ensurePinVisible(albumId, true);
+}
+/* §10-1：按下去手指範圍裡仍有 ≥ 2 根 ⇒ 清單；R-35：每列加封面小縮圖（同名分得出來） */
+function openPinList(ids){
+  const items=ids.map(id=>{
+    const a=albumOf(id), aps=apsOf(id), p=aps.length ? PHOTOS.get(aps[0].photoId) : null;
+    return {label:`${albNoText(a)} ${albName(a)}`, sub:`${aps.length} 張`, thumb:(p && p.small) || null, swatch:albColor(a), onClick:()=>openPinCard(id)};
+  });
+  openMenu(`這裡有 ${ids.length} 本，要看哪一本？`, items);
+}
+/* ╔═ §4／§10-2（Q-11）：釘子在畫面外 ⇒ 捲到中央；預覽卡蓋住它 ⇒ 往上推到卡片上方 ════════════╗
+   只平移、不動 zoom（centerOnBeam／ensureVisible 的原則）。卡片高度要在它顯示之後的下一幀量（O-1）。 ╚═╝ */
+function ensurePinVisible(albumId, withCard){
+  const a=albumOf(albumId); if(!a) return;
+  const w=pinWorld(a); if(!w) return;
+  const {w:W,h:H}=svgSize(); if(!(W>0 && H>0)) return;
+  const s=w2s(w.x, w.y);
+  if(s.x<SVG_PAD || s.y<SVG_PAD || s.x>W-SVG_PAD || s.y>H-SVG_PAD){
+    S.panX = W/2 - w.x*S.zoom; S.panY = H/2 - w.y*S.zoom;
+    render(); syncSel();
+  }
+  const cover=()=>{
+    const card = withCard ? $('pinCard') : $('pinSel');
+    if(!card || card.hidden) return;
+    const cr=card.getBoundingClientRect(), sr=svg.getBoundingClientRect();
+    if(!cr.height) return;
+    const s2=w2s(w.x, w.y), pinY=sr.top+s2.y, limit=cr.top-40;
+    if(pinY>limit){ S.panY -= (pinY-limit); render(); syncSel(); }
+  };
+  nextFrame(cover);
+}
+
+/* ── 定位模式（§10-3、_d §13-109）── */
+/* 入口：內頁〔📍 指定位置〕（未定位）／〔📍 在平面圖上看位置〕（已定位 ⇒ 選中＋預覽卡） */
+function startAlbumLocate(albumId, located){
+  commitAlbumEdits();
+  lightPhotoLayer();
+  setTab('plan');
+  if(located){ openPinCard(albumId); return; }
+  select(null);
+  S.pinSel=null; S.pinCard=false;
+  S.loc={albumId, phase:'locating', x:null, y:null};      // 🔴 R-26：還沒點任何地方 ⇒ 什麼都沒存
+  renderLayerBar(); render(); syncSel();                    // 🔴 R-28：第一次定位畫面不動
+}
+/* 預覽卡〔修正定位位置〕⇒ 回到定位中（R-28：把釘子捲進可見範圍） */
+function startFixLocate(albumId){
+  const a=albumOf(albumId); if(!a) return;
+  select(null);
+  S.pinSel=null; S.pinCard=false;
+  S.loc={albumId, phase:'locating', x:a.locX, y:a.locY};
+  render(); syncSel();
+  ensurePinVisible(albumId, false);
+}
+/* 定位中「點＝移過去」（接在 endPointer 同一個分支，R-23）。第一次點下去釘子出現、面板立刻出現（相-20）。 */
+function locMoveTo(x, y){
+  if(!S.loc || S.loc.phase!=='locating') return;
+  S.loc.x=x; S.loc.y=y;
+  render(); syncSel();
+}
+/* 方向鍵：步長與家具同一個 nudgeCm（隨縮放變）；🔴 R-50：定位完成後不能移（面板上的方向鍵變灰） */
+function locNudge(dir){
+  const L2=S.loc; if(!L2 || L2.phase!=='locating' || L2.x==null) return;
+  const st=nudgeCm();
+  if(dir==='u') L2.y-=st; if(dir==='d') L2.y+=st;
+  if(dir==='l') L2.x-=st; if(dir==='r') L2.x+=st;
+  render(); syncSel();
+}
+/* 〔定位完成〕＝存下【當下】的位置，不管有沒有改（Ali：「不管有沒有修改都要儲存當下的狀態」） */
+async function locSave(){
+  const L2=S.loc; if(!L2 || L2.x==null) return;
+  const a=albumOf(L2.albumId); if(!a) return;
+  a.locX=L2.x; a.locY=L2.y;
+  await saveAlbum(a);
+  await reloadObjects();
+}
+async function locDone(){
+  const L2=S.loc; if(!L2) return;
+  if(L2.phase==='locating'){ await locSave(); if(S.loc) S.loc.phase='done'; }
+  else S.loc.phase='locating';                              // 〔重新定位〕⇒ 回到定位中（不需要確認框）
+  render(); syncSel();
+}
+/* 〔取消定位〕⇒ 先問 ⇒ 定位點清成空（🔑 與家具〔收回清單〕記住座標刻意不同） */
+async function locCancel(){
+  const L2=S.loc; if(!L2) return;
+  const ok=await askDialog({title:'取消這本相簿的定位？', body:'位置不會被記住。之後要重新指定位置。<br>相簿和裡面的照片都不受影響。', okText:'取消定位'});
+  if(!ok) return;
+  const a=albumOf(L2.albumId);
+  if(a){ a.locX=null; a.locY=null; await saveAlbum(a); await reloadObjects(); }
+  S.loc=null;
+  render(); syncSel();
+}
+/* 🔴 R-25：定位中切到別的分頁 ⇒ 視同〔定位完成〕（setTab 的第 11 件事）；R-26：還沒點過 ⇒ 什麼都不存 */
+function leavePlanPinState(){
+  const L2=S.loc;
+  if(L2 && L2.phase==='locating' && L2.x!=null) locSave().catch(e=>cloudErr(e));
+  clearPinState();
+}
+function openAlbumFromPlan(albumId){
+  clearPinState();
+  S.alb.open=albumId; S.alb.multi=null;
+  setTab('photo');
+}
+/* 每一幀：面板、預覽卡、提示條的顯示（syncSel 第一行呼叫；#sel 本身的行為一行不改） */
+function syncPinUI(){
+  if(S.loc && !albumOf(S.loc.albumId)) S.loc=null;                       // 🔴 R-34：定位中那本被刪（含同步刪）
+  if(S.pinSel && !albumOf(S.pinSel)){ S.pinSel=null; S.pinCard=false; }
+  const hint=$('locHint');
+  if(hint) hint.hidden = !(S.loc && S.loc.phase==='locating' && S.tab==='plan');
+  const pan=$('pinSel');
+  if(pan){
+    pan.hidden=!pinPanelShown();
+    if(!pan.hidden){
+      const a=albumOf(S.loc.albumId), locating=(S.loc.phase==='locating');
+      $('pinName').textContent=albName(a);
+      const d=$('pinDone'); d.textContent = locating ? '定位完成' : '重新定位';
+      d.classList.toggle('pri', locating);
+      $('pinOpen').disabled = locating;                                  // 相-21：定位中〔打開相簿〕是灰的
+      [...$('pinPad').querySelectorAll('button')].forEach(b=>{ b.disabled=!locating; });
+      $('pinPadc').textContent = nudgeCm()+' cm';
+    }
+  }
+  const card=$('pinCard');
+  if(card){
+    const show=pinCardShown();
+    card.hidden=!show;
+    if(show && _cardFor!==S.pinSel) buildPinCard(S.pinSel);
+  }
+}
+/* 面板與預覽卡的按鈕 */
+$('pinBack').onclick=()=>locCancel();
+$('pinDone').onclick=()=>locDone();
+$('pinOpen').onclick=()=>{ if(S.loc && S.loc.phase==='done') openAlbumFromPlan(S.loc.albumId); };
+$('pinFold').onclick=()=>{ const s=$('pinSel'); s.classList.toggle('mini');
+  $('pinFold').textContent = s.classList.contains('mini') ? '▴' : '▾'; };
+[...$('pinPad').querySelectorAll('button')].forEach(b=> bindRepeat(b, ()=>locNudge(b.dataset.d)));
+$('pcFix').onclick=()=>{ if(S.pinSel) startFixLocate(S.pinSel); };
+$('pcOpen').onclick=()=>{ if(S.pinSel) openAlbumFromPlan(S.pinSel); };
+/* 預覽卡往下滑＝收起（🔴 R-39：放手三條路同一支收尾；只在卡片的把手／標題那一帶起手，照片橫排是原生捲動） */
+{
+  const card=$('pinCard'); let g=null;
+  card.addEventListener('pointerdown', e=>{
+    if(e.target.closest('button') || e.target.closest('.astrip')) return;
+    try{ card.setPointerCapture(e.pointerId); }catch(err){}
+    g={id:e.pointerId, y0:e.clientY, dy:0};
+  });
+  card.addEventListener('pointermove', e=>{
+    if(!g || g.id!==e.pointerId) return;
+    g.dy=Math.max(0, e.clientY-g.y0);
+    card.style.transform = g.dy ? `translateY(${g.dy}px)` : '';
+  });
+  const end=e=>{
+    if(!g || g.id!==e.pointerId) return;
+    const dy=g.dy; g=null; card.style.transform='';
+    if(e.type==='pointerup' && dy>50){ S.pinSel=null; S.pinCard=false; render(); syncSel(); }
+  };
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>card.addEventListener(ev, end));
+}
+/* ══════════════════════════════════════════════════════════════
+   🔴 v0.1.9 批 9｜匯出 zip（_i §11、_d §13-86；§0c R-12／R-50）
+   一本一個 zip：01_照片名.jpg、02_…（前綴＝排序號；沒有原檔的用壓縮版，檔名加「_壓縮版」）＋ 說明.txt
+   🔴 說明.txt 是【未來匯入的合約】：欄位固定、含格式版本（format: deco-album/1）。
+   做法（§13 Q-9）：自寫 store-only zip（不壓縮 —— jpg 本來就壓過），CRC32 自己算，不從任何 CDN 載函式庫。
+   🔴 中文檔名：general purpose bit 11（UTF-8）要設，否則 Windows 檔案總管顯示亂碼（相-27）；說明.txt 加 BOM。
+   🔴 手機記憶體：逐張取檔、算完 CRC 就丟掉 ArrayBuffer，最後的 zip 由【Blob 各段】組成（瀏覽器可以放磁碟），
+      不先把所有檔案串成一個大陣列。
+   取檔順序：這台有乾淨原檔（去過 GPS）⇒ 用這台的；否則雲端有原檔 ⇒ 下載；都沒有 ⇒ 壓縮版。
+   ══════════════════════════════════════════════════════════════ */
+const _CRC_TABLE = (()=>{ const t=new Uint32Array(256);
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[n]=c>>>0; }
+  return t; })();
+function crc32(u8){
+  let c=0xFFFFFFFF;
+  for(let i=0;i<u8.length;i++) c = _CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c>>>8);
+  return (c ^ 0xFFFFFFFF)>>>0;
+}
+/* 檔名清理：/ \ : * ? " < > | 換成 _（§11）；控制字元也換掉；空的給「未命名」 */
+function zipSafeName(s){
+  const t=String(s==null?'':s).replace(/[\/\\:*?"<>|\u0000-\u001f]/g,'_').trim();
+  return t || '未命名';
+}
+function dosTimeDate(d){
+  const time=((d.getHours()&31)<<11) | ((d.getMinutes()&63)<<5) | ((Math.floor(d.getSeconds()/2))&31);
+  const date=(((d.getFullYear()-1980)&127)<<9) | (((d.getMonth()+1)&15)<<5) | (d.getDate()&31);
+  return {time, date};
+}
+/* files：[{name, blob}] ⇒ Blob（application/zip）。一次只把一個檔讀進記憶體。 */
+async function buildStoreZip(files, onStep){
+  const enc=new TextEncoder(), parts=[], central=[];
+  const {time, date}=dosTimeDate(new Date());
+  let offset=0;
+  for(let i=0;i<files.length;i++){
+    const f=files[i];
+    const nameB=enc.encode(f.name);
+    let crc, size;
+    { const buf=new Uint8Array(await f.blob.arrayBuffer()); crc=crc32(buf); size=buf.length; }   // 算完就丟
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true);   // bit 11＝UTF-8
+    lh.setUint16(8,0,true); lh.setUint16(10,time,true); lh.setUint16(12,date,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,size,true); lh.setUint32(22,size,true);
+    lh.setUint16(26,nameB.length,true); lh.setUint16(28,0,true);
+    parts.push(lh.buffer, nameB, f.blob);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true);
+    ch.setUint16(10,0,true); ch.setUint16(12,time,true); ch.setUint16(14,date,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,size,true); ch.setUint32(24,size,true);
+    ch.setUint16(28,nameB.length,true); ch.setUint16(30,0,true); ch.setUint16(32,0,true);
+    ch.setUint16(34,0,true); ch.setUint16(36,0,true); ch.setUint32(38,0,true); ch.setUint32(42,offset,true);
+    central.push(ch.buffer, nameB);
+    offset += 30 + nameB.length + size;
+    onStep && onStep(i+1, files.length);
+  }
+  const cdSize=central.reduce((n,b)=>n+(b.byteLength!=null?b.byteLength:b.length),0);
+  const end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true); end.setUint16(4,0,true); end.setUint16(6,0,true);
+  end.setUint16(8,files.length,true); end.setUint16(10,files.length,true);
+  end.setUint32(12,cdSize,true); end.setUint32(16,offset,true); end.setUint16(20,0,true);
+  return new Blob(parts.concat(central,[end.buffer]), {type:'application/zip'});
+}
+/* 說明.txt 的一個欄位值：多行時每行前加兩個空格（§11） */
+const zipTxtVal = s => String(s==null?'':s).split(/\r?\n/).join('\r\n  ');
+/* 匯出一本相簿。opt.returnBlob＝只回傳 zip（自驗用），不觸發下載。 */
+let _zipBusy=false;
+async function exportAlbumZip(albumId, opt){
+  const a=albumOf(albumId); if(!a) return null;
+  if(_zipBusy) return null;
+  _zipBusy=true;
+  const say=t=>{ S.photoMsg=t; const b=document.querySelector('#albView .pstat .bad'); if(b) b.textContent=t; else renderAlbums(); };
+  try{
+    const aps=apsOf(albumId);
+    const w=Math.max(2, String(aps.length).length);
+    const files=[], lines=[];
+    lines.push('format: deco-album/1', `album: ${zipTxtVal(albName(a))}`, `exported_at: ${localStamp(new Date()).replace(' ','T').replace(' ','')}`, '');   // §11：ISO 8601（當地時間＋時差，例 2026-09-30T16:00:13+08:00）
+    for(let i=0;i<aps.length;i++){
+      const ap=aps[i], p=PHOTOS.get(ap.photoId);
+      say(`匯出中…取照片 ${i+1} / ${aps.length} 張`);
+      let blob=null, original=false;
+      if(p && p.orig && p.origClean){ blob=p.orig; original=true; }
+      else if(p && p.origStatus==='has' && p.origPath && CLOUD.on){
+        try{ const r=await sbFetch('/storage/v1/object/photos/'+p.origPath); if(r.ok){ blob=await r.blob(); original=true; } }catch(e){}
+      }
+      if(!blob && p && p.small){ blob=p.small; original=false; }
+      if(!blob) continue;                                  // 連壓縮版都沒有（還沒下載）⇒ 這張跳過，說明.txt 也不寫
+      const seq=String(i+1).padStart(w,'0');
+      /* 🔴 批 7 自驗（TEST 雲端那一趟）抓到：照片名常是檔名（B7_Y.jpg）⇒ 變成「01_B7_Y.jpg.jpg」。⇒ 名字尾巴的圖片副檔名先拿掉（F-1 同一條規則）。 */
+      const base=zipSafeName(String(ap.name||'').replace(FILE_NAME_RE,'').trim() || '未命名');
+      const file=`${seq}_${base}${original?'':'_壓縮版'}.jpg`;
+      files.push({name:file, blob});
+      lines.push(`seq: ${seq}`, `file: ${file}`, `name: ${zipTxtVal(ap.name||'')}`, `note: ${zipTxtVal(ap.note||'')}`,
+                 `shot_at: ${p ? shotAtOf(p) : ''}`, `original: ${original?'yes':'no'}`, '');
+    }
+    const txt=new Blob([new Uint8Array([0xEF,0xBB,0xBF]), new TextEncoder().encode(lines.join('\r\n'))], {type:'text/plain'});
+    files.push({name:'說明.txt', blob:txt});
+    const zip=await buildStoreZip(files, (n,m)=>say(`匯出中…打包 ${n} / ${m} 個檔`));
+    if(opt && opt.returnBlob) return zip;
+    const zname=`${zipSafeName(albName(a))}.zip`;
+    const u=URL.createObjectURL(zip);
+    const link=document.createElement('a'); link.href=u; link.download=zname;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(()=>URL.revokeObjectURL(u), 60000);
+    /* §11：完成後告訴使用者檔案存到哪 */
+    say(`已匯出「${zname}」（${files.length-1} 張＋說明.txt）。檔案在瀏覽器的下載資料夾（iPhone：「檔案」App →「下載項目」）。`);
+    return zip;
+  }catch(e){
+    say('匯出失敗：'+((e&&e.message)||e));
+    return null;
+  }finally{
+    _zipBusy=false;
+  }
+}
+/* ══════════════════════════════════════════════════════════════
+   🔴🔴 v0.1.9 批 7｜垃圾桶頁＋永久刪除＋原檔管理（_i §8-4、§9-4；§0b R-05～R-08、R-18；§0c R-46、R-47、🟠-3、🟠-6、🟡-12）
+   這是本版【唯一會刪掉雲端檔案】的一段。規則寫死在這裡，畫面只呼叫：
+   · 垃圾桶＝六張表（房間／牆／樑／家具／相簿／相簿裡的一張）裡 deletedAt 有值、purgedAt 沒值的列
+     一次刪除＝同一個 batchId ＝ 垃圾桶一行（舊版刪的沒有 batchId ⇒ 一筆一行）
+   · 保留 183 天（R-18）；🔴 拿掉「超過 20 筆刪最舊」
+   · 永久刪除＝寫 purgedAt（墓碑，推上雲端讓別台也刪）→ 本機 lDel；
+     照片本身：沒有任何未永久刪除的 album_photo 指著它 ⇒ RPC purge_photo（雲端再查一次引用）⇒ 刪 Storage 兩個檔
+   · 雲端檔案誰刪（§8-4 🔍）：【按下永久刪除的那一台】（或到期時連線中的那一台）。
+     別台只從同步知道：墓碑 ⇒ lDel；照片列不見 ⇒ lDel。沒有任何一台會把它插回去：
+       物件表靠 purged_at trigger（回舊列）、照片靠 photo_purged 墓碑（BEFORE INSERT 回 null）。
+   · 有專案代碼但沒連上 ⇒〔永久刪除〕灰掉並寫原因（🟠-6：離線只刪本機，別台垃圾桶會永遠還看得到）；
+     沒有專案代碼（純本機）⇒ 照本機規則直接刪。到期清理：離線只清本機列、不碰雲端檔案（R-08）。
+   ══════════════════════════════════════════════════════════════ */
+const TRASH_DAYS = 183;
+const DAY_MS = 24*3600*1000;
+const TRASH_STORES = ['rooms','walls','beams','items','albums','album_photos'];
+const TRASH_KIND = { rooms:'struct', walls:'struct', beams:'struct', items:'item', albums:'album', album_photos:'photo' };
+const TRASH_FILTERS = [ ['all','全部'], ['photo','照片'], ['album','相簿'], ['item','家具'], ['struct','房間・牆・樑'] ];
+const SAVER = { rooms:saveRoom, walls:saveWall, beams:saveBeam, items:saveItem, albums:saveAlbum, album_photos:saveAlbumPhoto };
+/* 🔧 到期測試用的「現在時間」開關（localStorage deco.nowFake＝ISO）。開著時診斷列會寫出來（O-18：測試狀態不可以長得跟真的一樣）。 */
+function nowMs(){
+  const f=LS.get('deco.nowFake'); const t=f?Date.parse(f):NaN;
+  return isFinite(t) ? t : Date.now();
+}
+const nowFakeOn = ()=> { const f=LS.get('deco.nowFake'); return !!(f && isFinite(Date.parse(f))); };
+/* 剩幾天（取這一行裡最早刪的那一筆 ⇒ 最先到期） */
+const daysLeft = iso => Math.max(0, Math.ceil((Date.parse(iso) + TRASH_DAYS*DAY_MS - nowMs()) / DAY_MS));
+
+/* 把垃圾桶整理成「行」：[{key, batchId, rows:[{store,o}], at, kinds:Set}]，最近刪的在上 */
+async function trashGroups(){
+  const map=new Map();
+  for(const st of TRASH_STORES){
+    for(const o of await lAllObj(st)){
+      if(!o.deletedAt || o.purgedAt) continue;
+      const key = o.batchId ? 'b:'+o.batchId : 'r:'+st+':'+o.id;
+      let g=map.get(key);
+      if(!g){ g={key, batchId:o.batchId||null, rows:[], at:o.deletedAt, last:o.deletedAt, kinds:new Set()}; map.set(key,g); }
+      g.rows.push({store:st, o});
+      g.kinds.add(TRASH_KIND[st]);
+      if(String(o.deletedAt) < String(g.at))   g.at=o.deletedAt;
+      if(String(o.deletedAt) > String(g.last)) g.last=o.deletedAt;
+    }
+  }
+  return [...map.values()].sort((a,b)=>String(b.last).localeCompare(String(a.last)));
+}
+async function trashSize(){ return (await trashGroups()).length; }
+
+/* 一行的文字（人話）。相簿名／照片名讀本機全部列（含垃圾桶）。 */
+function trashLabel(g, allAlbums){
+  const by=st=>g.rows.filter(r=>r.store===st).map(r=>r.o);
+  const alb=by('albums'), aps=by('album_photos'), rooms=by('rooms'), walls=by('walls'), beams=by('beams'), items=by('items');
+  const aName=id=>{ const a=allAlbums.get(id); return albName(a); };
+  const parts=[];
+  if(alb.length){
+    const inAlb=aps.filter(ap=>alb.some(a=>a.id===ap.albumId)).length;
+    parts.push((alb.length===1 ? `相簿「${albName(alb[0])}」` : `${alb.length} 本相簿`)
+               + `（${inAlb ? inAlb+' 張照片' : '空相簿'}）`);
+  }
+  const loose=aps.filter(ap=>!alb.some(a=>a.id===ap.albumId));
+  if(loose.length){
+    const albs=[...new Set(loose.map(ap=>ap.albumId))];
+    parts.push(loose.length===1
+      ? `照片「${loose[0].name||'未命名'}」（從「${aName(loose[0].albumId)}」拿掉）`
+      : `${loose.length} 張照片（從 ${albs.length===1 ? '「'+aName(albs[0])+'」' : albs.length+' 本相簿'}拿掉）`);
+  }
+  if(rooms.length) parts.push(rooms.length===1 ? `房間「${rooms[0].name||'未命名'}」` : `${rooms.length} 間房`);
+  if(walls.length) parts.push(`${walls.length} 道牆`);
+  if(beams.length) parts.push(`${beams.length} 根樑`);
+  if(items.length) parts.push(items.length===1 ? `家具「${items[0].name||'未命名'}」` : `${items.length} 件家具`);
+  return parts.join('、');
+}
+
+/* ── 還原（§8-4）──
+   · 回原位：deletedAt 清掉、寫 restoredAt（雲端 trigger 靠它分辨「真的按了還原」與離線編輯，§0c R-06）
+   · 同一本同一張已經有活的一筆（R-09 唯一鍵）⇒ 略過那一筆並說一句
+   · 排序被占走 ⇒ 排最後
+   · 還原「從某本拿掉」而那本相簿在垃圾桶 ⇒ 連那本相簿那一整行一起還原並說一句（🔍 建造者評估：採用）
+     那本相簿已永久刪除／本機沒有 ⇒ 那一筆略過並說一句
+   · 還原相簿時，它的照片有的在垃圾桶另一行／已永久刪除 ⇒ 還原後說「有 K 張已不在」
+   · 房間：牆與樑同一行一起回來；家具維持「未指定房間」（F-2）
+   回傳要說的話（陣列）。 */
+async function restoreGroup(g, _depth){
+  const msgs=[];
+  const now=nowISO();
+  const allAlb=new Map((await lAllObj('albums')).map(a=>[a.id,a]));
+  /* ① 先處理「照片所在的相簿在垃圾桶」（同一行裡沒有那本相簿的） */
+  const inRow=new Set(g.rows.filter(r=>r.store==='albums').map(r=>r.o.id));
+  const needAlb=new Set();
+  for(const r of g.rows){
+    if(r.store!=='album_photos') continue;
+    const a=allAlb.get(r.o.albumId);
+    if(a && a.deletedAt && !a.purgedAt && !inRow.has(a.id)) needAlb.add(a.id);
+  }
+  if(needAlb.size && !_depth){
+    const groups=await trashGroups();
+    for(const aid of needAlb){
+      const ag=groups.find(x=>x.rows.some(r=>r.store==='albums' && r.o.id===aid));
+      if(ag && ag.key!==g.key){
+        const m=await restoreGroup(ag, 1);
+        msgs.push(`相簿「${albName(allAlb.get(aid))}」也在垃圾桶，已經連那本一起還原。`, ...m);
+      }
+    }
+  }
+  /* 還原後要重讀（上面可能剛還原了相簿） */
+  const albNow=new Map((await lAllObj('albums')).map(a=>[a.id,a]));
+  const live=(await lAllObj('album_photos')).filter(x=>!x.deletedAt && !x.purgedAt);
+  let dup=0, gone=0;
+  const back=new Set();                    // 這一趟剛還原的相簿（albNow 是還原前讀的）
+  const order={rooms:0, walls:1, beams:2, albums:3, album_photos:4, items:5};   // 房間先於牆；相簿先於它的照片
+  for(const r of g.rows.slice().sort((a,b)=>order[a.store]-order[b.store])){
+    const o=await lGetObj(r.store, r.o.id);
+    if(!o || o.purgedAt || !o.deletedAt) continue;
+    if(r.store==='album_photos'){
+      const a=albNow.get(o.albumId);
+      if(!a || a.purgedAt || (a.deletedAt && !back.has(a.id))){ gone++; continue; }
+      if(live.some(x=>x.albumId===o.albumId && x.photoId===o.photoId && x.id!==o.id)){ dup++; continue; }
+      const sibs=live.filter(x=>x.albumId===o.albumId);
+      if(sibs.some(x=>Number(x.sort)===Number(o.sort)))
+        o.sort=(sibs.reduce((m,x)=>Math.max(m, Number(x.sort)||0), 0))+1;   // 排序被占走 ⇒ 排最後
+      live.push(o);
+    }
+    if(r.store==='items' && o.anchor && o.anchor.type==='wall'
+       && !(await lAllLive('walls')).some(w=>w.id===o.anchor.wall)){
+      o.isPlaced=false;                   // 它貼的那道牆不在了 ⇒ 回清單（不留一件指向不存在的牆的家具）
+    }
+    o.deletedAt=null; o.batchId=null;
+    if(r.store==='albums' || r.store==='album_photos') o.restoredAt=now;
+    await SAVER[r.store](o);
+    if(r.store==='albums') back.add(o.id);
+  }
+  /* ③ 還原相簿：它的照片有的沒回來（在垃圾桶另一行／已永久刪除）。
+     🔴 自驗抓到：原本用「還原前」讀的清單算、而且巢狀那一層也算 ⇒ 外層接著還原的那張也被算成「不在」（說錯話，O-18）。
+     ⇒ 只在最外層、全部還原完之後重讀再算；範圍＝這一行的相簿＋連帶還原的相簿。 */
+  if(!_depth){
+    const fresh=await lAllObj('album_photos');
+    const albIds=new Set(g.rows.filter(x=>x.store==='albums').map(x=>x.o.id).concat([...needAlb]));
+    for(const aid of albIds){
+      const a=await lGetObj('albums', aid); if(!a || a.deletedAt || a.purgedAt) continue;
+      const missing=fresh.filter(ap=>ap.albumId===aid && (ap.purgedAt || ap.deletedAt)).length;
+      if(missing) msgs.push(`相簿「${albName(a)}」有 ${missing} 張照片已不在（在垃圾桶的另一行，或已永久刪除）。`);
+    }
+  }
+  if(dup)  msgs.push(`有 ${dup} 張照片那本相簿裡已經有了，沒有重複加入。`);
+  if(gone) msgs.push(`有 ${gone} 張照片的相簿已經不在（已永久刪除），沒有還原。`);
+  return msgs;
+}
+
+/* ── 永久刪除 ── */
+const PENDING_DEL_KEY='deco.pendingDel';
+function pendingDelList(){ try{ const a=JSON.parse(LS.get(PENDING_DEL_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function setPendingDel(a){ if(a.length) LS.set(PENDING_DEL_KEY, JSON.stringify([...new Set(a)])); else LS.del(PENDING_DEL_KEY); }
+/* 🔴 🟠-3：RPC 回傳的路徑先記進「待刪檔清單」，再刪；刪不掉的留著，每次同步重試。失敗要講（不可安靜）。
+   刪完【再查一次】確認真的不在：DELETE 被政策擋下（還有照片列指著它）與「本來就不在」回的是同一個 404（O-17：量具說謊）。
+   🔴 自驗抓到：查法不可以用「下載看看」—— 瀏覽器快取會回 206（檔案早就刪了、用量也降了，卻被判成還在，
+      ⇒ 清單永遠清不掉、每次同步都說「還沒刪掉」）。⇒ 改用 Storage 的列表 API（查資料庫，不經快取）。 */
+async function storageHas(path){
+  const i=path.lastIndexOf('/'), dir=path.slice(0,i), name=path.slice(i+1);
+  const r=await sbFetch('/storage/v1/object/list/photos',{method:'POST',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify({prefix:dir, search:name, limit:20})});
+  if(!r.ok) throw new Error('查雲端檔案失敗：'+(await r.text()).slice(0,120));
+  const j=await r.json();
+  return Array.isArray(j) && j.some(x=>x && x.name===name);
+}
+let _delBusy=false;
+async function flushPendingDel(){
+  if(!CLOUD.on || _delBusy) return 0;
+  let list=pendingDelList(); if(!list.length) return 0;
+  _delBusy=true;
+  try{
+    const left=[];
+    for(const path of list){
+      try{
+        await sbFetch('/storage/v1/object/photos/'+path,{method:'DELETE'});
+        if(await storageHas(path)) left.push(path);      // 還在 ⇒ 沒刪掉（多半是還有照片列指著它）
+      }catch(e){ left.push(path); }
+    }
+    setPendingDel(left);
+    if(left.length) cloudErr(new Error(`有 ${left.length} 個雲端照片檔還沒刪掉（下次同步會再試）。`));
+    return list.length-left.length;
+  }finally{ _delBusy=false; }
+}
+/* 一筆寫成墓碑：有代碼且連線 ⇒ 等它推上去（推回來看到 purgedAt ⇒ applyPushedRow 會 lDel 本機）；
+   沒有代碼 ⇒ 直接 lDel；有代碼沒連線 ⇒ 墓碑留在本機（pending），連線後補推（只有到期清理會走到這裡以外的路：它直接 lDel）。 */
+async function purgeRow(store, o, now){
+  o.purgedAt=now;
+  stampObj(o); await lPutObj(store, o);
+  if(!CLOUD.code || o.projectCode!==CLOUD.code){ await lDel(store, o.id); return; }
+  if(CLOUD.on) await cloudPushObj(store, o.id);          // 失敗會丟錯 ⇒ 呼叫端停在這裡（照片不會先被刪）
+}
+/* 照片本身：沒有任何【未永久刪除】的 album_photo 指著它 ⇒ 刪。回傳 'gone'｜'inuse'｜'kept' */
+async function purgePhotoIfUnused(photoId){
+  const refs=(await lAllObj('album_photos')).filter(x=>x.photoId===photoId && !x.purgedAt);
+  if(refs.length) return 'inuse';
+  const p=await lGet('photos', photoId);
+  if(!p){ return 'gone'; }
+  if(!CLOUD.code || p.projectCode!==CLOUD.code){ await lDel('photos', photoId); return 'gone'; }
+  if(!CLOUD.on) return 'kept';
+  const r=await sbFetch('/rest/v1/rpc/purge_photo',{method:'POST',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify({p_id:photoId})});
+  if(!r.ok) throw new Error('永久刪除照片失敗：'+(await r.text()).slice(0,200));
+  const rows=await r.json();
+  if(Array.isArray(rows) && rows.length){
+    const paths=[rows[0].out_small, rows[0].out_orig].filter(Boolean);
+    setPendingDel(pendingDelList().concat(paths));
+    await lDel('photos', photoId);
+    return 'gone';
+  }
+  /* 回 [] ：雲端沒有這一列（從來沒上傳）或雲端還有別的相簿在用 ⇒ 分辨一下 */
+  const chk=await sbFetch('/rest/v1/photos?select=id&id=eq.'+photoId);
+  const ex=chk.ok ? await chk.json() : [1];
+  if(Array.isArray(ex) && !ex.length){ await lDel('photos', photoId); return 'gone'; }
+  return 'inuse';
+}
+/* 永久刪除好幾行。opt.expire＝到期清理（離線時只清本機列）。回傳 {rows, photos, inuse, msgs} */
+let _purgeBusy=false;
+async function purgeGroups(groups, opt){
+  if(_purgeBusy) return null;
+  _purgeBusy=true;
+  const out={rows:0, photos:0, inuse:0, msgs:[]};
+  try{
+    const now=nowISO();
+    const offlineLocal = !!(opt && opt.expire) && CLOUD.code && !CLOUD.on;
+    const photoIds=new Set();
+    const allAp=await lAllObj('album_photos');
+    for(const g of groups){
+      for(const r of g.rows){
+        const o=await lGetObj(r.store, r.o.id);
+        if(!o || o.purgedAt) continue;
+        if(r.store==='album_photos') photoIds.add(o.photoId);
+        if(offlineLocal){ await lDel(r.store, o.id); out.rows++; continue; }   // R-08：離線到期只清本機列
+        await purgeRow(r.store, o, now); out.rows++;
+        /* 🔴 §0c R-46（🟠-7）：永久刪除相簿 ⇒ 它名下【所有】album_photo（不論哪一行）一起寫墓碑 */
+        if(r.store==='albums'){
+          for(const ap of allAp.filter(x=>x.albumId===o.id && !x.purgedAt)){
+            const cur=await lGetObj('album_photos', ap.id); if(!cur || cur.purgedAt) continue;
+            photoIds.add(cur.photoId);
+            await purgeRow('album_photos', cur, now); out.rows++;
+          }
+        }
+      }
+    }
+    if(!offlineLocal){
+      for(const pid of photoIds){
+        const how=await purgePhotoIfUnused(pid);
+        if(how==='gone') out.photos++;
+        else if(how==='inuse' && !(await lAllObj('album_photos')).some(x=>x.photoId===pid && !x.purgedAt)) out.inuse++;
+      }
+      await flushPendingDel();
+      if(out.inuse) out.msgs.push(`有 ${out.inuse} 張照片另一台還放在別的相簿裡，照片本身沒有從雲端刪掉。`);
+    }
+  }finally{
+    _purgeBusy=false;
+  }
+  return out;
+}
+/* 到期清理（取代舊的 purgeTrash：183 天、拿掉 20 筆；R-08／R-18）。loadAll 在 pull 之後呼叫。 */
+async function purgeTrash(){
+  const lim=nowMs()-TRASH_DAYS*DAY_MS;
+  const due=(await trashGroups()).map(g=>({...g, rows:g.rows.filter(r=>{
+    const t=Date.parse(r.o.deletedAt); return isFinite(t) && t<lim; })})).filter(g=>g.rows.length);
+  if(!due.length) return 0;
+  try{ const r=await purgeGroups(due, {expire:true}); return r ? r.rows : 0; }
+  catch(e){ cloudErr(new Error('清理到期的垃圾時失敗（下次開啟再試）：'+((e&&e.message)||e))); return 0; }
+}
+
+/* ── 垃圾桶頁（專案頁的子畫面；🔴 不新增 S.tab 值 ⇒ 不碰 L()／setTab／t0 那一串讀者，O-30）── */
+S.trash={open:false, f:'all', sel:new Set(), msg:''};
+let _trUrls=[];
+function openTrash(){ S.trash.open=true; S.trash.sel=new Set(); S.trash.msg=''; renderTrash(); }
+function closeTrash(){ S.trash.open=false; _trUrls.forEach(u=>URL.revokeObjectURL(u)); _trUrls=[];
+  $('trashView').hidden=true; $('projMain').hidden=false; refreshProj(); }
+const purgeBlockedWhy = ()=> (CLOUD.code && !CLOUD.on)
+  ? '沒有連上雲端：永久刪除要連線才能做（否則別台的垃圾桶還會看到它）。' : '';
+let _trSeq=0;
+async function renderTrash(){
+  const box=$('trashView'); if(!box) return;
+  $('projMain').hidden=true; box.hidden=false;
+  const seq=++_trSeq;
+  const groups=await trashGroups();
+  const allAlb=new Map((await lAllObj('albums')).map(a=>[a.id,a]));
+  if(seq!==_trSeq) return;
+  _trUrls.forEach(u=>URL.revokeObjectURL(u)); _trUrls=[];
+  const keys=new Set(groups.map(g=>g.key));
+  S.trash.sel=new Set([...S.trash.sel].filter(k=>keys.has(k)));     // 不在了的勾選拿掉
+  box.innerHTML='';
+  const back=document.createElement('div'); back.className='backrow';
+  const bb=document.createElement('button'); bb.className='btn'; bb.id='btnTrashBack'; bb.textContent='‹ 設定';
+  bb.onclick=closeTrash; back.appendChild(bb); box.appendChild(back);
+  const h=document.createElement('div'); h.className='projsec'; h.textContent=`垃圾桶（${groups.length} 行）`; box.appendChild(h);
+  const note=document.createElement('div'); note.className='trnote';
+  note.textContent=`保留 ${TRASH_DAYS} 天（半年），到期會自動永久刪除。雲端用量包含垃圾桶裡的照片。`
+    + (nowFakeOn() ? `　⚠️ 現在時間＝測試值 ${LS.get('deco.nowFake')}` : '');
+  box.appendChild(note);
+  /* 篩選（🟡-12：一行出現在它含有的每一個篩選底下；「全部」只出現一次） */
+  const fb=document.createElement('div'); fb.className='trfilt';
+  for(const [k,t] of TRASH_FILTERS){
+    const n = k==='all' ? groups.length : groups.filter(g=>g.kinds.has(k)).length;
+    const c=document.createElement('button'); c.type='button'; c.className='chip'+(S.trash.f===k?' on':'');
+    c.dataset.f=k; c.textContent=`${t} ${n}`;
+    c.onclick=()=>{ S.trash.f=k; renderTrash(); };
+    fb.appendChild(c);
+  }
+  box.appendChild(fb);
+  if(S.trash.msg){ const m=document.createElement('div'); m.className='pstat'; m.id='trashMsg';
+    m.innerHTML=esc(S.trash.msg).split(String.fromCharCode(10)).join('<br>'); box.appendChild(m); }
+  const shown=groups.filter(g=>S.trash.f==='all' || g.kinds.has(S.trash.f));
+  const list=document.createElement('div'); list.className='trlist';
+  if(!shown.length){ const e=document.createElement('div'); e.className='trempty'; e.textContent='（沒有東西）'; list.appendChild(e); }
+  for(const g of shown){
+    const row=document.createElement('div'); row.className='trrow'; row.dataset.key=g.key;
+    const on=S.trash.sel.has(g.key);
+    const bx=document.createElement('span'); bx.className='box'+(on?' on':''); row.appendChild(bx);   // 勾選框常駐（R-31）
+    const mid=document.createElement('div'); mid.className='trmid';
+    const t=document.createElement('div'); t.className='trt'; t.textContent=trashLabel(g, allAlb); mid.appendChild(t);
+    const s=document.createElement('div'); s.className='trs';
+    s.textContent=`剩 ${daysLeft(g.at)} 天　${fmtLocal(g.last)} 刪除`; mid.appendChild(s);
+    const phs=g.rows.filter(r=>r.store==='album_photos').slice(0,4);
+    if(phs.length){
+      const th=document.createElement('div'); th.className='trth';
+      for(const r of phs){
+        const p=PHOTOS.get(r.o.photoId);
+        const im=document.createElement(p&&p.small?'img':'span');
+        if(p&&p.small){ const u=URL.createObjectURL(p.small); _trUrls.push(u); im.src=u; im.alt=''; }
+        th.appendChild(im);
+      }
+      mid.appendChild(th);
+    }
+    row.appendChild(mid);
+    const rb=document.createElement('button'); rb.className='btn trres'; rb.textContent='還原';
+    rb.onclick=async ev=>{ ev.stopPropagation(); rb.disabled=true;
+      try{
+        const m=await restoreGroup(g);
+        await reloadObjects(); render(); buildList(); syncSel(); refreshTop();
+        S.trash.msg=['已還原：'+trashLabel(g, allAlb)].concat(m).join(String.fromCharCode(10));
+      }catch(e){ S.trash.msg='還原失敗：'+((e&&e.message)||e); }
+      renderTrash(); };
+    row.appendChild(rb);
+    row.onclick=()=>{ if(S.trash.sel.has(g.key)) S.trash.sel.delete(g.key); else S.trash.sel.add(g.key); renderTrash(); };
+    list.appendChild(row);
+  }
+  box.appendChild(list);
+  /* 底部：〔永久刪除勾選的…〕（確認框寫數量；不可復原）＋ 灰掉時寫原因（🟠-6） */
+  const foot=document.createElement('div'); foot.className='trfoot';
+  const why=purgeBlockedWhy(), n=S.trash.sel.size;
+  const pb=document.createElement('button'); pb.className='btn dangerfill'; pb.id='btnPurge';
+  pb.textContent=`永久刪除勾選的 ${n} 行`; pb.disabled=!n || !!why;
+  pb.onclick=()=>confirmPurge(groups.filter(g=>S.trash.sel.has(g.key)));
+  foot.appendChild(pb);
+  if(why){ const w=document.createElement('div'); w.className='trwhy'; w.textContent=why; foot.appendChild(w); }
+  box.appendChild(foot);
+}
+async function confirmPurge(groups){
+  if(!groups.length || purgeBlockedWhy()) return;
+  const rows=groups.reduce((n,g)=>n+g.rows.length,0);
+  /* 會跟著消失的照片（沒有別的相簿在用）：先算給她看 */
+  const aps=await lAllObj('album_photos');
+  const killAp=new Set(), pids=new Set();
+  for(const g of groups) for(const r of g.rows){
+    if(r.store==='album_photos'){ killAp.add(r.o.id); pids.add(r.o.photoId); }
+    if(r.store==='albums') aps.filter(x=>x.albumId===r.o.id).forEach(x=>{ killAp.add(x.id); pids.add(x.photoId); });
+  }
+  const dying=[...pids].filter(pid=>!aps.some(x=>x.photoId===pid && !x.purgedAt && !killAp.has(x.id))).length;
+  const ok=await askDialog({title:'永久刪除', okText:'永久刪除',
+    body:`永久刪除 <b>${groups.length}</b> 行（共 ${rows} 筆）。<br>`
+      + (dying ? `其中 <b>${dying} 張照片</b>沒有別的相簿在用，`
+                 + (CLOUD.code ? '會連同雲端的檔案（壓縮版與原檔）一起刪掉。<br>' : '照片本身會一起刪掉。<br>') : '')
+      + `<b>無法復原。</b>`});
+  if(!ok) return;
+  let res=null;
+  try{ res=await purgeGroups(groups); }
+  catch(e){ S.trash.msg='永久刪除到一半失敗（已刪的不會回來，其餘還在垃圾桶）：'+((e&&e.message)||e); }
+  if(res){
+    S.trash.msg=[`已永久刪除 ${res.rows} 筆`+(res.photos?`，照片 ${res.photos} 張`+(CLOUD.code?'（含雲端檔案）':''):'')+'。'].concat(res.msgs).join(String.fromCharCode(10));
+    await refreshUsage();
+  }
+  S.trash.sel=new Set();
+  await reloadObjects(); render(); buildList(); syncSel(); refreshTop();
+  renderTrash();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   🔴 v0.1.9 批 7｜用量條的兩顆鈕（§9-4；B7-c 畫面交建造者）
+   〔備份原檔〕＝相簿清單（每本寫雲端原檔大小），一次點一本 ⇒ 批 9 的 exportAlbumZip（🔴 不可一次打包全專案）
+   〔刪除雲端的原檔〕＝勾選清單：第一列「垃圾桶裡的照片」預設勾（先勾垃圾桶裡的），其餘每本一列（不勾）
+      ⇒ 確認框寫張數與 MB（不可逆，R-31）⇒ 每張【先改列】（orig_path 清空、orig_status＝purged）【再刪檔】（R-07）
+   🔴 未連線 ⇒ 兩顆都不動作並寫原因（R-47）
+   ══════════════════════════════════════════════════════════════ */
+/* 這個專案「雲端有原檔」的照片 → {photoId: bytes} */
+function cloudOrigMap(){
+  const m=new Map();
+  for(const p of PHOTOS.values())
+    if(p.projectCode===CLOUD.code && p.origStatus==='has' && p.origPath)
+      m.set(p.id, Number(p.origSize) || (p.orig ? p.orig.size : 0));   // 舊資料 origSize 可能是空（見 photoFromRow 註解）⇒ 退回本機原檔大小
+  return m;
+}
+function origOfAlbum(albumId, om){
+  const ids=[...new Set(apsOf(albumId).map(ap=>ap.photoId))].filter(id=>om.has(id));
+  return {n:ids.length, bytes:ids.reduce((s,id)=>s+om.get(id),0), ids};
+}
+async function openBackupOrig(){
+  if(!CLOUD.on){ showAlbMsg('沒有連上雲端：備份原檔要連線才能下載雲端的原檔。'); return; }
+  const om=cloudOrigMap();
+  const sorted=await sortedAlbums();
+  openMenu('備份原檔：選一本匯出 zip（一次一本）', sorted.map(a=>{
+    const o=origOfAlbum(a.id, om);
+    return { label:albName(a), sub: o.n ? `原檔 ${o.n} 張｜${fmtBytes(o.bytes)}` : '雲端沒有原檔（會匯出壓縮版）',
+             onClick:()=>{ exportAlbumZip(a.id); } };
+  }));
+}
+async function openPurgeOrig(){
+  if(!CLOUD.on){ showAlbMsg('沒有連上雲端：刪除雲端的原檔要連線才能做。'); return; }
+  const om=cloudOrigMap();
+  const liveP=new Set(APHOTOS.map(x=>x.photoId));
+  const trashIds=[...om.keys()].filter(id=>!liveP.has(id));        // 照片在垃圾桶＝沒有任何活的 album_photo（O-40 推算）
+  const sorted=(await sortedAlbums()).map(a=>({a, o:origOfAlbum(a.id, om)})).filter(x=>x.o.n);
+  const rows=[], sets=[];
+  if(trashIds.length){
+    rows.push({html:`垃圾桶裡的照片<div class="sub">原檔 ${trashIds.length} 張｜${fmtBytes(trashIds.reduce((s,id)=>s+om.get(id),0))}</div>`, on:true});
+    sets.push(trashIds);
+  }
+  for(const x of sorted){
+    rows.push({html:`${esc(albName(x.a))}<div class="sub">原檔 ${x.o.n} 張｜${fmtBytes(x.o.bytes)}</div>`, on:false});
+    sets.push(x.o.ids);
+  }
+  if(!rows.length){ showAlbMsg('雲端沒有任何原檔可以刪。'); return; }
+  const r=await pickDialog({title:'刪除雲端的原檔',
+    body:'只刪【雲端的原檔】，照片留壓縮版（放大畫面會寫「雲端的原檔已刪除」）。要留原檔請先〔備份原檔〕。',
+    rows, actions:[{text:'取消', value:'no'}, {textFn:n=>`下一步（${n} 項）`, cls:'dangerfill', value:'go', needAny:true}]});
+  if(r.value!=='go') return;
+  const ids=[...new Set(sets.filter((s,i)=>r.checked[i]).flat())];
+  const bytes=ids.reduce((s,id)=>s+(om.get(id)||0),0);
+  const ok=await askDialog({title:'刪除雲端的原檔', okText:'刪除原檔',
+    body:`刪除 <b>${ids.length} 張</b>照片的雲端原檔，共 <b>${fmtBytes(bytes)}</b>。<br>照片本身留著（壓縮版）。<br><b>無法復原。</b>`});
+  if(!ok) return;
+  const res=await purgeCloudOrigs(ids);
+  await refreshUsage();
+  await reloadObjects();
+  showAlbMsg(`已刪除 ${res.done} 張照片的雲端原檔（${fmtBytes(res.bytes)}）。`+(res.fail?`\n有 ${res.fail} 張沒刪成：${res.err}`:''));
+}
+/* 每張：先改列（orig_status＝purged ⇒ photoToRow 送 orig_path:null）→ 推上去成功 → 路徑進待刪清單 → 刪檔 */
+async function purgeCloudOrigs(ids){
+  const out={done:0, bytes:0, fail:0, err:''};
+  for(const id of ids){
+    const r=await lGet('photos', id);
+    if(!r || r.origStatus!=='has' || !r.origPath) continue;
+    const path=r.origPath, size=Number(r.origSize) || (r.orig ? r.orig.size : 0);
+    r.origStatus='purged'; r.origPath=null; r.origErr=null;
+    const how=await savePhoto(r, {wait:true});
+    if(how==='error'){ out.fail++; out.err='改雲端的照片列失敗（見同步訊息）'; continue; }
+    setPendingDel(pendingDelList().concat([path]));
+    out.done++; out.bytes+=size;
+  }
+  await flushPendingDel();
+  return out;
+}
+$('btnTrash').onclick=openTrash;
+
+/* ══════════════════════════════════════════════════════════════
+   🔴🔴 v0.1.9 批 6｜刪除（_i §8-1／§8-2／§8-3；_d §13-104）
+   🔴 照片從「物理刪除」改成「軟刪進垃圾桶」—— 刪除一律發生在【album_photo 層】（R-05）：
+      「整張照片進垃圾桶」＝它所有 album_photo 都在垃圾桶（推算，照片層不加 deletedAt）。
+      同一次刪除＝同一個 batch_id（垃圾桶裡合成一行，批 7）。本機 small／orig 留到永久刪除（R-19）。
+   🔴 現行照片〔刪除〕沒有確認框 ⇒ 一律走下面的框。
+   ══════════════════════════════════════════════════════════════ */
+async function deleteAps(aps, batchId){
+  const now=nowISO();
+  for(const ap of aps){ ap.deletedAt=now; ap.batchId=batchId; await saveAlbumPhoto(ap); }
+}
+/* ╔═ 勾選清單框（新元件；🛑 不是 askDialog 的第四種模式，R-21）═══════════════════════════╗
+   rows:[{html, on}]　actions:[{text|textFn(n), cls, value, needAny, kind:'all'}]
+   · needAny：一個都沒勾 ⇒ 灰（R-31／J-4）
+   · kind:'all'：把每一列都勾起來，框不關（〔這張全選〕）
+   回傳 {value, checked:[布林…]}。z 52 ⇒ 蓋得過放大畫面（47），相-34。 ╚══════════════════════╝ */
+let _pickRes=null;
+function pickDialog(o){
+  $('pickTitle').textContent=o.title||'';
+  $('pickBody').innerHTML=o.body||''; $('pickBody').hidden=!o.body;
+  const rowsBox=$('pickRows'), acts=$('pickActs');
+  const checked=(o.rows||[]).map(r=>!!r.on);
+  const paint=()=>{
+    rowsBox.innerHTML='';
+    (o.rows||[]).forEach((r,i)=>{
+      const d=document.createElement('div'); d.className='prow';
+      d.innerHTML=`<span class="box${checked[i]?' on':''}"></span><div>${r.html}</div>`;
+      d.onclick=()=>{ checked[i]=!checked[i]; paint(); };
+      rowsBox.appendChild(d);
+    });
+    acts.innerHTML='';
+    const n=checked.filter(Boolean).length;
+    for(const a of (o.actions||[])){
+      const b=document.createElement('button'); b.className='btn'+(a.cls?' '+a.cls:'');
+      b.textContent = a.textFn ? a.textFn(n) : a.text;
+      b.disabled = !!(a.needAny && !n);
+      b.onclick=()=>{
+        if(a.kind==='all'){ checked.fill(true); paint(); return; }
+        $('ovPick').hidden=true;
+        const r=_pickRes; _pickRes=null; r && r({value:a.value, checked:checked.slice()});
+      };
+      acts.appendChild(b);
+    }
+  };
+  paint();
+  $('ovPick').hidden=false;
+  return new Promise(res=>{ _pickRes=res; });
+}
+/* 一列＝一本含這張照片的相簿：相簿名＋「這本的備註：…」（圖 5） */
+function apRowHtml(ap, curAlbumId){
+  const a=albumOf(ap.albumId);
+  return `${esc(albName(a))}${ap.albumId===curAlbumId?' <span class="sub">（現在這本）</span>':''}`
+       + `<div class="sub">這本的備註：${esc(ap.note||'—')}</div>`;
+}
+/* §8-1 單張刪除。回傳刪掉了幾筆（0＝取消）。 */
+async function confirmDeletePhotoFrom(curAp){
+  const list=albumsOfPhoto(curAp.photoId);
+  if(!list.some(x=>x.id===curAp.id)) list.unshift(curAp);
+  const r=await pickDialog({ title:'要從哪幾本相簿刪掉這張？',
+    body: list.length>1 ? '全部勾 ＝ 整張照片進垃圾桶。半年內可以在垃圾桶救回來。'
+                        : '這張只在這本 ⇒ 會整張進垃圾桶。半年內可以在垃圾桶救回來。',
+    rows: list.map(ap=>({html:apRowHtml(ap, curAp.albumId), on:ap.id===curAp.id})),
+    actions:[ {text:'取消', value:'no'},
+              {textFn:n=>`刪除（${n} 本）`, cls:'dangerfill', value:'del', needAny:true} ]});
+  if(r.value!=='del') return 0;
+  const pick=list.filter((x,i)=>r.checked[i]);
+  await deleteAps(pick, uid());
+  return pick.length;
+}
+/* §8-2 多選刪除：總結框 →〔照這樣刪〕或〔逐張確認…〕；一次多選刪除＝同一個 batch_id */
+async function multiDelete(a, apIds){
+  const aps=apIds.map(id=>APHOTOS.find(x=>x.id===id)).filter(Boolean);
+  if(!aps.length) return;
+  const only=aps.filter(ap=>albumsOfPhoto(ap.photoId).length<=1).length;
+  const r=await pickDialog({ title:`刪除 ${aps.length} 張照片？`,
+    body:`其中 <b>${only} 張只在這本</b>，會整張進垃圾桶；<br>另外 <b>${aps.length-only} 張只從這本拿掉</b>，其他相簿還看得到。`
+        +`<br>半年內可以在垃圾桶救回來。`,
+    rows:[], actions:[ {text:'取消', value:'no'}, {text:'逐張確認…', value:'each'},
+                       {text:'照這樣刪', cls:'dangerfill', value:'all'} ]});
+  if(r.value==='no') return;
+  const batch=uid();
+  if(r.value==='all'){ await deleteAps(aps, batch); }
+  else{
+    for(let i=0;i<aps.length;i++){
+      const ap=aps[i];
+      const list=albumsOfPhoto(ap.photoId);
+      const p=await pickDialog({ title:`第 ${i+1} / ${aps.length} 張：${ap.name||'未命名'}`,
+        body:'要從哪幾本相簿刪掉這張？',
+        rows:list.map(x=>({html:apRowHtml(x, a.id), on:x.id===ap.id})),
+        actions:[ {text:'這張全選', kind:'all'}, {text:'跳過這張', value:'skip'},
+                  {textFn:n=>`刪除（${n} 本）`, cls:'dangerfill', value:'del', needAny:true},
+                  {text:'停止', value:'stop'} ]});
+      if(p.value==='stop') break;
+      if(p.value==='del') await deleteAps(list.filter((x,j)=>p.checked[j]), batch);
+      await reloadObjects();
+    }
+  }
+  S.alb.multi=null;
+  await reloadObjects(); renderAlbums();
+}
+/* §8-3 刪整本相簿：相簿進垃圾桶；它名下的每一筆 album_photo 同一批進去
+   （只在這本的照片 ⇒ 整張進垃圾桶；也在別本的 ⇒ 別本不受影響）。釘子跟著相簿消失，還原時回來。 */
+async function confirmDeleteAlbum(a){
+  const aps=apsOf(a.id);
+  const only=aps.filter(ap=>albumsOfPhoto(ap.photoId).length<=1).length;
+  const ok=await askDialog({ title:`刪除「${albName(a)}」？`,
+    body: aps.length
+      ? `${aps.length} 張照片裡，<b>${only} 張只在這本</b>，會一起進垃圾桶；<br>另外 ${aps.length-only} 張在別的相簿還看得到。<br>半年內可以在垃圾桶整本救回來。`
+      : '這是空相簿。半年內可以在垃圾桶救回來。',
+    okText:'刪除相簿' });
+  if(!ok) return;
+  const batch=uid(), now=nowISO();
+  a.deletedAt=now; a.batchId=batch; await saveAlbum(a);
+  await deleteAps(aps, batch);
+  S.alb.open=null; S.alb.multi=null;
+  await reloadObjects(); renderAlbums(); render();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   🔴🔴 v0.1.9 批 6｜放大畫面（_i §5、§0b R-21／R-29／R-32／R-34、Q-A3）
+   左右滑＝換張；雙指縮放（原檔、壓縮檔都能縮）；縮放後單指滑＝移動畫面；往下滑＝關閉；
+   電腦：滾輪縮放、←／→ 換張、Esc 關閉（O-5：只做雙指的話電腦上沒有入口）。
+   🔴 R-39：放手三條路（pointerup／pointercancel／lostpointercapture）走同一支收尾 vEnd。
+   ══════════════════════════════════════════════════════════════ */
+const V={ albumId:null, list:[], idx:0, url:null, origUrl:null, s:1, tx:0, ty:0 };
+async function openAlbumViewer(albumId, apId){
+  commitAlbumEdits();
+  V.albumId=albumId;
+  V.list=apsOf(albumId).map(x=>x.id);
+  V.idx=Math.max(0, V.list.indexOf(apId));
+  $('viewer').hidden=false;
+  showViewerItem();
+}
+/* 用照片 id 開放大畫面：找一本有這張照片的相簿（v0.1.9 批 8 之後沒有畫面入口在叫它，留著當工具函式） */
+async function openViewer(photoId){
+  const ap=APHOTOS.find(x=>x.photoId===photoId);
+  if(ap) return openAlbumViewer(ap.albumId, ap.id);
+  V.albumId=null; V.list=[]; V.idx=0;
+  $('viewer').hidden=false; showViewerItem();
+}
+function vRevoke(){
+  if(V.url){ URL.revokeObjectURL(V.url); V.url=null; }
+  if(V.origUrl){ URL.revokeObjectURL(V.origUrl); V.origUrl=null; }
+}
+function vApply(){ $('vImg').style.transform=`translate(${V.tx}px,${V.ty}px) scale(${V.s})`; }
+function vReset(){ V.s=1; V.tx=0; V.ty=0; $('vImg').style.opacity=''; vApply(); }
+async function showViewerItem(){
+  vRevoke(); vReset();
+  $('vLoad').textContent='';
+  const im=$('vImg');
+  const apId=V.list[V.idx];
+  const ap=apId ? APHOTOS.find(x=>x.id===apId) : null;
+  const p=ap ? PHOTOS.get(ap.photoId) : null;
+  const dis=(on)=>{ ['vOrig','vMove','vDel'].forEach(id=>{ $(id).disabled=!on; }); };
+  if(!ap || !p){
+    /* 🔴 R-34：開著的時候被刪了（含另一台同步刪） */
+    im.removeAttribute('src'); $('vPos').textContent='';
+    $('vInfo').innerHTML='<b>這張照片已被刪除</b>（可能是另一台刪的，可以到垃圾桶還原）';
+    $('vDiag').textContent=''; dis(false); $('vOrig').textContent='查看原檔';
+    return;
+  }
+  dis(true);
+  if(p.small){ V.url=URL.createObjectURL(p.small); im.src=V.url; } else im.removeAttribute('src');
+  $('vPos').textContent = V.list.length>1 ? `${V.idx+1} / ${V.list.length}` : '';
+  const others=albumsOfPhoto(ap.photoId).filter(x=>x.albumId!==ap.albumId).map(x=>albName(albumOf(x.albumId)));
+  const has=hasCloudOrig(p);
+  $('vInfo').innerHTML =
+      `<b>${esc(ap.name||'未命名')}</b><br>`
+    + (ap.note ? esc(ap.note).split(String.fromCharCode(10)).join('<br>') : '<span style="color:#777">（沒有備註）</span>')+'<br>'
+    + `拍攝 ${esc(shotAtOf(p)||'—')}<br>`
+    + `雲端儲存：<span class="${has?'on2':'off2'}">原檔</span>／<span class="${has?'off2':'on2 w'}">壓縮檔</span>`
+    + `　<span style="color:#999">${esc(origStatusText(p))}</span>`
+    + (others.length ? `<br>📎 此照片也在 ${others.length} 本相簿：${esc(others.join('、'))}` : '');
+  /* 〔查看原檔（X MB）〕：這台有乾淨的原檔就用這台的；否則雲端有才可按（沒有 ⇒ 灰）。 */
+  const canOrig = !!((p.orig && p.origClean) || (has && p.origPath && CLOUD.on));
+  $('vOrig').disabled=!canOrig;
+  $('vOrig').textContent = canOrig ? `查看原檔（${fmtBytes(p.origSize||0)}）` : '查看原檔（沒有）';
+  /* 🔴 R-40：卡片上的診斷資訊保留到這裡（格式、尺寸、EXIF 方向、誰轉正、存於哪一版）＋ 本機儲存配額（pstat） */
+  let est='（此瀏覽器不支援容量查詢）';
+  try{ const e=await navigator.storage.estimate(); est=`本機已用 ${fmtBytes(e.usage||0)} / 上限約 ${fmtBytes(e.quota||0)}`; }catch(e){}
+  if(V.list[V.idx]!==apId) return;               // 期間已換張
+  $('vDiag').textContent =
+      `來源 ${p.source||'—'}｜格式 ${p.mime||'—'}｜原始 ${fmtBytes(p.origSize||0)}`
+    + (p.decoded ? `（${p.rawW??p.w}×${p.rawH??p.h}）` : '')
+    + (p.smallSize ? `→ 壓縮 ${fmtBytes(p.smallSize)}` + ((!isLegacy(p) && p.w) ? `（${p.w}×${p.h}）` : '') : '')
+    + `｜EXIF 方向 ${p.orientation ?? '無'}`
+    + (isLegacy(p) ? '｜⚠️ 舊版存的，方向未處理' : (p.rotated ? `｜已轉正（${p.oriBy||'?'}）` : ''))
+    + (p.err ? `｜⚠️ ${p.err}` : '')
+    + `｜存於 ${verOf(p)}｜${est}`;
 }
 function closeViewer(){
   $('viewer').hidden=true;
   $('vImg').removeAttribute('src');
-  if(_vURL){ URL.revokeObjectURL(_vURL); _vURL=null; }
+  vRevoke(); vReset();
+  if(S.tab==='photo') renderAlbums();
 }
 $('vClose').onclick=closeViewer;
-$('viewer').addEventListener('click', e=>{ if(e.target.id!=='vImg') closeViewer(); });
+/* R-32：〔查看原檔〕⇒ 換成原檔（顯示載入中）；失敗（沒網路）⇒ 一行錯誤、維持顯示壓縮檔 */
+$('vOrig').onclick=async()=>{
+  const ap=APHOTOS.find(x=>x.id===V.list[V.idx]); const p=ap && PHOTOS.get(ap.photoId); if(!p) return;
+  const apId=ap.id;
+  $('vLoad').textContent='載入原檔中…'; $('vOrig').disabled=true;
+  let blob=null;
+  try{
+    if(p.orig && p.origClean) blob=p.orig;
+    else{
+      const r=await sbFetch('/storage/v1/object/photos/'+p.origPath);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      blob=await r.blob();
+    }
+  }catch(e){
+    if(V.list[V.idx]===apId){ $('vLoad').textContent='讀不到原檔（沒有網路？），先顯示壓縮檔'; $('vOrig').disabled=false; }
+    return;
+  }
+  if(V.list[V.idx]!==apId) return;
+  if(V.origUrl) URL.revokeObjectURL(V.origUrl);
+  V.origUrl=URL.createObjectURL(blob);
+  $('vImg').src=V.origUrl; vReset();
+  $('vLoad').textContent = p.origShrunk ? '原檔（已縮小）' : '原檔';   // 🔴 Q-A2 甲
+  $('vOrig').textContent = p.origShrunk ? '正在看原檔（已縮小）' : '正在看原檔';
+};
+/* R-29：刪除／轉移之後 ⇒ 跳到下一張；沒有下一張 ⇒ 關閉回內頁 */
+async function viewerAfterRemoval(apId){
+  await reloadObjects();
+  const alive=new Set(apsOf(V.albumId).map(x=>x.id));
+  V.list=V.list.filter(id=>alive.has(id));
+  if(!V.list.length){ closeViewer(); return; }
+  V.idx=Math.min(V.idx, V.list.length-1);
+  showViewerItem();
+}
+$('vDel').onclick=async()=>{
+  const ap=APHOTOS.find(x=>x.id===V.list[V.idx]); if(!ap) return;
+  const n=await confirmDeletePhotoFrom(ap);
+  if(n) await viewerAfterRemoval(ap.id);
+};
+$('vMove').onclick=()=>{
+  const ap=APHOTOS.find(x=>x.id===V.list[V.idx]); if(!ap) return;
+  openMenu('這張要…', [
+    {label:'轉移到別本（這本就沒有了）', onClick:()=>openTargetMenu('move',[ap.id],ap.albumId,
+        ()=>viewerAfterRemoval(ap.id))},
+    {label:'複製到別本（這本也留著）', onClick:()=>openTargetMenu('copy',[ap.id],ap.albumId,
+        ()=>{ reloadObjects().then(showViewerItem); })}
+  ]);
+};
+function vStep(d){
+  const j=V.idx+d;
+  if(j<0 || j>=V.list.length){ vReset(); return; }
+  V.idx=j; showViewerItem();
+}
+/* ── 手勢 ── */
+const VP=new Map(); let VG=null;
+const vStage=$('vStage');
+function vCenter(){ const r=vStage.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2}; }
+vStage.addEventListener('pointerdown', e=>{
+  try{ vStage.setPointerCapture(e.pointerId); }catch(err){}
+  VP.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(VP.size===2){
+    const [a,b]=[...VP.values()], c=vCenter();
+    VG={type:'pinch', d0:Math.hypot(a.x-b.x,a.y-b.y)||1, s0:V.s, tx0:V.tx, ty0:V.ty,
+        mx:(a.x+b.x)/2-c.x, my:(a.y+b.y)/2-c.y};
+  }else if(VP.size===1){
+    VG={type:'one', id:e.pointerId, x0:e.clientX, y0:e.clientY, tx0:V.tx, ty0:V.ty, dx:0, dy:0};
+  }
+});
+vStage.addEventListener('pointermove', e=>{
+  if(!VP.has(e.pointerId)) return;
+  VP.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(!VG) return;
+  if(VG.type==='pinch' && VP.size>=2){
+    const [a,b]=[...VP.values()];
+    const s=Math.max(1, Math.min(6, VG.s0*(Math.hypot(a.x-b.x,a.y-b.y)/VG.d0)));
+    /* 以兩指中點為不動點縮放（transform-origin 在圖片中心） */
+    V.tx = VG.mx - (VG.mx - VG.tx0)*(s/VG.s0);
+    V.ty = VG.my - (VG.my - VG.ty0)*(s/VG.s0);
+    V.s=s; vApply(); return;
+  }
+  if(VG.type==='one' && VG.id===e.pointerId){
+    VG.dx=e.clientX-VG.x0; VG.dy=e.clientY-VG.y0;
+    if(V.s>1.02){ V.tx=VG.tx0+VG.dx; V.ty=VG.ty0+VG.dy; vApply(); return; }   // 縮放後：滑＝移動畫面
+    if(Math.abs(VG.dx)>=Math.abs(VG.dy)){ V.tx=VG.dx; V.ty=0; }
+    else if(VG.dy>0){ V.tx=0; V.ty=VG.dy; $('vImg').style.opacity=String(Math.max(.35, 1-VG.dy/400)); }
+    vApply();
+  }
+});
+function vEnd(e){
+  if(!VP.has(e.pointerId)) return;
+  VP.delete(e.pointerId);
+  const g=VG;
+  if(!g) return;
+  if(g.type==='pinch'){
+    if(VP.size<2){ VG=null; if(V.s<1.02) vReset(); }
+    return;
+  }
+  if(g.type==='one' && g.id===e.pointerId){
+    VG=null;
+    if(V.s>1.02) return;                               // 縮放中放手：停在原處
+    if(e.type==='pointerup'){
+      if(g.dx<-60 && Math.abs(g.dx)>Math.abs(g.dy)) return vStep(+1);
+      if(g.dx> 60 && Math.abs(g.dx)>Math.abs(g.dy)) return vStep(-1);
+      if(g.dy> 90 && g.dy>Math.abs(g.dx)) return closeViewer();
+    }
+    vReset();                                          // 被系統取消／搶走 ⇒ 一律回原位（不換張、不關閉）
+  }
+}
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>vStage.addEventListener(ev, vEnd));
+vStage.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const c=vCenter(), s0=V.s, s=Math.max(1, Math.min(6, s0*(e.deltaY<0?1.15:1/1.15)));
+  const mx=e.clientX-c.x, my=e.clientY-c.y;
+  V.tx = mx-(mx-V.tx)*(s/s0); V.ty = my-(my-V.ty)*(s/s0); V.s=s;
+  if(s<1.02) vReset(); else vApply();
+},{passive:false});
+document.addEventListener('keydown', e=>{
+  if($('viewer').hidden || !$('ovPick').hidden || !$('ovMenu').hidden || !$('ovAsk').hidden) return;
+  if(e.key==='ArrowRight') vStep(+1);
+  else if(e.key==='ArrowLeft') vStep(-1);
+  else if(e.key==='Escape') closeViewer();
+});
 
 /* ══════════════════════════════════════════════════════════════
    需求 8｜清單頁（版位依預覽 v0.04 確認）
@@ -6789,6 +8847,7 @@ async function setPlaced(id, want){
        ⇒ 缺的是【指向】：畫面沒有任何一處告訴她那件東西去哪了
        ⇒ 她只能在圖上猜，猜到另一件沒填尺寸的，就把尺寸填到那一件身上。
      ⚠️ 尺寸未填的照樣要帶過去——面板尺寸欄是空的【是正確的狀態】（它真的沒填）。 */
+  clearPinState();             // 🔴 v0.1.9 R-20：這條路直接指定 selId（不經 select）⇒ 互斥要自己做
   S.selId = f.id;              // ① 選中它 ⇒ 面板直接出現、尺寸已經是它的值
   setTab('plan');              // ② 帶到它在的地方（setTab 內含 render/syncSel）
   ensureVisible(f);            // ③ 若它在畫面外 → 平移過去（🔴 不動 zoom）
@@ -6959,7 +9018,7 @@ const TABS = [
   { key:'plan',  label:'平面圖', ic:'🧩', el:'tabPlan',   page:null,        soon:false },
   { key:'list',  label:'清單',   ic:'📋', el:'tabList',   page:'listPage',  soon:false },
   { key:'cost',  label:'估價',   ic:'💰', el:'tabCost',   page:'soonPage',  soon:true  },
-  { key:'photo', label:'照片',   ic:'📷', el:'tabPhoto',  page:'photoPage', soon:false },
+  { key:'photo', label:'相簿',   ic:'📷', el:'tabPhoto',  page:'photoPage', soon:false },
   { key:'layout',label:'格局',   ic:'📐', el:'tabLayout', page:'soonPage',  soon:true  },
 ];
 /* ╔═ 🔴 setTab 的【九件事】，改成迴圈時一件都不可以掉 ═══════════════════════════╗
@@ -6972,11 +9031,19 @@ const TABS = [
    ⑦ 進 photo 要 renderPhotos()、進 proj 要 refreshProj()、進 list 要 buildList()
    ⑧ localStorage 只存 plan/list/photo 三種
    ⑨ 收尾四件 refreshTop → refreshBeamBar → render → syncSel，🔴 順序不可換
-   ⑩ （v0.1.7 新增）renderLayerBar：圖層列依 LAYERS.tabs 重畫 */
+   ⑩ （v0.1.7 新增）renderLayerBar：圖層列依 LAYERS.tabs 重畫
+   ⑪ （v0.1.9 新增）離開平面圖 ⇒ 定位中視同定位完成、收掉預覽卡（leavePlanPinState）
+   ⑫ （v0.1.9 新增）離開專案頁 ⇒ 垃圾桶子畫面收起 */
 function setTab(t, opt){
   opt = opt || {};                                            // ①
   if(!opt.keepFocus) S.beamFocus = null;                      // ①
   if(S.tab==='list' && t!=='list'){ commitNameEdits(); }      // ② 🔴🔴
+  if(S.tab==='photo' && t!=='photo'){ commitAlbumEdits(); }   // ②-b 🔴 v0.1.9：相簿的就地編輯也一樣（掉了會吃掉她打的字）
+  /* ⑪ 🔴 v0.1.9 R-25／R-26：定位中切到別的分頁 ⇒ 視同〔定位完成〕（還沒點過 ⇒ 什麼都不存）；
+     預覽卡／選中的釘子一起收掉。分頁 key 'photo'、deco.tab 不動。 */
+  if(t!=='plan' && (S.loc || S.pinSel || S.pinCard)) leavePlanPinState();
+  /* ⑫ 🔴 v0.1.9 批 7：離開專案頁 ⇒ 垃圾桶子畫面收起（下次進專案頁回到設定本頁） */
+  if(t!=='proj' && S.trash && S.trash.open){ S.trash.open=false; $('trashView').hidden=true; $('projMain').hidden=false; }
   S.tab=t;
   const cur = TABS.find(x=>x.key===t);
   // ③ TABS 驅動的頁面；proj 不在表上 ⇒ 照舊獨立寫
@@ -7093,7 +9160,28 @@ function renderLayerBar(){
     b.onclick=()=>toggleLayer(l.key);
     bar.appendChild(b);
   });
+  /* ╔═ 🔴 v0.1.9 §3（Ali 2026-09-30 裁 b）｜相簿清單頁：搜尋框【畫出來】但不做功能 ═══════╗
+     位置＝平面圖圖層 icon 列【同一個元素】#layerBar（v0.1.8.1 起照片分頁這一條就是空的、透明、38px）
+     ⇒ 高度與平面圖那條天生一致，切分頁不跳。只在清單頁（相簿內頁不畫）。
+     🛑 不吃焦點、不跳手機鍵盤：disabled ＋ readonly ＋ tabindex -1 ＋ pointer-events:none；沒有任何事件。 ╚═╝ */
+  if(S.tab==='photo' && !S.alb.open){
+    const s=document.createElement('input');
+    s.type='search'; s.className='srchph'; s.id='albSearchPh';
+    s.placeholder='搜尋（之後開放）'; s.setAttribute('aria-label','搜尋（之後開放）');
+    s.disabled=true; s.readOnly=true; s.tabIndex=-1;
+    bar.appendChild(s);
+  }
+  bar.scrollLeft=0; nextFrame(syncLayerFade);     // 🔴 v0.1.10 P11：換頁／重畫之後重算漸層（O-1：排版後才量得到寬度）
 }
+/* 🔴 v0.1.10 P11：右邊還有東西 ⇒ 右漸層；左邊有被捲走的 ⇒ 左漸層 */
+function syncLayerFade(){
+  const b=$('layerBar'), w=$('layerBarWrap'); if(!b || !w) return;
+  const max=b.scrollWidth-b.clientWidth;
+  w.classList.toggle('more-r', max>1 && b.scrollLeft < max-1);
+  w.classList.toggle('more-l', max>1 && b.scrollLeft > 1);
+}
+$('layerBar').addEventListener('scroll', syncLayerFade, {passive:true});
+window.addEventListener('resize', syncLayerFade);
 function toggleLayer(key){
   /* 🔴 §10-3：佔位層擋在這裡。
      ⚠️ **理由不是「localStorage 會長出三個沒用的 key」** —— 那個理由是假的：
@@ -7171,13 +9259,12 @@ let t0 = LS.get('deco.tab') || 'plan';   // R-45：走 LS ⇒ 帶前綴
 if(t0!=='plan' && t0!=='list' && t0!=='photo') t0='plan';
 
 /* 🔴 啟動序列（需求 15 的順序寫死）：
-     loadMarkers → cloudInit（可能連上）→ loadAll（lAll → pull → seed → purge）
+     cloudInit（可能連上）→ loadAll（lAll → pull → 搬家 → seed → purge）（v0.1.9：loadMarkers 已拿掉）
      → render → buildList → setTab
    ⚠️ pull 丟錯 → 不跑 seed、把錯誤留在畫面上（不可用「本機全空」當成「專案是空的」）。 */
 (async function boot(){
   loadLayers();               // 🔴 §1-2b：先把上次點亮／熄掉的狀態讀回來，再畫第一幀
   loadFold();                 // 🔴 §下-10：收合狀態也要記得住（N-433）
-  await loadMarkers();
   await cloudInit();
   try{
     await loadAll();
