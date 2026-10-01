@@ -1,0 +1,841 @@
+
+/* 🔴 v0.09_i 需求 32｜基準字級的【單一來源】。
+   Ali 在真實寬度（417×847）下的判斷：「字體就 app 來說太小…再大 20% 會比較好看」
+   ⇒ --fs 是一個【乘數】：所有 font-size 都寫成 calc(原本px * var(--fs))
+     ⇒ 之後要再調只改這一個數字，不必逐處調（v0.09_i 明訂「只改一個基準來源」）
+   ⚠️ 只動【字】——不動任何按鈕高度、間距、容器尺寸。 */
+:root{ --fs:1.2;
+  /* ╔═ 🔴 v0.1.10 P11｜平面圖圖層列的四個尺寸（Ali 10-01 用滑桿定案；之後只改這四行）═══╗ */
+  --lb-w:   1.30;   /* 按鈕長度（倍數；1＝v0.1.9 的 .chip 自然寬 --lb-w0） */
+  --lb-h:   1.05;   /* 按鈕高度（倍數；1＝26px） */
+  --lb-ic:  1.50;   /* icon 大小（倍數；1＝11px × --fs） */
+  --lb-gap: 4px;    /* 按鈕間距 */
+  --lb-w0:  38px;   /* 基準寬：v0.1.9 最寬那顆 chip 的自然寬（施工時實量 37.8 px，375 寬手機模式、--fs 1.2） */
+}
+:root{
+  --bg:#f6f5f2; --panel:#fff; --ink:#232323; --sub:#6b6b6b; --line:#dcd8d0;
+  --accent:#3a6ea5; --wall:#4a4a4a; --furn:#8fa8bd; --furnSel:#3a6ea5;
+  --warnA:#e08b2a; --warnB:#cf4444; --ok:#4a8f5e; --ghost:#9bb8d4; --dim:#b9b4ab;
+  --mark:#d0451b;   /* 🔴 v0.1.9 §10-1：相簿釘子（相機）的顏色，照預覽第六版 */
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1c1d1f; --panel:#26282b; --ink:#ececec; --sub:#a0a0a0; --line:#3a3d41;
+  --accent:#7fb0e0; --wall:#c8c8c8; --furn:#48606f; --furnSel:#7fb0e0;
+  --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e; --dim:#5a5a5a;
+  --mark:#ff8a5c;
+}}
+:root[data-theme="dark"]{
+  --bg:#1c1d1f; --panel:#26282b; --ink:#ececec; --sub:#a0a0a0; --line:#3a3d41;
+  --accent:#7fb0e0; --wall:#c8c8c8; --furn:#48606f; --furnSel:#7fb0e0;
+  --warnA:#e0a252; --warnB:#e57373; --ok:#7fbf90; --ghost:#5b7f9e; --dim:#5a5a5a;
+  --mark:#ff8a5c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 -apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;
+  /* ⚠️ 上一行的 font 是【簡寫】，會把 font-size 設成 14px ⇒ 要在它【之後】覆蓋，
+     否則整個 app 的繼承基準不會跟著 --fs 走（font:inherit 的輸入框全靠它）。 */
+  font-size:calc(14px * var(--fs));
+  overscroll-behavior:none;}
+/* ╔═ 🔴 v0.16_i 修一｜M-38 回歸：反白的守備位置在【拖曳的起點】，不是整頁 ═══════╗
+   v0.15_i 修二用的是【白名單】：body 整頁 user-select:none，
+   再把 input／textarea／.codetxt 一個一個加回來。
+   🔴 它的失敗模式是結構性的：漏掉誰，誰就不能複製 ——
+      而漏掉的必然是「沒想到使用者會複製它」的那些。
+      實際漏掉的是 .cstat（同步面板的狀態文字：已連線／身分／上次同步／安全等級），
+      那正是 Ali 回報問題時最需要貼給 claude 的一段。
+      （⚠️ claude 第一次查證時測的是 .diagrow —— 它在白名單裡，所以「測起來通過」。
+        量具是準的，量的不是這件事。obs O-23／O-26。）
+   ⇒ 改成只關掉【真的會被拖曳的那一塊】＝ #plan 那張 svg（見下方 #plan 規則）。
+     選取是否開始，取決於 mousedown 的【落點】；落點在 none 上就根本不會開始選，
+     別處自然不反白，而頁面其餘文字全部維持可複製。
+   🔴 不要退回白名單做法。 ╚════════════════════════════════════════════════════╝ */
+/* 🔴 需求 21：手機上平面圖下方一大片空白。
+   ① 用 100dvh 不用 100vh（手機瀏覽器網址列會吃掉高度，100vh 會算成比可見區更高）
+      ⚠️ 100dvh 不支援時要有退路 ⇒ 先寫 100vh 再用 100dvh 覆蓋（支援的瀏覽器取後者）
+   ② max-height ＋ overflow:hidden ⇒ 整個 app 不可能高過可見區 ⇒ 頁面不會捲動
+      （Ali 的症狀是「平面圖下方到底部分頁之間約一個螢幕高的空白」＝ 容器比可見區高） */
+.app{display:flex;flex-direction:column;
+  height:100vh;height:100dvh;
+  max-height:100vh;max-height:100dvh;
+  overflow:hidden;
+  max-width:520px;margin:0 auto;background:var(--bg);}
+
+/* ── 需求 13：頂列（44px）＝ 標題 ＋ 可點的連線徽章 ＋ 齒輪 ── */
+.apptop{flex:none;height:44px;display:flex;align-items:center;gap:7px;padding:0 10px;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+.apptop .ttl{font-size:calc(15px * var(--fs));font-weight:600;flex:1;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+/* 🔴 標題很長時不可壓縮右邊兩顆（需求 13 邊界） */
+.apptop .pill{font-size:calc(11px * var(--fs));color:var(--accent);border:1px solid
+  color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:20px;padding:5px 9px;
+  background:var(--bg);white-space:nowrap;flex:none;font-family:inherit;cursor:pointer;
+  min-height:30px}
+.apptop .pill.off{color:var(--sub);border-color:var(--line)}
+.apptop .pill.er{color:var(--warnB);border-color:color-mix(in srgb,var(--warnB) 45%,var(--line))}
+.apptop .gear{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;
+  font-size:calc(17px * var(--fs));flex:none;cursor:pointer;padding:0;font-family:inherit}
+
+/* ── 頂部：擺放輔助列 ──
+   🔴 需求 39（v0.11_i 修一）：這排【不是】原型殘留，留在原位、不搬家。
+      吸附＝擺放手感；網格全顯＝Ali 用來自己確認走道有沒有相撞（_d §13-38，
+      方向 #9「算給你看，不替你判斷」）。舊註解說「正式版沒有這排」已過期，已改寫。 */
+.protobar{flex:none;background:var(--panel);border-bottom:1px solid var(--line);
+  padding:5px 8px;display:flex;gap:var(--lb-gap);align-items:center;font-size:calc(12px * var(--fs));
+  /* 🔴 v0.19_i §1-4a：清單頁／照片頁這一列【留白但版位留著】⇒ 高度固定，切分頁不會跳動。
+     🔴 v0.1.10 P11：高度＝按鈕高＋12（上下 padding 5＋5、下框線 1、餘 1 ＝ v0.1.9 那個 38 的算法）；
+        用 height 不用 min-height ⇒ 列高只由按鈕高決定，四頁一樣高。
+        不折行、放不下就左右滑（不顯示捲軸）；touch-action:pan-x ⇒ 手指只做橫捲，也不會帶動平面圖（兩個是不同元素）。 */
+  height:calc(26px * var(--lb-h) + 12px);
+  flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain}
+.protobar::-webkit-scrollbar{display:none}
+/* 🔴 v0.1.10 P11：只改平面圖圖層列的按鈕（其他地方的 .chip 不動）。
+   上下 padding 0、行高 1、置中：icon 19.8 px 的 emoji 墨水約 23～24 px，按鈕內高 25.3 px ⇒ 放得下；
+   🛑 不可以加 overflow:hidden（Android 的 emoji 上下只剩約 0.5 px，會剛好切到）。 */
+#layerBar .chip{flex:none;height:calc(26px * var(--lb-h));min-height:0;min-width:calc(var(--lb-w0) * var(--lb-w));
+  padding:0 9px;line-height:1;font-size:calc(11px * var(--fs) * var(--lb-ic));
+  display:inline-flex;align-items:center;justify-content:center}
+#layerBar .lsep{height:calc(18px * var(--lb-h))}
+/* 右緣（與左緣）漸層：還能往那邊滑才出現。放在外框上（漸層放在會捲的元素裡面會跟著捲走）。 */
+.lbwrap{position:relative;flex:none}
+.lbfade{position:absolute;top:0;bottom:1px;width:28px;pointer-events:none;opacity:0;transition:opacity .15s}
+.lbfade.r{right:0;background:linear-gradient(to right,transparent,var(--panel))}
+.lbfade.l{left:0;background:linear-gradient(to left,transparent,var(--panel))}
+.lbwrap.more-r .lbfade.r,.lbwrap.more-l .lbfade.l{opacity:1}
+/* 🔴 §1-4a：空的時候 background 與 border-bottom 都拿掉（透明），只保留高度。
+   理由：.protobar 自己有面板底色＋下框線 ⇒ 空的時候會變成「一條看得見的空橫條」，
+   正好撞上 .icard .icon 那條先例寫的「留空 ≠ 留一個看得見的空框」。
+   ⚠️ 這是 claude 的裁量，不是 Ali 裁的（她只說「版位留著、先空白」）。
+      要改成「留一條底線」只是把下面這兩個 transparent 拿掉。 */
+.protobar:empty{background:transparent;border-bottom-color:transparent}
+/* 🔴 §1-1c：kind:'behavior'（吸附）與 kind:'display'（其餘）要看得出來。
+   建造者選的【最小差異】＝兩者之間一條 1px 細分隔線（不新增元件、不動 .chip.on 的既有語彙）。 */
+.lsep{flex:none;width:1px;height:18px;background:var(--line);margin:0 1px}
+
+/* ── 舞台（§22：flex 子項要捲動/收縮必須 min-height:0）── */
+.stage{flex:1;min-height:0;position:relative;overflow:hidden}
+#plan{width:100%;height:100%;display:block;touch-action:none;background:var(--bg);
+  /* 🔴 v0.16_i 修一：平移與拖家具都綁在這張 svg（第 910 行 const svg=getElementById('plan')）
+     ⇒ 兩種拖曳的起點都在這裡，關掉選取就涵蓋得到。
+     ⚠️ 連帶：svg 裡的文字（房間名、樑編號）也不可選 —— 那是想要的，它們是畫面元素。 */
+  -webkit-user-select:none; user-select:none}
+
+.zoombtns{position:absolute;right:8px;top:8px;z-index:10;
+  display:flex;flex-direction:column;gap:5px;align-items:center}
+.zoombtns button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--panel) 88%,transparent);color:var(--ink);
+  font-size:calc(17px * var(--fs));line-height:1;cursor:pointer;padding:0;font-family:inherit;
+  backdrop-filter:blur(3px)}
+.zoombtns button:active{background:var(--accent);color:#fff}
+.zlabel{font-size:calc(10px * var(--fs));color:var(--sub);background:color-mix(in srgb,var(--panel) 88%,transparent);
+  padding:2px 5px;border-radius:5px;font-variant-numeric:tabular-nums}
+.zoombtns[hidden]{display:none!important}
+
+/* ── 頁面容器（清單／照片／專案／之後）── */
+.page{position:absolute;inset:0;background:var(--bg);overflow-y:auto;padding:10px 10px 4px}
+.page[hidden]{display:none!important}
+/* 🔴 需求 8：清單很長滑到底時，(+) 不可被最後一張卡片遮住 */
+#listPage{padding-bottom:84px}
+
+/* ── 需求 8：清單頁版面（版位依預覽 v0.04）── */
+.grp{font-size:calc(11.5px * var(--fs));color:var(--sub);letter-spacing:.05em;margin:12px 2px 5px;
+  display:flex;align-items:center;gap:6px}
+.grp:first-child{margin-top:2px}
+.grp .bar{width:14px;height:3px;border-radius:2px;flex:none}
+/* 🔴 v0.19_i §下-10：色條＋三角＝折疊開關（不新增按鈕）。
+   三角要【放大】：只有色條的話看不出可以點，而收合中的組會長得跟「這房沒東西」一樣。 */
+/* 🔴 §下-9：備註記號放在【現成的空 icon 欄】（見 itemCard 的長註解）
+   ⇒ 不參與名稱那一列的排版 ⇒ 名稱寬度一格不少、也不蓋住尺寸文字。
+   🔴 v0.20_i 下-12：舊的 `.icard .icon.hasnote{display:flex;…置中…}` 整組**移除** ——
+      那是為了「🏷️ 佔滿整格、置中」寫的，而 Ali 要這一欄放【品項 icon】
+      ⇒ 🏷️ 縮成左上角的小角標，把 46px 那一格讓出來。角標樣式見 .notetag。 */
+.grp .gsw{flex:none;display:inline-flex;align-items:center;gap:4px;cursor:pointer;
+  min-height:30px;padding:0 2px;margin:0 -2px}
+.grp .fold{font-size:calc(15px * var(--fs));color:var(--ink);line-height:1}
+.grp .gname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grp .gbtn{border:1px solid var(--line);background:var(--bg);color:var(--sub);
+  border-radius:6px;font:inherit;font-size:calc(11px * var(--fs));padding:3px 7px;cursor:pointer;flex:none;
+  min-height:26px}
+.icard{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  margin-bottom:7px;display:flex;overflow:hidden}
+/* 🔴 v0.17_i 乙-0：色條【只有已擺才上色】。待擺＝無色、孤兒（房間已被刪）＝無色。
+   兩種狀態共用同一個兩行版面，差別只有這條色條與那顆動作鈕的字。 */
+.icard .stripe{width:4px;flex:none}
+/* 🔴 v0.17_i 修四 ⑩ ＋ §0-5 D-2：stripe 以外的全部包成 .body，
+   展開列才能是【整張卡片寬】（掛在 .body，不掛在 .col）。 */
+.icard .body{flex:1;min-width:0;display:flex;flex-direction:column}
+/* 🔴 修十四：展開時卡片底色微變（少了 ▾ 之後的狀態指示，配 .cedit .opmark 的小 ▴） */
+.icard.open{background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+.icard .in{flex:1;min-width:0;display:flex;gap:10px;padding:9px 11px 9px 9px;align-items:center}
+/* 🔴 需求 8 §3-3（Ali 2026-09-11 定案）：icon 欄【留空】。
+   留空 ≠ 留一個看得見的空框 —— 不畫邊框、不畫底色、不放佔位圖示，就是內距。
+   位置要在（46px），v0.1.5 塞 icon 進去時不必重排整張卡片。
+   🔴 v0.20_i 下-12：加 position:relative ⇒ 這一格變成 .notetag 的定位基準。
+      ⚠️ 目前這一格裡沒有別的絕對定位元素，所以這一行是安全的；
+         下一批放【品項 icon】時它會用到同一個基準。 */
+.icard .icon{width:46px;height:46px;flex:none;position:relative}
+/* ╔═ 🔴 v0.20_i 下-12｜這一格的【分層寫死】（重盤 §1-2，不寫的話下一批會撞車）═══════╗
+     底層　品項 icon（🛑 本批不做，這一格仍然是空的；Ali 另開 session 在畫）
+     上層　🏷️ 角標，left:0 top:0，尺寸如下
+   🔴 **品項 icon 進來時不可以佔滿 46×46**，左上角要留出約 12×12 給角標。
+   📌 這與 §13-74「圖面 icon 不可佔滿矩形，否則沒有空間可以填」是【同一個判準的兩個場合】。
+   ⚠️ 用詞（`_i` §1）：這一格是【品項 icon】的位置，不是【控制 icon】也不是【圖面 icon】。╚═╝ */
+.icard .icon .notetag{position:absolute;left:0;top:0;
+  font-size:calc(11px * var(--fs));line-height:1;pointer-events:none}
+.icard .col{flex:1;min-width:0}
+.icard .r1{display:flex;align-items:baseline;gap:7px}
+.icard .nm{font-weight:600;font-size:calc(13.5px * var(--fs));flex:1;min-width:0;background:transparent;
+  border:1px solid transparent;border-radius:6px;color:var(--ink);font-family:inherit;
+  padding:2px 4px;min-width:0;min-height:26px}
+.icard .nm:focus{background:var(--bg);border-color:var(--line);outline:none}
+.icard .nm.ph{color:var(--sub)}
+.icard .dim{font-size:calc(11.5px * var(--fs));color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.icard .r2{display:flex;align-items:center;gap:6px;margin-top:5px}
+.icard .go{color:var(--accent);font-size:calc(17px * var(--fs));flex:none;background:transparent;border:0;
+  font-family:inherit;cursor:pointer;padding:0 2px;min-height:30px}
+.chip{font-size:calc(11px * var(--fs));border:1px solid var(--line);border-radius:20px;padding:3px 9px;
+  color:var(--sub);background:var(--bg);white-space:nowrap;font-family:inherit;cursor:pointer;
+  min-height:26px}
+.chip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:transparent;
+  color:var(--accent);font-weight:600}
+/* 🔴 v0.20_i §10-3（讀坑 13）：佔位圖層設成 disabled 之後【必須看得出來】。
+   `.btn:disabled{opacity:.42}` 早就有，但 `.chip` 沒有
+   ⇒ 不補這一條的話，三顆佔位鈕在視覺上與可按的一模一樣、只是點了沒反應
+     —— 那正是 §10-3 要避免的 obs O-18。
+   ✅ 比照 .btn:disabled，不新造語彙。 */
+.chip:disabled{opacity:.42;cursor:default}
+/* 🔴 v0.1.9 §3：相簿清單頁的搜尋佔位框（灰色、不能按）。高度 26px＝.chip 的 min-height ⇒ 整條仍是 38px。 */
+.srchph{flex:1;min-width:0;height:calc(26px * var(--lb-h));border:1px solid var(--line);border-radius:20px;padding:0 10px;
+  font-size:calc(12px * var(--fs));font-family:inherit;color:var(--sub);background:var(--bg);opacity:.6;
+  pointer-events:none;-webkit-user-select:none;user-select:none}
+/* ╔═ 🔴 v0.17_i 乙-0／乙-6｜【一顆會換臉的動作鈕】，取代舊的〔已擺〕chip ═══════╗
+   待擺 →〔擺上圖〕　已擺 →〔收回清單〕　—— 同一個位置、同一顆按鈕。（v0.21_i B-3：拿掉 ↩）
+   🔴 刻意【不用】chip 的膠囊樣式，也不用兩段切換條（_d §13-36 已結案）：
+      · chip 的「點亮＝有」是【狀態】語意（_d §10-0e），而這顆是【動作】
+      · 兩段切換條裡永遠只有一段可按 ⇒ 看起來像「另一個選項壞掉了」
+   ⇒ 用一般按鈕的外觀（方角、不點亮）。 ╚═════════════════════════════════════╝ */
+.icard .act{font-size:calc(11px * var(--fs));border:1px solid var(--line);border-radius:8px;
+  padding:3px 9px;color:var(--ink);background:var(--bg);white-space:nowrap;
+  font-family:inherit;cursor:pointer;min-height:26px;flex:none}
+.icard .act:active{background:var(--accent);color:#fff;border-color:transparent}
+/* 🔴 修九：缺寬或缺深時，〔擺上圖〕是【鎖住】的。
+   🔴 刻意【不用】disabled：按下去要有反應（卡片閃一下＋把游標送進缺的欄位），
+      disabled 的按鈕連 click 都不會發 ⇒ 又變成「點了沒反應」（O-18）。
+   ⇒ 用虛線框＋灰字表示「它現在按不出結果」，與保留格（.btn.hold）同一個語彙。 */
+.icard .act.locked{color:var(--sub);border-style:dashed}
+/* 🔴 修九：卡片閃一下 —— 一次、短（0.45s），不是持續動畫。
+   ⚠️ 尊重系統的「減少動態效果」設定：關掉動畫時至少留一個靜態的底色變化。 */
+@keyframes cardflash{
+  0%{background:var(--panel)}
+  35%{background:color-mix(in srgb,var(--warnA) 26%,var(--panel))}
+  100%{background:var(--panel)}
+}
+.icard.flash{animation:cardflash .45s ease-out 1}
+@media (prefers-reduced-motion:reduce){
+  .icard.flash{animation:none;background:color-mix(in srgb,var(--warnA) 20%,var(--panel))}
+}
+/* 🔴 修三：「還沒填尺寸」整塊字＝可點區域（手機上 ▾ 那顆 30px 的鈕太難按）。
+   ⚠️ O-4：手機沒有 hover ⇒ 可點的線索必須是【常駐】的，不可以只有 hover 態。
+      ⇒ 用虛線底線＋內距把它做成一塊「看得出可以按」的東西，並放大觸控面積。 */
+.icard .dim.missbtn{cursor:pointer;padding:4px 7px;border-radius:7px;
+  border:1px dashed color-mix(in srgb,var(--warnA) 55%,var(--line));
+  background:color-mix(in srgb,var(--warnA) 10%,transparent)}
+.icard .dim.missbtn:active{background:color-mix(in srgb,var(--warnA) 22%,transparent)}
+.money{font-size:calc(11.5px * var(--fs));color:var(--sub);font-variant-numeric:tabular-nums;margin-left:auto}
+.miss{font-size:calc(11px * var(--fs));color:var(--warnA);margin-left:auto}
+/* 🔴 v0.05_i §4（修四）：price 就地編輯。放清單卡片，【不放】選中面板
+   （面板實測 187/199px 已貼著 _d §10-0d 的上限）。 */
+.icard .pricewrap{margin-left:auto;display:flex;align-items:center;gap:1px;flex:none}
+.icard .cur{font-size:calc(11.5px * var(--fs));color:var(--sub)}
+.icard .cur[hidden]{display:none!important}
+.icard .price{width:84px;min-width:0;font-size:calc(11.5px * var(--fs));text-align:right;
+  background:transparent;border:1px solid transparent;border-radius:6px;
+  color:var(--sub);font-family:inherit;font-variant-numeric:tabular-nums;
+  padding:3px 4px;min-height:26px}
+.icard .price:focus{background:var(--bg);border-color:var(--line);color:var(--ink);outline:none}
+/* 「缺價錢」＝ 空值時的 placeholder，用 warnA（與 .miss 同色） */
+.icard .price::placeholder{color:var(--warnA);opacity:1}
+.icard .price.bad{border-color:var(--warnB);border-width:1.5px}
+/* ╔═ 🔴 v0.17_i 修四 ⑩｜展開列改成【整張卡片寬的四列表】（Ali 2026-09-18 定案）═══╗
+   舊版：`.roomrow` 一列橫排、掛在 .col 裡（左邊縮 46px 給 icon、右邊被 ▾／› 切掉），
+         而且 overflow-x:auto 允許橫捲（N-99 的結論）。
+   🔴 本批兩件一起改，只改 CSS 沒有用（v0.17_i §0-5 D-2）：
+      ① DOM 重組：.icard 底下多一層 .body（stripe 之外的全部），展開列掛在 .body，
+         不再掛在 .col ⇒ 它才會是【整張卡片寬、不縮排】
+      ② N-99 在【展開列】這個範圍內由本批取代：不橫捲、改成四列
+         第一行 [房間▾] 離地 寬 深 高 cm／第二行 備註／第三行 照片／最後 🗑
+   🔴 不橫捲是靠【結構】保證的，不是靠量出來的：第一行每個控制項都 flex:1 1 0 ＋
+      min-width:0 ⇒ 空間不夠時一起縮，不會產生 scrollWidth > clientWidth。
+      （縮減優先序照 ⑨：cm 只寫一次 → 縮標籤間距 → 🔴 標籤絕不可以改回 placeholder）
+   ⚠️ 舊的 .roomrow 規則整段由本區取代；class 名（szbox／sz／note）沿用，只換容器。╚═╝ */
+.cedit{border-top:1px solid var(--line);padding:8px 9px 9px;
+  display:flex;flex-direction:column;gap:7px;position:relative}
+/* 🔴 修十四 ④：少了 ▾ 之後，「這張卡片是展開的」要看得出來。
+   建造者選的是【兩個一起】：卡片底色微變（.icard.open）＋ 展開列右上一個小 ▴。 */
+.cedit .opmark{position:absolute;right:8px;top:2px;font-size:calc(10px * var(--fs));
+  color:var(--sub);line-height:1;pointer-events:none}
+.crow{display:flex;gap:6px;align-items:center;min-width:0}
+.crow > label{font-size:calc(10px * var(--fs));color:var(--sub);flex:none}
+.crow1{display:flex;gap:4px;align-items:flex-end;min-width:0}
+/* 🔴 flex 的權重不是均分：房間名是【字】（她有 11 間，名稱長），數字欄只要放得下 3~5 位數。
+   實測 375：select 91px／每個數字欄 51px，兩者都不橫捲（見測試待辦的量測表）。 */
+.crow1 select{flex:1.8 1 0;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:5px 3px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));min-height:34px}
+/* 離地／寬／深／高：四個小欄，沿用需求 7 的輸入規則（紅框、失焦還原、清空＝null）
+   🔴 ⑨ 欄位標籤【常駐】，不可以改回 placeholder（填完就看不出這欄是什麼）。 */
+.crow1 .szbox{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:1px}
+.crow1 .szbox label{font-size:calc(9.5px * var(--fs));color:var(--sub);padding-left:2px;
+  white-space:nowrap;overflow:hidden}
+.crow1 input.sz{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:5px 2px;color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));
+  min-height:30px;text-align:center;font-variant-numeric:tabular-nums}
+.crow1 input.sz.bad{border-color:var(--warnB);border-width:1.5px}
+/* 🔴 ⑩：cm【只出現一次】，放在第一行最後（不要每個欄位都寫 cm）。
+   🔴 它同時是 🗑 那一列的右緣基準（D-1：垃圾桶與第一行的 cm 右側貼齊）。 */
+.crow1 .unit{flex:none;font-size:calc(10px * var(--fs));color:var(--sub);padding-bottom:7px}
+/* 🔴 備註要能換行（Ali 問，claude 查碼確認舊版的單行 input 不行）
+   ⇒ 只有 note 這個欄位走 <textarea>，其餘欄位（name/price/w/d/h/zBase）仍是 <input>。 */
+/* ╔═ 🔴 v0.19_i §下-6｜家具備註欄常駐 8 行 ═════════════════════════════════════╗
+   🔴 min-height 不寫死 px（字級是 var(--fs)，寫死會在放大字級時縮水）⇒ 用 em 算。
+   🔴 resize:none（拿掉右下角那個斜紋拖曳把手 —— Ali 裁決）。
+   🔴 但捲軸要【看得見】（Ali：「免得會覺得底下沒東西」）。
+      建造者選【第一案＋補強】：overflow-y:scroll 常駐軌道 ＋ 自訂軌道底色，
+      再加一道 background-attachment:local 的下緣漸層當保險
+      —— 因為手機的系統捲軸是浮動式的、平常隱藏，只靠 ::-webkit-scrollbar 可能無效
+        （HTML技法互動筆記 §22：那組屬性只有 Chromium/WebKit 吃）。
+      ⚠️ 能不能達到目的【只有 Ali 在真機驗得到】（N-422），我只保證它可捲、且桌機看得到。 */
+.crow textarea.note{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(12px * var(--fs));
+  min-height:calc(8 * 1.5em + 14px);resize:none;line-height:1.5;
+  overflow-y:scroll;
+  /* 下緣漸層：內容捲到底時會自己消失（local），⇒「底下還有字」看得出來 */
+  background-image:linear-gradient(to top, color-mix(in srgb,var(--ink) 14%,transparent), transparent 22px);
+  background-repeat:no-repeat;background-position:bottom;background-size:100% 22px;
+  background-attachment:local}
+/* 自訂軌道：常駐、看得見（只有 Chromium/WebKit 吃；Firefox 走系統預設，功能不受影響） */
+.crow textarea.note::-webkit-scrollbar{width:8px}
+.crow textarea.note::-webkit-scrollbar-track{background:color-mix(in srgb,var(--ink) 7%,transparent);
+  border-radius:4px}
+.crow textarea.note::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--ink) 28%,transparent);
+  border-radius:4px}
+/* 照片位：以後版本。沿用 .btn.hold 的「保留格」語彙（虛線框＋灰字＋不可按），
+   依 _d §10-0b 不寫用途說明。 */
+.crow .holdbtn{flex:none;min-width:44px;min-height:30px;border:1px dashed var(--line);
+  border-radius:7px;background:transparent;color:var(--dim);font:inherit;
+  font-size:calc(12px * var(--fs));cursor:default}
+/* 🔴 v0.17_i 修一：清單卡片的刪除入口（在此之前全檔只有選中面板那顆 🗑 叫得到
+   confirmDeleteItem ⇒ 修五把那顆改掉之後，家具會變成刪不掉而且不報錯）。
+   🔴 位置＝最後一列、靠右（D-1：⑦「展開列的最右邊」那句作廢，橫捲列的最右邊會看不見）。 */
+.crow.trashrow{justify-content:flex-end}
+.crow .delbtn{flex:none;min-width:36px;min-height:30px;border:1px solid
+  color-mix(in srgb,var(--warnB) 40%,var(--line));border-radius:7px;background:var(--bg);
+  color:var(--warnB);font:inherit;font-size:calc(13px * var(--fs));cursor:pointer}
+.empty{text-align:center;color:var(--sub);padding:48px 12px;font-size:calc(13px * var(--fs));line-height:2}
+.empty .ic{font-size:calc(34px * var(--fs));display:block;opacity:.5}
+
+/* 🔴 需求 8 §3-1：清單頁右下浮動 (+)。空狀態與非空狀態是【同一顆】。 */
+.fab{position:fixed;right:16px;bottom:calc(56px + 12px + env(safe-area-inset-bottom,0px));
+  z-index:24;width:56px;height:56px;border-radius:50%;border:0;
+  background:var(--accent);color:#fff;font-size:calc(26px * var(--fs));line-height:1;cursor:pointer;
+  box-shadow:0 3px 12px rgba(0,0,0,.24);font-family:inherit}
+.fab[hidden]{display:none!important}
+
+/* ── 需求 12：選中面板（§21：fixed 避免被容器裁切）── */
+.sel{position:fixed;left:0;right:0;bottom:56px;z-index:20;max-width:520px;margin:0 auto;
+  background:var(--panel);border-top:1px solid var(--line);
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -3px 14px rgba(0,0,0,.10);
+  max-height:42vh;overflow-y:auto}
+.sel[hidden]{display:none!important}
+.selhead{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+/* 🔴 v0.17_i 丙-10：selPos 拿掉之後，撐開空間的責任改由 selname 接手（flex:1）。
+   v0.21_i 下-26 之後第一排是〔收回清單〕名字〔回主畫面〕▾ ⇒ 它把後兩顆推到右邊。 */
+.selname{font-weight:600;font-size:calc(13px * var(--fs));flex:1;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+/* 🔴 v0.17_i 修五：〔↩ 收回〕（v0.21_i 下-26 改名〔收回清單〕，區隔樣式見 .selback.recall）。
+   · 要有【文字】（Ali 2026-09-18：旁邊就是 ▾，兩顆純圖示並排看不懂）
+   · 🔴 不再用 .dgr（紅／危險色）——收回是【可逆】的，不是刪除。
+     顏色若留著紅的，使用者仍然會以為按下去東西會不見。
+   · 丙-11：高度不設固定數字（舊 _i 的「標題列 32px」是假精確，.btn 是 34、.ib 是 30）。 */
+.selback{flex:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:8px;padding:5px 10px;font:inherit;font-size:calc(11.5px * var(--fs));
+  cursor:pointer;white-space:nowrap;min-height:30px}
+.selback:active{background:var(--accent);color:#fff;border-color:transparent}
+/* ╔═ 🔴 v0.21_i 下-26｜〔收回清單〕的區隔樣式（Ali 2026-09-28 選【甲】：藍框藍字）══════╗
+   為什麼要區隔：〔回主畫面〕與〔收回清單〕原本是【同一個 .selback】、緊鄰、而且 ↩ 本身就是
+   「返回」的通用圖示 ⇒ 難分是設計出來的。而後果差很多：一個只換畫面，一個把家具拿回清單。
+   🔴 寫成【修飾類】，不可以改 .selback 本身 —— 兩顆共用它（O-30），改了〔回主畫面〕也會變藍。
+   🔴 `.selback.recall` 與 `.selback:active` 的權重相同（都是 0,2,0）⇒ 後寫的贏
+      ⇒ 不補 `.selback.recall:active` 的話，按下去【沒有任何回饋】。
+   🛑 不用紅色：「收回是可逆的，不是刪除」（v0.17_i 已定）。 ╚══════════════════════════╝ */
+.selback.recall{border-color:var(--accent);color:var(--accent);background:transparent}
+.selback.recall:active{background:var(--accent);color:#fff;border-color:transparent}
+.ib{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);
+  background:var(--bg);color:var(--ink);display:inline-flex;align-items:center;
+  justify-content:center;font-size:calc(13px * var(--fs));flex:none;cursor:pointer;padding:0;font-family:inherit}
+.ib.dgr{color:var(--warnB);border-color:color-mix(in srgb,var(--warnB) 40%,var(--line))}
+/* 🗂 v0.21_i 下-26：這裡原本有 `.ibgap{width:16px}`（N-48「🗑 不與其他按鈕相鄰」）。
+   當時〔↩ 收回〕（前身是 🗑）緊鄰 ▾，空隙是為了隔開它；〔收回清單〕搬到名字前面之後
+   那個理由已經不存在 ⇒ Ali 2026-09-28：「把這個空格拿掉，回主畫面直接放在 ▾ 的左邊」。
+   全檔已無使用者 ⇒ 規則一併刪除（O-37）。 */
+.selrow{display:flex;gap:10px;align-items:center}
+
+/* 微調鍵：整組跟著軸旋轉（_d §10-2b）。🔴 88×88 與 29×29 是已驗收的觸控尺寸，不動。 */
+.padwrap{flex:none;width:88px;height:88px;position:relative}
+.pad{position:absolute;inset:0;transition:transform .18s ease}
+.pad button{position:absolute;width:29px;height:29px;border-radius:8px;
+  border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  font-size:calc(13px * var(--fs));line-height:1;cursor:pointer;padding:0;font-family:inherit}
+.pad button:active{background:var(--accent);color:#fff}
+.pad button:disabled{opacity:.4}
+.pad .up{left:29px;top:0}.pad .dn{left:29px;bottom:0}
+.pad .lf{left:0;top:29px}.pad .rt{right:0;top:29px}
+.padc{position:absolute;left:29px;top:29px;width:29px;height:29px;border-radius:50%;
+  border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:calc(9px * var(--fs));color:var(--sub);text-align:center;line-height:1.1}
+
+.grid2{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.g3,.g2{display:flex;gap:6px}
+.g3 .btn,.g2 .btn{flex:1;min-width:0}
+.btn{border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:8px;padding:9px 6px;font:inherit;font-size:calc(12px * var(--fs));cursor:pointer;
+  min-height:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn.pri{background:var(--accent);color:#fff;border-color:transparent}
+.btn.ok{background:var(--ok);color:#fff;border-color:transparent;font-weight:600}
+.btn:disabled{opacity:.42;cursor:default}
+/* 🔴 修十二：第三格靠 hidden 換內容 ⇒ 要補這條守衛（本檔其餘 13 處都有，見 .inputline 的教訓） */
+.btn[hidden]{display:none!important}
+/* 🔴 修五：雙態貼牆鈕的兩個狀態【必須看得出差別】——不能只換字（Ali 定的規矩）。
+   已貼牆＝亮底（同 chip.on 的語彙）／未貼牆＝一般底。 */
+.btn.magon{background:color-mix(in srgb,var(--accent) 16%,transparent);
+  border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--accent);font-weight:600}
+/* 保留格：虛線框 ＋ 灰字，不可按。⚠️ 依 _d §10-0b 不寫用途說明 */
+.btn.hold{color:var(--dim);border-style:dashed;background:transparent}
+
+/* 🔴 需求 12：尺寸按需展開。cm 在【標籤列】、右對齊。
+   🔴 v0.17_i 十二-b：三格 → 四格（寬／深／高／離地），四格平均（.frow 各 flex:1），
+      cm 移到【最後一格（離地）】的 label 右側。 */
+.fields{display:flex;gap:5px;align-items:flex-end;margin-bottom:7px}
+.fields[hidden]{display:none!important}
+.frow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.frow label{font-size:calc(10px * var(--fs));color:var(--sub);display:flex;justify-content:space-between;gap:4px}
+.frow input{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(15px * var(--fs));
+  text-align:center;font-variant-numeric:tabular-nums;min-height:38px}
+/* 🔴 需求 7（v0.04_i §7）：打字中值無效 → 該欄位加紅框，讓「這個值沒被採用」看得出來 */
+.frow input.bad{border-color:var(--warnB);border-width:1.5px}
+/* ╔═ 🔴 v0.20_i §3-1e｜角度四格裡有**三個是按鈕** ════════════════════════════════╗
+   `.frow input{…}` 這個選擇器**吃不到 `<button>`**
+   ⇒ 不補這一條的話＝三顆瀏覽器原生外觀的矮按鈕 ＋ 一個 38px 的自訂輸入框，
+     高度不一致、字級不跟 --fs，而 `align-items:flex-end` 會讓它們貼底錯開。
+   ⇒ 所以「一行 CSS 都不必新寫」是錯的，這一條是必要的。 ╚═══════════════════════╝ */
+/* 🔬 實測修正：只寫 min-height 不夠 —— `.btn` 自己的 `padding:9px 6px` 會把按鈕撐到
+   比同列的 `<input>` 高 4px（量到 45 vs 41），而 `align-items:flex-end` 會讓它們貼底錯開。
+   ⇒ 讓按鈕**照抄 `.frow input` 的盒模型**（padding／min-height／字級），三者才真的等高。 */
+.frow .angbtn{width:100%;padding:6px;min-height:38px;
+  font-size:calc(15px * var(--fs));line-height:1.5}
+/* 展開尺寸時，微調鍵整組【隱藏】——改尺寸與移動位置是兩件事 */
+.sel.szopen .padwrap,.sel.szopen .g2{display:none}
+
+/* 🔴 v0.09_i 需求 30：兩處守衛訊息（面板內／清單頁）。中性色＝狀態，不是錯誤。 */
+.selnote{margin-top:6px;padding:6px 8px;border-radius:7px;font-size:calc(11.5px * var(--fs));line-height:1.5;
+  background:color-mix(in srgb,var(--sub) 12%,transparent);color:var(--sub)}
+.selnote[hidden]{display:none!important}
+.listnote{margin:10px 2px 0;padding:8px 10px;border-radius:8px;font-size:calc(11.5px * var(--fs));line-height:1.6;
+  background:color-mix(in srgb,var(--sub) 12%,transparent);color:var(--sub)}
+.listnote[hidden]{display:none!important}
+.warnline{display:flex;gap:8px;align-items:center;margin-top:7px}
+.warnline .w{flex:1;min-width:0;font-size:calc(11.5px * var(--fs));padding:6px 8px;border-radius:7px;
+  background:color-mix(in srgb,var(--warnA) 16%,transparent);color:var(--warnA);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
+  font-family:inherit;text-align:left;border:0}
+.warnline .w.c{background:color-mix(in srgb,var(--warnB) 16%,transparent);color:var(--warnB)}
+.warnline .w.n{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+.warnline .w.open{white-space:normal;overflow:visible;text-overflow:clip}
+.warnline .btn{flex:none;padding:9px 16px}
+
+/* 面板可收合：只想看平面圖時把它壓成一條 */
+.sel.mini > *:not(.selhead){display:none}
+
+/* 未旋轉原貌對照（_d §10-2b，Ali 指定）*/
+.orig{display:none;gap:7px;align-items:center;margin-top:5px;padding:5px 7px;
+  border:1px dashed var(--line);border-radius:8px}
+.orig.show{display:flex}
+.orig svg{flex:none}
+.orig .t{font-size:calc(10.5px * var(--fs));color:var(--sub);line-height:1.35}
+
+/* ── 📷 相簿分頁（v0.1.9 批 5；取代舊的照片分頁）── */
+/* pstat：狀態小方塊（envNote、資料庫錯誤、上傳訊息共用這個外觀） */
+.pstat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:9px 11px;margin-bottom:10px;font-size:calc(11.5px * var(--fs));color:var(--sub);line-height:1.7;
+  font-variant-numeric:tabular-nums}
+.pstat b{color:var(--ink)}
+.pstat .bad{color:var(--warnB);font-weight:600}
+.pstat:empty{display:none}
+/* 頂端一排：〔📷〕〔＋ 上傳到：… ▾〕 */
+.atop{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.atop .ttl2{font-weight:600;font-size:calc(14px * var(--fs));flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atop .ttl2.edit{border-bottom:1px dashed var(--sub);cursor:text}
+.abtn{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;
+  padding:6px 10px;font:inherit;font-size:calc(12.5px * var(--fs));min-height:34px;cursor:pointer;
+  white-space:nowrap}
+.abtn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.abtn:disabled{opacity:.42;cursor:default}
+.abtn.sm{min-height:28px;padding:3px 9px;font-size:calc(11.5px * var(--fs))}
+/* 上傳鈕＝主體＋▾ 兩塊（主體＝選照片、▾＝換目標，R-36） */
+.upl{display:inline-flex;align-items:stretch}
+.upl .abtn:first-child{border-radius:8px 0 0 8px}
+.upl .abtn.dd{border-radius:0 8px 8px 0;border-left:1px solid color-mix(in srgb,#fff 40%,transparent);padding:6px 9px}
+.upl .abtn:disabled + .abtn{opacity:.42}
+/* 用量條（§9-4：常駐、同一條、不跳視窗） */
+.usage{padding:7px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;
+  font-size:calc(11.5px * var(--fs));color:var(--sub);background:var(--panel)}
+.usage .ubar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px}
+.usage .ubar i{display:block;height:100%;background:var(--ok)}
+.usage.warn{background:color-mix(in srgb,var(--warnA) 14%,var(--panel));color:var(--ink)}
+.usage.warn .ubar i{background:var(--warnA)}
+.usage.full{background:color-mix(in srgb,var(--warnB) 12%,var(--panel));color:var(--ink)}
+.usage.full .ubar i{background:var(--warnB)}
+.usage .uacts{display:flex;gap:6px;margin-top:6px}
+.usage.thin{padding:4px 10px}
+/* 清單頁的相簿卡（圖 1） */
+.alb{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:9px}
+.alb.flash{animation:cardflash .9s ease-out 1}
+.alb .ah{display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;min-height:30px}
+.alb .an{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alb .am{font-size:calc(11px * var(--fs));color:var(--sub);white-space:nowrap}
+/* 🔴 F-3：橫排的起點離左緣 ≥ 20px（卡片 margin 10＋padding 8＋這裡 4），避開 iPhone 左緣返回手勢 */
+.astrip{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:0 4px 2px;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x pan-y}
+.astrip::-webkit-scrollbar{display:none}
+.astrip .tn{flex:none;height:88px;position:relative;border-radius:6px;overflow:hidden;
+  background:var(--line);scroll-snap-align:start;cursor:pointer}
+.astrip .tn img{height:88px;width:auto;display:block}
+.astrip .tn.ph{width:88px;display:flex;align-items:center;justify-content:center;
+  font-size:calc(10px * var(--fs));color:var(--sub)}
+.astrip .empty1{flex:none;width:118px;height:88px;border-radius:6px;border:1px dashed var(--line);
+  background:color-mix(in srgb,var(--line) 30%,transparent)}
+/* 沒有原檔的照片：右側橘色直條（§3） */
+.origbar{position:absolute;right:0;top:0;bottom:0;width:6px;background:var(--warnA)}
+.scrub{position:relative;height:18px;margin:6px 4px 0;touch-action:none;cursor:pointer}
+.scrub .tr{position:absolute;left:0;right:0;top:7px;height:4px;border-radius:2px;background:var(--line)}
+.scrub .th{position:absolute;top:3px;height:12px;border-radius:6px;background:var(--accent);min-width:14px}
+/* 🔴 v0.1.10 P8／P9：滑塊＝該相簿的顏色（淡色）＋ 1px 深色邊（淡色放在淺灰軌道上，沒有邊線看不出來；邊線對軌道 8.0:1） */
+.scrub .th.col{border:1px solid #3a3a3a;box-sizing:border-box}
+/* 🔴 v0.1.10 P9：相簿序號「#3」（名稱左邊）、色點、內頁標題下的細色線 */
+.ano{flex:none;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;margin-right:2px}
+.csw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #3a3a3a;vertical-align:-1px;margin-right:5px;flex:none}
+.acline{height:3px;border-radius:2px;margin:-2px 0 8px}
+.scrubt{font-size:calc(10.5px * var(--fs));color:var(--sub);margin:1px 4px 0;font-variant-numeric:tabular-nums}
+/* 🔴 R-38：只有相簿畫面的卡片關掉選字與 iPhone 長按圖片選單（🛑 不退回全頁白名單，O-26） */
+.alb,.apc{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* 🔴 v0.1.10 P6：iPhone 長按圖片會跳「儲存影像」⇒ callout 要設在 img 本身才確定有效 */
+.astrip .tn img,.apc .tbox img{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none}
+.alb img,.apc img{-webkit-user-drag:none}
+/* 相簿內頁的照片卡（圖 2） */
+.apc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:7px;
+  display:flex;gap:9px;align-items:flex-start;position:relative}
+.apc.flash{animation:cardflash .9s ease-out 1}
+.apc.sel{outline:2px solid var(--accent)}
+.apc.dragging{opacity:.85;box-shadow:0 6px 18px rgba(0,0,0,.22);z-index:5}
+.apc .tbox{flex:none;width:88px;height:88px;display:flex;align-items:center;justify-content:center;
+  position:relative;border-radius:6px;overflow:hidden;background:var(--bg);cursor:pointer}
+.apc .tbox img{max-width:88px;max-height:88px;display:block}
+.apc .tx{flex:1;min-width:0;font-size:calc(12.5px * var(--fs))}
+.apc .l1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.apc .nm2{font-weight:600;font-size:calc(13.5px * var(--fs));border-bottom:1px dashed var(--sub);cursor:text;
+  min-width:0;overflow-wrap:anywhere}
+.apc .nm2.ph{color:var(--sub)}
+.apc.multi .nm2{border-bottom:0;cursor:default}
+.apc .nbtn{font-size:calc(11px * var(--fs));border:1px solid var(--accent);color:var(--accent);background:transparent;
+  border-radius:6px;padding:1px 7px;font-family:inherit;cursor:pointer;min-height:24px}
+.apc .nbtn.on{background:var(--accent);color:#fff}
+.apc .nt{margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere}
+.apc .nt.noval{color:var(--sub);opacity:.75}   /* ⚠️ 不可叫 .empty：全檔已有 .empty（空狀態，置中＋48px 內距），自驗撞到過 */
+.apc input.ed,.apc textarea.ed{width:100%;font:inherit;border:2px solid var(--accent);border-radius:6px;
+  padding:4px 6px;background:var(--bg);color:var(--ink);-webkit-user-select:text;user-select:text}
+.apc textarea.ed{min-height:3.2em;resize:vertical}
+.apc .st{font-size:calc(10.5px * var(--fs));color:var(--sub);margin-top:3px}
+.apc .st .retry{color:var(--warnB);text-decoration:underline;cursor:pointer}
+.apc .grip{flex:none;align-self:stretch;display:flex;align-items:center;padding:0 6px;
+  color:var(--sub);font-size:calc(18px * var(--fs));cursor:grab;touch-action:none}
+.apc .ck{flex:none;width:22px;height:22px;border:2px solid var(--sub);border-radius:50%;margin-top:33px;position:relative}
+.apc .ck.on{background:var(--accent);border-color:var(--accent)}
+.apc .ck.on::after{content:"✓";color:#fff;position:absolute;left:4px;top:-2px;font-size:13px}
+.atool{position:sticky;bottom:0;display:flex;justify-content:space-around;gap:6px;background:var(--panel);
+  border-top:1px solid var(--line);padding:8px 4px;margin:8px -10px 0}
+.atool .abtn{flex:1}
+.gonebox{padding:24px 12px;text-align:center;color:var(--sub)}
+/* 選單（▾ 換上傳目標／轉移複製的目標／⋯）＝頁內覆蓋層，z 55（高於放大畫面 47、確認框 50） */
+.ovm{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.30);display:flex;align-items:flex-end;justify-content:center}
+.ovm[hidden]{display:none!important}
+.ovm .mbox{background:var(--panel);width:100%;max-width:520px;max-height:70vh;overflow-y:auto;
+  border-radius:14px 14px 0 0;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px))}
+.ovm .mt{font-size:calc(12px * var(--fs));color:var(--sub);padding:6px 16px 8px}
+.ovm .mi{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;
+  color:var(--ink);font:inherit;font-size:calc(13.5px * var(--fs));padding:11px 16px;cursor:pointer}
+.ovm .mi:disabled{color:var(--dim);cursor:default}
+.ovm .mi .ms{font-size:calc(11px * var(--fs));color:var(--sub);margin-left:6px}
+.ovm .mi.danger{color:var(--warnB)}
+.ovm .mi.cur{color:var(--accent);font-weight:600}
+/* 勾選清單框（§8-1／§8-2；🔴 R-21：新元件，不把 askDialog 改成第四種模式）z 52 */
+.ovp{position:fixed;inset:0;z-index:52;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:16px}
+.ovp[hidden]{display:none!important}
+.ovp .prow{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line);
+  font-size:calc(12.5px * var(--fs));cursor:pointer}
+.ovp .prow .box{width:20px;height:20px;border:2px solid var(--sub);border-radius:4px;flex:none;margin-top:1px}
+.ovp .prow .box.on{background:var(--warnB);border-color:var(--warnB)}
+.ovp .prow .sub{color:var(--sub);font-size:calc(11px * var(--fs))}
+.ovp .pacts{display:flex;justify-content:flex-end;gap:8px;margin-top:11px;flex-wrap:wrap}
+.ovp .pacts .btn{flex:none;padding:9px 12px}
+.btn.dangerfill{background:var(--warnB);border-color:var(--warnB);color:#fff}
+.fhide{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+
+/* ╔═ 🔴 v0.19_i §下-9｜房間備註頁 ═══════════════════════════════════════════════╗
+   🔴🔴 z-index:45 —— 現有層級 zoombtns 10／sel 20／fab 24／pinning 25／tabbar 30／
+      ov 50／viewer 60。45 蓋得住所有 App 介面，而確認框（50）仍然在它【之上】
+      ⇒〔取消〕的確認框問得出來、也點得到。照抄 60 會讓 App 卡死。
+   §22：能捲的那一層要 overflow-y:auto，而它上面每一個「自己不捲」的 flex 祖先都要 min-height:0。 */
+.notepage{position:fixed;inset:0;z-index:45;background:var(--bg);
+  display:flex;flex-direction:column}
+.notepage[hidden]{display:none!important}
+/* 🔴 v0.20_i 下-11：按鈕列移到【最上方】(obs O-32：滿版＋底部按鈕＋要打字＝手機上一定被鍵盤吃掉)
+   🔴 下框線【從 .nphead 移到 .nprow】——新順序是 nphead → nprow → npbody，
+      若下框線留在 .nphead，它會畫在【按鈕列之上】
+      ⇒ 按鈕列在視覺上被歸到「內文」那一側，而它其實是標題列的一部分。 */
+.notepage .nphead{flex:none;padding:12px 14px 8px;font-size:calc(14px * var(--fs));
+  color:var(--ink);font-weight:600}
+.notepage .npbody{flex:1;min-height:0;display:flex;padding:10px 12px}
+.notepage .npbody textarea{flex:1;min-height:0;width:100%;resize:none;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;
+  color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));line-height:1.6;
+  overflow-y:auto}
+.notepage .npbody textarea::-webkit-scrollbar{width:8px}
+.notepage .npbody textarea::-webkit-scrollbar-track{background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:4px}
+.notepage .npbody textarea::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--ink) 28%,transparent);border-radius:4px}
+/* 🔴 兩顆【不等寬】：取消窄、完成寬並上色（Ali 最後裁決）—— 比例一個字不改。
+   🔴 v0.20_i 下-11：padding 由 `8px 12px 14px` 改成 `8px 12px 10px`（那 14px 原本是
+      「按鈕列在最下面」時的底部留白，移到頂端之後不需要那麼多），
+      並接下 .nphead 讓出來的那條下框線。 */
+.notepage .nprow{flex:none;display:flex;gap:8px;padding:8px 12px 10px;
+  border-bottom:1px solid var(--line)}
+.notepage .nprow #npCancel{flex:0 0 32%;min-height:46px}
+.notepage .nprow #npDone{flex:1;min-height:46px}
+
+/* ╔═ 🔴 v0.1.9 批 6｜放大畫面（圖 4）═══════════════════════════════════════════════════╗
+   🔴 R-21：z-index 47（高於備註頁 45、低於確認框 .ov 50、勾選清單框 52、選單 55）
+      ⇒ 在放大畫面上按〔刪除〕〔轉移／複製〕跳出的框看得到、按得到（相-34）。舊的 60 會把它們蓋住、App 卡死。
+   🔴 直／橫換版用 CSS 的 orientation（§5）—— 🛑 不改全域 viewport。
+   🔴 Q-A3（Ali 09-30 選甲）：直拿時〔回上一頁〕（v0.1.10 P10 前叫〔✕ 關閉〕）在照片正下方、按鈕列最前面；橫放時在右欄最下面。 ╚═╝ */
+.viewer{position:fixed;inset:0;z-index:47;background:rgba(16,16,16,.97);color:#eee;
+  display:flex;flex-direction:column}
+.viewer[hidden]{display:none!important}
+.viewer .vstage{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;
+  display:flex;align-items:center;justify-content:center}
+.viewer .vstage img{max-width:100%;max-height:100%;object-fit:contain;display:block;
+  transform-origin:50% 50%;will-change:transform;-webkit-user-drag:none;user-select:none;-webkit-touch-callout:none}
+.viewer .vpos{position:absolute;top:8px;right:12px;font-size:calc(11.5px * var(--fs));color:#aaa;pointer-events:none}
+.viewer .vload{position:absolute;left:12px;top:8px;font-size:calc(11.5px * var(--fs));color:#ddd;pointer-events:none}
+.viewer .vside{flex:none;display:flex;flex-direction:column;max-height:52vh;overflow-y:auto}
+.viewer .vbtns{display:flex;gap:8px;padding:8px 12px;flex-wrap:wrap;order:1}
+.viewer .vbtns .vb{background:#2a2a2a;color:#eee;border:1px solid #555;border-radius:9px;
+  padding:8px 11px;font:inherit;font-size:calc(12.5px * var(--fs));min-height:40px;cursor:pointer}
+.viewer .vbtns .vb:disabled{opacity:.4;cursor:default}
+.viewer .vbtns .vb.close{font-weight:700;background:rgba(255,255,255,.14);border-color:#888}
+.viewer .vinfo{padding:2px 12px 6px;font-size:calc(12.5px * var(--fs));color:#bbb;line-height:1.65;order:2;
+  overflow-wrap:anywhere}
+/* 🔴 v0.1.10 P3：小字那一塊＋右邊的〔刪除照片〕（紅字）＝同一列；不跟其他按鈕擠在一起 */
+.viewer .vbot{display:flex;align-items:flex-end;gap:10px;padding:0 12px 6px;order:2}
+.viewer .vbot .vinfo{flex:1;min-width:0;padding:2px 0 0;order:0}   /* 🔴 .vinfo 本身有 order:2（v0.1.9 直拿的排序）⇒ 放進這一列要歸零，不然〔刪除照片〕會跑到左邊 */
+.viewer .vbot .vb.del{order:1}
+.viewer .vb.del{flex:none;background:transparent;border:1px solid #a33;color:#ff8a8a;font-weight:700;border-radius:9px;
+  padding:8px 11px;font:inherit;font-size:calc(12.5px * var(--fs));font-weight:700;min-height:40px;cursor:pointer}
+.viewer .vb.del:disabled{opacity:.4;cursor:default}
+.viewer .vinfo b{color:#fff;font-size:calc(14px * var(--fs))}
+.viewer .vinfo .on2{color:#fff;font-weight:700;border-bottom:2px solid #7fbf90}
+.viewer .vinfo .on2.w{border-bottom-color:#e0a252}
+.viewer .vinfo .off2{color:#666}
+.viewer .vinfo .er{color:#ff8a8a}
+/* 診斷列（R-40：保留到放大畫面最下面；Ali 09-20：真機跑過一輪後才刪）＋本機儲存配額（pstat） */
+.viewer .vdiag{padding:4px 12px 10px;font-size:calc(10px * var(--fs));color:#888;line-height:1.55;order:3;
+  word-break:break-all;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
+@media (orientation:landscape){
+  .viewer{flex-direction:row}
+  .viewer .vside{width:min(40%,300px);max-height:none;height:100%;border-left:1px solid #333}
+  .viewer .vbtns{flex-direction:column;order:2;padding:6px 10px}
+  .viewer .vbtns .vb{text-align:center}
+  .viewer .vinfo{order:1;padding-top:10px}
+  /* 🔴 v0.1.10 P3：橫放時〔刪除照片〕在文字下面靠右；〔回上一頁〕仍在右欄最下（Q-A3），兩者中間隔開 */
+  .viewer .vbot{order:1;flex-direction:column;align-items:stretch;padding:0 10px 6px}
+  .viewer .vbot .vb.del{align-self:flex-end}
+  .viewer .vdiag{order:2}                     /* 橫放：文字＋刪除照片 → 診斷 → 按鈕 → 回上一頁（§5：右欄由上往下） */
+  .viewer .vbtns{order:3;margin-top:auto}
+  .viewer .vbtns .vb.close{order:9}          /* 🔴 Q-A3：橫放時〔回上一頁〕在右欄最下面 */
+}
+
+.pinning{position:fixed;left:0;right:0;bottom:56px;z-index:25;max-width:520px;margin:0 auto;
+  background:var(--accent);color:#fff;padding:11px;text-align:center;font-size:calc(13px * var(--fs));font-weight:600}
+.pinning[hidden]{display:none!important}
+/* 🗂 v0.1.9 R-23：.pinning 這組樣式【保留】—— 舊的 #pinning（標到平面圖提示）拿掉了，
+   但 #beamBack〔‹ 返回設定〕也用這個 class（返回列共用樣式）。 */
+/* ╔═ 🔴 v0.1.9 批 8｜定位提示條（§10-3：藍色、頂端；沒有〔取消〕）與預覽卡（§10-2）═══╗
+   提示條右邊讓出縮放鈕的位置（.zoombtns 在右上）。預覽卡＝底部抽屜，z 21（家具面板 20、分頁列 30）。 ╚═╝ */
+.lochint{position:absolute;left:0;right:54px;top:0;z-index:11;background:var(--accent);color:#fff;
+  font-size:calc(12.5px * var(--fs));padding:7px 10px;pointer-events:none;border-radius:0 0 8px 0}
+.lochint[hidden]{display:none!important}
+.pcardx{position:fixed;left:0;right:0;bottom:56px;z-index:21;max-width:520px;margin:0 auto;
+  background:var(--panel);border-top:1px solid var(--line);border-radius:12px 12px 0 0;
+  box-shadow:0 -4px 14px rgba(0,0,0,.15);padding:6px 10px calc(8px + env(safe-area-inset-bottom,0px))}
+.pcardx[hidden]{display:none!important}
+.pcardx .handle{width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 6px;touch-action:none}
+.pcardx .pch{display:flex;align-items:center;gap:6px;margin-bottom:6px;touch-action:none}
+.pcardx .pch b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ovm .mi img{width:32px;height:32px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:8px}
+
+/* ── 需求 13：頁內覆蓋層對話框 ──
+   🔴 O-11：沙箱環境裡 window.open／alert／confirm 都不可靠（點了完全沒反應）
+      ⇒ 同步設定與所有確認一律走頁內覆蓋層。 */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.42);
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.ov[hidden]{display:none!important}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px;width:100%;max-width:360px;max-height:80vh;overflow-y:auto;
+  box-shadow:0 6px 26px rgba(0,0,0,.3)}
+.dlg h4{margin:0 0 9px;font-size:calc(14px * var(--fs))}
+.dlg.blocked{border-color:var(--warnB)}
+.inputline{display:flex;gap:6px;align-items:stretch}
+/* 🔴 v0.15_i 修三：class 的 display:flex 蓋掉瀏覽器 UA 樣式表的 [hidden]{display:none}
+   （UA 樣式優先序最低，任何作者寫的 class 都蓋得過它）
+   ⇒ 不需要輸入的確認框（例如〔清清單〕）底下會冒出一個空白輸入框，
+     而 Ali 會停下來問「這是要我做什麼」——功能沒壞，但那就是真的成本。
+   ⭐ 本檔其餘 13 處（.ov[hidden]／.sel[hidden]／.fields[hidden]…）都記得補這條守衛，
+      只有 .inputline 漏掉。
+   ⚠️ askInput 的 Enter 綁定【不要動】：需要輸入的對話框還靠它，
+      而「在不該出現的框裡按 Enter＝直接按下確定」這個風險，在框不再出現之後自然消失。 */
+.inputline[hidden]{display:none!important}
+.inputline input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:8px;padding:8px;color:var(--ink);font:inherit;font-size:calc(14px * var(--fs));min-height:40px;
+  text-transform:uppercase}
+.dlgbody{font-size:calc(12px * var(--fs));color:var(--sub);line-height:1.7;margin:9px 0}
+.dlgbody b{color:var(--ink)}
+.dlgbody ul{margin:5px 0 0;padding-left:18px}
+.cstat{font-size:calc(11px * var(--fs));color:var(--sub);line-height:1.65;margin-top:9px;
+  font-variant-numeric:tabular-nums}
+.cstat b{color:var(--ink)}
+.cstat .on{color:var(--ok);font-weight:600}
+.cstat .off{color:var(--sub)}
+.cstat .er{color:var(--warnB);font-weight:600}
+.rw{display:flex;gap:6px;margin-top:11px}
+.rw .btn{flex:1}
+/* 🔴 需求 19 ③：專案代碼一律等寬 ＋ 加寬字距（顛倒的字母才看得出來）
+   ⚠️ 第二條選擇器不是贅寫：`.inputline input` 有 `font:inherit`，
+      那是【簡寫】⇒ 會把 font-family 一起重設，而它的優先權（0,1,1）高於 .codetxt（0,1,0）
+      ⇒ 只寫 .codetxt 的話輸入框裡【不會】變等寬（實測抓到）。 */
+.codetxt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  letter-spacing:.16em}
+.inputline input.codetxt{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  letter-spacing:.16em}
+/* 🔴 需求 19 ②：用過的代碼清單 */
+.codelist{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.codelist:empty{display:none}
+.codechip{display:inline-flex;align-items:center;gap:0;border:1px solid var(--line);
+  border-radius:20px;background:var(--bg);overflow:hidden}
+.codechip .pick{border:0;background:transparent;color:var(--ink);font-family:ui-monospace,
+  SFMono-Regular,Menlo,Consolas,"Courier New",monospace;letter-spacing:.14em;
+  font-size:calc(11px * var(--fs));padding:5px 4px 5px 10px;cursor:pointer;min-height:28px}
+.codechip .del{border:0;background:transparent;color:var(--sub);font-family:inherit;
+  font-size:calc(12px * var(--fs));padding:5px 8px 5px 4px;cursor:pointer;min-height:28px}
+.codechip .del:active{color:var(--warnB)}
+/* 🔴 需求 18：分步狀態／完成回饋 */
+.syncprog:empty{display:none}
+.syncprog{font-variant-numeric:tabular-nums}
+.syncprog .done{color:var(--ok);font-weight:600}
+.syncprog .run{color:var(--accent)}
+.syncprog .fail{color:var(--warnB);font-weight:600}
+/* 🔴 需求 19 ①：新專案提醒（狀態，不是功能說明；不阻擋） */
+.newproj{margin-top:9px;padding:8px 10px;border-radius:8px;font-size:calc(11.5px * var(--fs));line-height:1.7;
+  background:color-mix(in srgb,var(--warnA) 14%,transparent);color:var(--warnA)}
+.newproj[hidden]{display:none!important}
+.newproj b{color:var(--warnA)}
+/* 🔴 需求 23：〔離開專案〕獨立一區、上方分隔線、樣式降級 */
+.leaverow{margin-top:13px;padding-top:11px;border-top:1px solid var(--line);
+  display:flex;justify-content:center}
+.leaverow[hidden]{display:none!important}
+/* 🔴 v0.22_i R-52：按鈕下面一行小字（按鈕與它上下排，仍然置中） */
+.leaverow{flex-direction:column;align-items:center;gap:3px}
+.leaverow .leavenote{font-size:calc(11px * var(--fs));color:var(--sub);text-align:center}
+.btn.danger{background:transparent;border-color:transparent;color:var(--warnB);
+  font-size:calc(11.5px * var(--fs));padding:7px 12px;min-height:32px;flex:none}
+.btn.danger:active{background:color-mix(in srgb,var(--warnB) 12%,transparent)}
+/* 🔴 需求 16：專案頁的出口 */
+.backrow{display:flex;margin-bottom:4px}
+.backrow .btn{flex:none;padding:7px 14px}
+.soonrow{display:flex;align-items:center;gap:9px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:7px}
+.soonrow .k{font-size:calc(13px * var(--fs));font-weight:600;flex:1;min-width:0}
+.soonrow.off{opacity:.45}
+.projsec{font-size:calc(11.5px * var(--fs));color:var(--sub);letter-spacing:.05em;margin:14px 2px 6px}
+.projsec:first-child{margin-top:2px}
+.prow{display:flex;gap:6px;flex-wrap:wrap}
+.prow .btn{flex:1;min-width:96px}
+.tcount{font-size:calc(12px * var(--fs));color:var(--sub);padding:9px 2px;font-variant-numeric:tabular-nums}
+/* ╔═ 🔴 v0.1.9 批 7｜垃圾桶頁（專案頁的子畫面）＝沿用 .soonrow 的卡片語彙與 .ovp .prow .box 的勾選框，不新造語彙 ═╗ */
+.trashbtn{width:100%;margin-top:8px;text-align:left;justify-content:flex-start}
+.trnote{font-size:calc(11.5px * var(--fs));color:var(--sub);margin:0 2px 8px}
+.trfilt{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.trlist{display:flex;flex-direction:column;gap:7px;padding-bottom:70px}
+.trrow{display:flex;align-items:flex-start;gap:9px;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:10px;cursor:pointer}
+.trrow .box{width:20px;height:20px;border:2px solid var(--sub);border-radius:4px;flex:none;margin-top:2px}
+.trrow .box.on{background:var(--warnB);border-color:var(--warnB)}
+.trmid{flex:1;min-width:0}
+.trt{font-size:calc(13px * var(--fs));font-weight:600;overflow-wrap:anywhere}
+.trs{font-size:calc(11px * var(--fs));color:var(--sub);margin-top:2px;font-variant-numeric:tabular-nums}
+.trth{display:flex;gap:4px;margin-top:6px}
+.trth img,.trth span{width:36px;height:36px;border-radius:5px;object-fit:cover;background:var(--line);flex:none}
+.trres{flex:none;padding:6px 12px}
+.trempty{color:var(--sub);text-align:center;padding:24px 0;font-size:calc(12px * var(--fs))}
+.trfoot{position:sticky;bottom:0;background:var(--bg);padding:8px 0 4px;border-top:1px solid var(--line)}
+.trfoot .btn{width:100%}
+.trwhy{font-size:calc(11px * var(--fs));color:var(--warnB);margin-top:4px}
+/* 🔴 v0.12_i 需求 44-b：設定頁欄位（專案名字／全域樓高／逐根樑的下垂量）。
+   ⚠️ 沿用既有 .soonrow 的版位語彙（同樣的圓角卡片一列），不新造一種版面。 */
+.setrow{display:flex;align-items:center;gap:9px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px}
+.setrow .k{font-size:calc(13px * var(--fs));flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow input{flex:0 0 110px;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:6px;color:var(--ink);font:inherit;font-size:calc(13px * var(--fs));
+  min-height:34px;text-align:right;font-variant-numeric:tabular-nums}
+.setrow input.txt{flex:1 1 120px;text-align:left}
+/* 需求 7 的輸入規則：打字中值無效 → 紅框（這個值沒被採用看得出來） */
+.setrow input.bad{border-color:var(--warnB);border-width:1.5px}
+.setrow .btn{flex:none;padding:7px 11px}
+/* 🔴 需求 44-c ＋ v0.13_i 修十一 F-17：成功與失敗【都】要在欄位旁邊看得到，
+   不可以只寫在同步對話框裡（她不會為了確認一個欄位去開同步對話框）。 */
+.savenote{margin:2px 2px 10px;font-size:calc(11.5px * var(--fs));line-height:1.6;color:var(--sub)}
+.savenote.er{color:var(--warnB);font-weight:600}
+.savenote.ok{color:var(--ok)}
+.savenote:empty{display:none}
+/* 🔴 v0.07_i 需求 25：診斷列（專案頁最下方）。等寬＋可選取，方便截圖或複製。 */
+.diagrow{margin-top:16px;padding:9px 10px;border-top:1px solid var(--line);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  font-size:calc(11px * var(--fs));color:var(--sub);line-height:1.7;word-break:break-all;
+  font-variant-numeric:tabular-nums;user-select:text;-webkit-user-select:text}
+
+/* ── 底部分頁（_d §10-0c：最多 5 格，前 4 格永遠不動）── */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:520px;margin:0 auto;
+  display:flex;background:var(--panel);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar button{flex:1;min-width:0;border:0;background:transparent;color:var(--sub);
+  padding:7px 0 9px;font:inherit;font-size:calc(11px * var(--fs));cursor:pointer;min-height:56px;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabbar button .ic{font-size:calc(19px * var(--fs));line-height:1}
+.tabbar button.on{color:var(--accent);font-weight:600}
+.tabbar button.soon{color:var(--dim)}
+.tabbar button.soon .ic{opacity:.45}
+.spacer{flex:none;height:56px}
